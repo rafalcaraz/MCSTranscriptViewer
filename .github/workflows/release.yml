@@ -31,14 +31,6 @@ jobs:
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected app version: $VERSION"
 
-      - name: Check if release already exists
-        shell: bash
-        run: |
-          if git tag -l "v${{ steps.appversion.outputs.version }}" | grep -q .; then
-            echo "::error::Tag v${{ steps.appversion.outputs.version }} already exists. Bump the version in App.tsx first."
-            exit 1
-          fi
-
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -60,52 +52,19 @@ jobs:
           $pac = $env:POWERPLATFORMTOOLS_PACPATH
           & $pac auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }} --environment ${{ secrets.PAC_ENVIRONMENT_ID }}
 
-      - name: Get current solution version and bump it
-        id: solversion
-        shell: pwsh
-        run: |
-          $pac = $env:POWERPLATFORMTOOLS_PACPATH
-          $raw = & $pac solution list --environment ${{ secrets.PAC_ENVIRONMENT_ID }} --output json 2>&1 | Out-String
-          $jsonStart = $raw.IndexOf('[')
-          if ($jsonStart -lt 0) { $jsonStart = $raw.IndexOf('{') }
-          if ($jsonStart -lt 0) {
-            Write-Host "Raw: $raw"
-            Write-Error "No JSON in pac solution list output"
-            exit 1
-          }
-          $solutions = $raw.Substring($jsonStart) | ConvertFrom-Json
-          $sol = $solutions | Where-Object { $_.SolutionUniqueName -eq "${{ inputs.solution_name }}" }
-          if (-not $sol) {
-            Write-Error "Solution '${{ inputs.solution_name }}' not found"
-            exit 1
-          }
-          $current = $sol.VersionNumber
-          Write-Host "Current: $current"
-
-          $parts = $current.Split('.')
-          $parts[$parts.Count - 1] = [string]([int]$parts[$parts.Count - 1] + 1)
-          $next = $parts -join '.'
-          Write-Host "Next: $next"
-
-          & $pac solution online-version --solution-name ${{ inputs.solution_name }} --solution-version $next --environment ${{ secrets.PAC_ENVIRONMENT_ID }}
-
-          echo "current=$current" >> $env:GITHUB_OUTPUT
-          echo "next=$next" >> $env:GITHUB_OUTPUT
-
       - name: Export managed solution
         shell: pwsh
         run: |
           $pac = $env:POWERPLATFORMTOOLS_PACPATH
-          & $pac solution export --name ${{ inputs.solution_name }} --path "${{ github.workspace }}\${{ inputs.solution_name }}_${{ steps.solversion.outputs.next }}_managed.zip" --managed --environment ${{ secrets.PAC_ENVIRONMENT_ID }}
+          & $pac solution export --name ${{ inputs.solution_name }} --path "${{ github.workspace }}\${{ inputs.solution_name }}_v${{ steps.appversion.outputs.version }}_managed.zip" --managed --environment ${{ secrets.PAC_ENVIRONMENT_ID }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.appversion.outputs.version }}
-          name: MCS Conversation Viewer v${{ steps.appversion.outputs.version }} (Solution ${{ steps.solversion.outputs.next }})
+          name: MCS Conversation Viewer v${{ steps.appversion.outputs.version }}
           body: |
             ## MCS Conversation Viewer v${{ steps.appversion.outputs.version }}
-            **Solution version**: ${{ steps.solversion.outputs.next }} (bumped from ${{ steps.solversion.outputs.current }})
 
             ### Installation
             1. Download the managed solution `.zip` below
@@ -116,6 +75,6 @@ jobs:
             - Power Platform environment with Copilot Studio agents
             - Conversation transcripts enabled on your agents
           files: |
-            ${{ github.workspace }}/${{ inputs.solution_name }}_${{ steps.solversion.outputs.next }}_managed.zip
+            ${{ github.workspace }}/${{ inputs.solution_name }}_v${{ steps.appversion.outputs.version }}_managed.zip
           draft: false
           prerelease: false
