@@ -59,8 +59,21 @@ jobs:
         id: env
         shell: pwsh
         run: |
-          pac auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }}
-          $envList = pac admin list --output json | ConvertFrom-Json
+          # Find pac CLI installed by actions-install
+          $pacPath = Get-ChildItem -Path "$env:RUNNER_TOOL_CACHE" -Filter "pac.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
+          if (-not $pacPath) {
+            # Try common install locations
+            $pacPath = Get-Command pac -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
+          }
+          if (-not $pacPath) {
+            Write-Error "pac CLI not found"
+            exit 1
+          }
+          Write-Host "Found pac at: $pacPath"
+
+          & $pacPath auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }}
+          $envJson = & $pacPath admin list --output json
+          $envList = $envJson | ConvertFrom-Json
           $env = $envList | Where-Object { $_.EnvironmentId -eq "${{ secrets.PAC_ENVIRONMENT_ID }}" }
           if (-not $env) {
             Write-Error "Environment ${{ secrets.PAC_ENVIRONMENT_ID }} not found"
@@ -68,6 +81,7 @@ jobs:
           }
           $url = $env.Url.TrimEnd('/')
           echo "url=$url" >> $env:GITHUB_OUTPUT
+          echo "pac=$pacPath" >> $env:GITHUB_OUTPUT
           Write-Host "Resolved environment URL: $url"
 
       - name: Authenticate with Power Platform
@@ -82,8 +96,10 @@ jobs:
         id: solversion
         shell: pwsh
         run: |
+          $pacPath = "${{ steps.env.outputs.pac }}"
           # Get current solution version from Dataverse
-          $output = pac solution list --environment ${{ steps.env.outputs.url }} --output json | ConvertFrom-Json
+          $solJson = & $pacPath solution list --environment ${{ steps.env.outputs.url }} --output json
+          $output = $solJson | ConvertFrom-Json
           $sol = $output | Where-Object { $_.SolutionUniqueName -eq "${{ inputs.solution_name }}" }
           if (-not $sol) {
             Write-Error "Solution '${{ inputs.solution_name }}' not found in environment"
@@ -99,7 +115,7 @@ jobs:
           Write-Host "Next solution version: $next"
 
           # Set it in Dataverse
-          pac solution online-version --solution-name ${{ inputs.solution_name }} --solution-version $next --environment ${{ steps.env.outputs.url }}
+          & $pacPath solution online-version --solution-name ${{ inputs.solution_name }} --solution-version $next --environment ${{ steps.env.outputs.url }}
 
           echo "current=$current" >> $env:GITHUB_OUTPUT
           echo "next=$next" >> $env:GITHUB_OUTPUT
