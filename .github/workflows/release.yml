@@ -6,7 +6,7 @@ on:
       solution_name:
         description: 'Solution name in Dataverse'
         required: true
-        default: 'MCSConversationViewer'
+        default: 'ConvTranscriptViewerCodeApps'
         type: string
 
 # Only allow one release at a time
@@ -78,6 +78,17 @@ jobs:
           client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PAC_TENANT_ID }}
 
+      - name: Set solution version
+        shell: pwsh
+        run: |
+          $version = "${{ steps.version.outputs.version }}"
+          # Convert app version (1.0.4) to solution version format (1.0.4.0) if needed
+          $parts = $version.Split('.')
+          while ($parts.Count -lt 4) { $parts += '0' }
+          $solVersion = $parts -join '.'
+          Write-Host "Setting solution version to: $solVersion"
+          pac solution online-version --solution-name ${{ inputs.solution_name }} --solution-version $solVersion --environment ${{ steps.env.outputs.url }}
+
       - name: Export managed solution
         uses: microsoft/powerplatform-actions/export-solution@v1
         with:
@@ -86,16 +97,16 @@ jobs:
           client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PAC_TENANT_ID }}
           solution-name: ${{ inputs.solution_name }}
-          solution-output-file: ${{ github.workspace }}/${{ inputs.solution_name }}_managed.zip
+          solution-output-file: ${{ github.workspace }}/${{ inputs.solution_name }}_${{ steps.version.outputs.version }}_managed.zip
           managed: true
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           tag_name: v${{ steps.version.outputs.version }}
-          name: MCS Conversation Viewer v${{ steps.version.outputs.version }}
+          name: ConvTranscriptViewerCodeApps v${{ steps.version.outputs.version }}
           body: |
-            ## MCS Conversation Viewer v${{ steps.version.outputs.version }}
+            ## ConvTranscriptViewerCodeApps v${{ steps.version.outputs.version }}
 
             ### Installation
             1. Download the managed solution `.zip` below
@@ -106,6 +117,6 @@ jobs:
             - Power Platform environment with Copilot Studio agents
             - Conversation transcripts enabled on your agents
           files: |
-            ${{ github.workspace }}/${{ inputs.solution_name }}_managed.zip
+            ${{ github.workspace }}/${{ inputs.solution_name }}_${{ steps.version.outputs.version }}_managed.zip
           draft: false
           prerelease: false
