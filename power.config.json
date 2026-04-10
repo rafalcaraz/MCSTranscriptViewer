@@ -1,0 +1,32 @@
+{
+  "version": "1.0",
+  "appId": "d45139e0-5b92-47ac-b19b-67ee86a4f10c",
+  "appDisplayName": "MCS Conversation Viewer",
+  "region": "prod",
+  "environmentId": "92ac575f-d43d-e38d-80a0-d70cec823715",
+  "description": "",
+  "buildPath": "./dist",
+  "buildEntryPoint": "index.html",
+  "localAppUrl": "http://localhost:3000",
+  "logoPath": "Default",
+  "connectionReferences": {},
+  "databaseReferences": {
+    "default.cds": {
+      "dataSources": {
+        "conversationtranscripts": {
+          "entitySetName": "conversationtranscripts",
+          "logicalName": "conversationtranscript"
+        },
+        "microsoftentraids": {
+          "entitySetName": "aadusers",
+          "logicalName": "aaduser"
+        },
+        "agents": {
+          "entitySetName": "bots",
+          "logicalName": "bot"
+        }
+      },
+      "environmentVariableName": ""
+    }
+  }
+}
