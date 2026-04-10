@@ -52,8 +52,13 @@ function buildODataFilter(filters: TranscriptFilters): string | undefined {
   return clauses.length > 0 ? clauses.join(" and ") : undefined;
 }
 
+/** Sanitize user input for use in OData filter strings.
+ *  Allows: letters, numbers, spaces, hyphens, dots, @, underscores, colons.
+ *  Strips everything else to prevent OData injection. */
 function escapeOData(value: string): string {
-  return value.replace(/'/g, "''");
+  return value
+    .replace(/[^a-zA-Z0-9\s\-._@:]/g, "") // Strip unsafe characters
+    .replace(/'/g, "''");                   // Escape remaining single quotes
 }
 
 export function useTranscripts(filters: TranscriptFilters): TranscriptPage {

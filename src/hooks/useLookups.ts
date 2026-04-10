@@ -237,5 +237,7 @@ export function buildBotScopeFilter(botIds: string[]): string | undefined {
 }
 
 function escapeOData(value: string): string {
-  return value.replace(/'/g, "''");
+  return value
+    .replace(/[^a-zA-Z0-9\s\-._@:]/g, "")
+    .replace(/'/g, "''");
 }
