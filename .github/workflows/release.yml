@@ -1,0 +1,91 @@
+name: Release Managed Solution
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release version (e.g., 1.0.5)'
+        required: true
+        type: string
+      environment_url:
+        description: 'Power Platform environment URL (e.g., https://your-env.crm.dynamics.com)'
+        required: true
+        type: string
+      solution_name:
+        description: 'Solution name in Dataverse'
+        required: true
+        default: 'MCSConversationViewer'
+        type: string
+
+# Only allow one release at a time
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+jobs:
+  build-and-release:
+    runs-on: windows-latest
+    permissions:
+      contents: write  # Needed to create releases
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build app
+        run: npm run build
+
+      - name: Install Power Platform CLI
+        uses: microsoft/powerplatform-actions/actions-install@v1
+
+      - name: Authenticate with Power Platform
+        uses: microsoft/powerplatform-actions/who-am-i@v1
+        with:
+          environment-url: ${{ inputs.environment_url }}
+          app-id: ${{ secrets.PAC_APP_ID }}
+          client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PAC_TENANT_ID }}
+
+      - name: Export managed solution
+        uses: microsoft/powerplatform-actions/export-solution@v1
+        with:
+          environment-url: ${{ inputs.environment_url }}
+          app-id: ${{ secrets.PAC_APP_ID }}
+          client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
+          tenant-id: ${{ secrets.PAC_TENANT_ID }}
+          solution-name: ${{ inputs.solution_name }}
+          solution-output-file: ${{ github.workspace }}/${{ inputs.solution_name }}_managed.zip
+          managed: true
+
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ inputs.version }}
+          name: MCS Conversation Viewer v${{ inputs.version }}
+          body: |
+            ## MCS Conversation Viewer v${{ inputs.version }}
+
+            ### Installation
+            1. Download the managed solution `.zip` below
+            2. Import it into your Power Platform environment via [make.powerapps.com](https://make.powerapps.com) → Solutions → Import
+            3. Configure the data sources (conversationtranscripts, bot, aaduser tables)
+
+            ### Prerequisites
+            - Power Platform environment with Copilot Studio agents
+            - Conversation transcripts enabled on your agents
+
+            ---
+            *Exported from: ${{ inputs.environment_url }}*
+          files: |
+            ${{ github.workspace }}/${{ inputs.solution_name }}_managed.zip
+          draft: false
+          prerelease: false
