@@ -63,8 +63,17 @@ jobs:
           Write-Host "Found pac at: $pacPath"
 
           & $pacPath auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }}
-          $envJson = & $pacPath admin list --output json
-          $envList = $envJson | ConvertFrom-Json
+          $rawOutput = & $pacPath admin list --output json 2>&1 | Out-String
+          # Strip non-JSON lines (CLI banner text) — find first '[' or '{'
+          $jsonStart = $rawOutput.IndexOf('[')
+          if ($jsonStart -lt 0) { $jsonStart = $rawOutput.IndexOf('{') }
+          if ($jsonStart -lt 0) {
+            Write-Host "Raw output: $rawOutput"
+            Write-Error "No JSON found in pac admin list output"
+            exit 1
+          }
+          $jsonText = $rawOutput.Substring($jsonStart)
+          $envList = $jsonText | ConvertFrom-Json
           $matched = $envList | Where-Object { $_.EnvironmentId -eq "${{ secrets.PAC_ENVIRONMENT_ID }}" }
           if (-not $matched) {
             Write-Error "Environment ${{ secrets.PAC_ENVIRONMENT_ID }} not found"
@@ -88,8 +97,16 @@ jobs:
         run: |
           $pacPath = $env:POWERPLATFORMTOOLS_PACPATH
           # Get current solution version from Dataverse
-          $solJson = & $pacPath solution list --environment ${{ steps.env.outputs.url }} --output json
-          $output = $solJson | ConvertFrom-Json
+          $rawOutput = & $pacPath solution list --environment ${{ steps.env.outputs.url }} --output json 2>&1 | Out-String
+          $jsonStart = $rawOutput.IndexOf('[')
+          if ($jsonStart -lt 0) { $jsonStart = $rawOutput.IndexOf('{') }
+          if ($jsonStart -lt 0) {
+            Write-Host "Raw output: $rawOutput"
+            Write-Error "No JSON found in pac solution list output"
+            exit 1
+          }
+          $jsonText = $rawOutput.Substring($jsonStart)
+          $output = $jsonText | ConvertFrom-Json
           $sol = $output | Where-Object { $_.SolutionUniqueName -eq "${{ inputs.solution_name }}" }
           if (-not $sol) {
             Write-Error "Solution '${{ inputs.solution_name }}' not found in environment"
