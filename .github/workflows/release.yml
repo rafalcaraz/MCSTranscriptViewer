@@ -59,29 +59,19 @@ jobs:
         id: env
         shell: pwsh
         run: |
-          # Find pac CLI installed by actions-install
-          $pacPath = Get-ChildItem -Path "$env:RUNNER_TOOL_CACHE" -Filter "pac.exe" -Recurse -ErrorAction SilentlyContinue | Select-Object -First 1 -ExpandProperty FullName
-          if (-not $pacPath) {
-            # Try common install locations
-            $pacPath = Get-Command pac -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Source
-          }
-          if (-not $pacPath) {
-            Write-Error "pac CLI not found"
-            exit 1
-          }
+          $pacPath = $env:POWERPLATFORMTOOLS_PACPATH
           Write-Host "Found pac at: $pacPath"
 
           & $pacPath auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }}
           $envJson = & $pacPath admin list --output json
           $envList = $envJson | ConvertFrom-Json
-          $env = $envList | Where-Object { $_.EnvironmentId -eq "${{ secrets.PAC_ENVIRONMENT_ID }}" }
-          if (-not $env) {
+          $matched = $envList | Where-Object { $_.EnvironmentId -eq "${{ secrets.PAC_ENVIRONMENT_ID }}" }
+          if (-not $matched) {
             Write-Error "Environment ${{ secrets.PAC_ENVIRONMENT_ID }} not found"
             exit 1
           }
-          $url = $env.Url.TrimEnd('/')
+          $url = $matched.Url.TrimEnd('/')
           echo "url=$url" >> $env:GITHUB_OUTPUT
-          echo "pac=$pacPath" >> $env:GITHUB_OUTPUT
           Write-Host "Resolved environment URL: $url"
 
       - name: Authenticate with Power Platform
@@ -96,7 +86,7 @@ jobs:
         id: solversion
         shell: pwsh
         run: |
-          $pacPath = "${{ steps.env.outputs.pac }}"
+          $pacPath = $env:POWERPLATFORMTOOLS_PACPATH
           # Get current solution version from Dataverse
           $solJson = & $pacPath solution list --environment ${{ steps.env.outputs.url }} --output json
           $output = $solJson | ConvertFrom-Json
