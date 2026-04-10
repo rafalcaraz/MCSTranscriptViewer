@@ -65,7 +65,7 @@ export function OrphanReactionItem({ reaction: r, onOpenTranscript }: OrphanReac
         setResult({ found: false });
       }
     } catch (err) {
-      console.error("[OrphanLookup] Error:", err);
+      console.error("[OrphanLookup] Error:", err instanceof Error ? err.message : "Unknown error");
       setResult({ found: false });
     }
     setLookupState("done");

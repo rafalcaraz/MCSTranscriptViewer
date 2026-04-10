@@ -115,8 +115,17 @@ function RenderTextBlock({ element: el }: { element: CardElement }) {
   );
 }
 
+function isSafeUrl(url: string): boolean {
+  try {
+    const parsed = new URL(url);
+    return ["http:", "https:"].includes(parsed.protocol);
+  } catch {
+    return false;
+  }
+}
+
 function RenderImage({ element: el }: { element: CardElement }) {
-  if (!el.url) return null;
+  if (!el.url || !isSafeUrl(el.url)) return null;
   return (
     <img
       className="ac-image"
@@ -141,7 +150,7 @@ function RenderColumnSet({ element: el }: { element: CardElement }) {
 
 function RenderAction({ action }: { action: CardAction }) {
   const label = action.title ?? action.type;
-  if (action.type === "Action.OpenUrl" && action.url) {
+  if (action.type === "Action.OpenUrl" && action.url && isSafeUrl(action.url)) {
     return (
       <a className="ac-action-btn" href={action.url} target="_blank" rel="noopener noreferrer">
         {label}

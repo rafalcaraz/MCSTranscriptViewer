@@ -113,7 +113,7 @@ export function useTranscripts(filters: TranscriptFilters): TranscriptPage {
       setHasMore(newRecords.length >= pageSize || !!nextToken);
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Failed to load transcripts";
-      console.error("[Transcripts] Fetch error:", err);
+      console.error("[Transcripts] Fetch error:", err instanceof Error ? err.message : "Unknown error");
       setError(msg);
       setHasMore(false);
     } finally {
@@ -189,7 +189,7 @@ export function useTranscript(id: string | undefined) {
           setTranscript(parseTranscript(toRecord(result.data)));
         }
       } catch (err) {
-        console.error("[Transcript] Fetch error for id:", id, err);
+        console.error("[Transcript] Fetch error:", err instanceof Error ? err.message : "Unknown error");
       } finally {
         if (!cancelled) setLoading(false);
       }

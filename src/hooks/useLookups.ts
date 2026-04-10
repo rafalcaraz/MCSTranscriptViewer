@@ -60,7 +60,7 @@ export function useAadUserSearch() {
       const users = (result.data ?? []).map(toAadUser);
       setResults(users);
     } catch (err) {
-      console.error("[AadUserSearch] Error:", err);
+      console.error("[AadUserSearch] Error:", err instanceof Error ? err.message : "Unknown error");
       setResults([]);
     } finally {
       setLoading(false);
@@ -101,7 +101,7 @@ export function useUserDisplayNames(aadObjectIds: string[]) {
         try {
           const result = await AadusersService.getAll({
             select: ["aaduserid", "id", "displayname", "mail"],
-            filter: `id eq '${id}'`,
+            filter: `id eq '${sanitizeGuid(id)}'`,
             maxPageSize: 1,
           });
           const user = result.data?.[0];
@@ -174,7 +174,7 @@ async function fetchBots() {
 
       console.log(`[Bots] Cached ${_botsCache.size} bots`);
     } catch (err) {
-      console.error("[Bots] Failed to fetch:", err);
+      console.error("[Bots] Failed to fetch:", err instanceof Error ? err.message : "Unknown error");
       _botsCache = new Map();
       _botsCacheBySchema = new Map();
     }
@@ -232,7 +232,7 @@ export function useBotLookup() {
  */
 export function buildBotScopeFilter(botIds: string[]): string | undefined {
   if (botIds.length === 0) return undefined;
-  const clauses = botIds.map((id) => `_bot_conversationtranscriptid_value eq '${id}'`);
+  const clauses = botIds.map((id) => `_bot_conversationtranscriptid_value eq '${sanitizeGuid(id)}'`);
   return `(${clauses.join(" or ")})`;
 }
 
@@ -240,4 +240,9 @@ function escapeOData(value: string): string {
   return value
     .replace(/[^a-zA-Z0-9\s\-._@:]/g, "")
     .replace(/'/g, "''");
+}
+
+/** Sanitize a GUID — strip anything that isn't hex or hyphens */
+function sanitizeGuid(value: string): string {
+  return value.replace(/[^a-fA-F0-9\-]/g, "");
 }
