@@ -3,14 +3,6 @@ name: Release Managed Solution
 on:
   workflow_dispatch:
     inputs:
-      version:
-        description: 'Release version (e.g., 1.0.5)'
-        required: true
-        type: string
-      environment_url:
-        description: 'Power Platform environment URL (e.g., https://your-env.crm.dynamics.com)'
-        required: true
-        type: string
       solution_name:
         description: 'Solution name in Dataverse'
         required: true
@@ -32,6 +24,22 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Detect version from source
+        id: version
+        shell: bash
+        run: |
+          VERSION=$(grep -oP 'app-version">v\K[^<]+' src/App.tsx)
+          echo "version=$VERSION" >> "$GITHUB_OUTPUT"
+          echo "Detected version: $VERSION"
+
+      - name: Check if release already exists
+        shell: bash
+        run: |
+          if git tag -l "v${{ steps.version.outputs.version }}" | grep -q .; then
+            echo "::error::Tag v${{ steps.version.outputs.version }} already exists. Bump the version in App.tsx first."
+            exit 1
+          fi
+
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
@@ -50,7 +58,7 @@ jobs:
       - name: Authenticate with Power Platform
         uses: microsoft/powerplatform-actions/who-am-i@v1
         with:
-          environment-url: ${{ inputs.environment_url }}
+          environment-url: ${{ secrets.PAC_ENVIRONMENT_URL }}
           app-id: ${{ secrets.PAC_APP_ID }}
           client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PAC_TENANT_ID }}
@@ -58,7 +66,7 @@ jobs:
       - name: Export managed solution
         uses: microsoft/powerplatform-actions/export-solution@v1
         with:
-          environment-url: ${{ inputs.environment_url }}
+          environment-url: ${{ secrets.PAC_ENVIRONMENT_URL }}
           app-id: ${{ secrets.PAC_APP_ID }}
           client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PAC_TENANT_ID }}
@@ -69,10 +77,10 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: v${{ inputs.version }}
-          name: MCS Conversation Viewer v${{ inputs.version }}
+          tag_name: v${{ steps.version.outputs.version }}
+          name: MCS Conversation Viewer v${{ steps.version.outputs.version }}
           body: |
-            ## MCS Conversation Viewer v${{ inputs.version }}
+            ## MCS Conversation Viewer v${{ steps.version.outputs.version }}
 
             ### Installation
             1. Download the managed solution `.zip` below
@@ -82,9 +90,6 @@ jobs:
             ### Prerequisites
             - Power Platform environment with Copilot Studio agents
             - Conversation transcripts enabled on your agents
-
-            ---
-            *Exported from: ${{ inputs.environment_url }}*
           files: |
             ${{ github.workspace }}/${{ inputs.solution_name }}_managed.zip
           draft: false
