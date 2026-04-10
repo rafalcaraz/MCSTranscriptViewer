@@ -55,10 +55,25 @@ jobs:
       - name: Install Power Platform CLI
         uses: microsoft/powerplatform-actions/actions-install@v1
 
+      - name: Resolve environment URL from ID
+        id: env
+        shell: pwsh
+        run: |
+          pac auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }}
+          $envList = pac admin list --output json | ConvertFrom-Json
+          $env = $envList | Where-Object { $_.EnvironmentId -eq "${{ secrets.PAC_ENVIRONMENT_ID }}" }
+          if (-not $env) {
+            Write-Error "Environment ${{ secrets.PAC_ENVIRONMENT_ID }} not found"
+            exit 1
+          }
+          $url = $env.Url.TrimEnd('/')
+          echo "url=$url" >> $env:GITHUB_OUTPUT
+          Write-Host "Resolved environment URL: $url"
+
       - name: Authenticate with Power Platform
         uses: microsoft/powerplatform-actions/who-am-i@v1
         with:
-          environment-url: ${{ secrets.PAC_ENVIRONMENT_URL }}
+          environment-url: ${{ steps.env.outputs.url }}
           app-id: ${{ secrets.PAC_APP_ID }}
           client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PAC_TENANT_ID }}
@@ -66,7 +81,7 @@ jobs:
       - name: Export managed solution
         uses: microsoft/powerplatform-actions/export-solution@v1
         with:
-          environment-url: ${{ secrets.PAC_ENVIRONMENT_URL }}
+          environment-url: ${{ steps.env.outputs.url }}
           app-id: ${{ secrets.PAC_APP_ID }}
           client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
           tenant-id: ${{ secrets.PAC_TENANT_ID }}
