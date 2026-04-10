@@ -28,7 +28,7 @@ jobs:
         id: appversion
         shell: bash
         run: |
-          VERSION=$(grep -oP 'app-version">v\K[^<]+' src/App.tsx)
+          VERSION=$(sed -n 's/.*app-version">v\([^<]*\).*/\1/p' src/App.tsx)
           echo "version=$VERSION" >> "$GITHUB_OUTPUT"
           echo "Detected app version: $VERSION"
 
