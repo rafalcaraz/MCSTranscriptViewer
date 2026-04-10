@@ -69,11 +69,10 @@ jobs:
             ### Installation
             1. Download the managed solution `.zip` below
             2. Import it into your Power Platform environment via [make.powerapps.com](https://make.powerapps.com) → Solutions → Import
-            3. Configure the data sources (conversationtranscripts, bot, aaduser tables)
 
             ### Prerequisites
-            - Power Platform environment with Copilot Studio agents
-            - Conversation transcripts enabled on your agents
+            - Power Platform environment with **Code Apps enabled** in environment settings
+            - Copilot Studio agents deployed in the environment
           files: |
             ${{ github.workspace }}/${{ inputs.solution_name }}_v${{ steps.appversion.outputs.version }}_managed.zip
           draft: false
