@@ -9,7 +9,6 @@ on:
         default: 'ConvTranscriptViewerCodeApps'
         type: string
 
-# Only allow one release at a time
 concurrency:
   group: release
   cancel-in-progress: false
@@ -18,7 +17,7 @@ jobs:
   build-and-release:
     runs-on: windows-latest
     permissions:
-      contents: write  # Needed to create releases
+      contents: write
 
     steps:
       - name: Checkout code
@@ -55,88 +54,49 @@ jobs:
       - name: Install Power Platform CLI
         uses: microsoft/powerplatform-actions/actions-install@v1
 
-      - name: Resolve environment URL from ID
-        id: env
+      - name: Authenticate pac CLI
         shell: pwsh
         run: |
-          $pacPath = $env:POWERPLATFORMTOOLS_PACPATH
-          Write-Host "Found pac at: $pacPath"
-
-          & $pacPath auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }}
-          $rawOutput = & $pacPath admin list --output json 2>&1 | Out-String
-          # Strip non-JSON lines (CLI banner text) — find first '[' or '{'
-          $jsonStart = $rawOutput.IndexOf('[')
-          if ($jsonStart -lt 0) { $jsonStart = $rawOutput.IndexOf('{') }
-          if ($jsonStart -lt 0) {
-            Write-Host "Raw output: $rawOutput"
-            Write-Error "No JSON found in pac admin list output"
-            exit 1
-          }
-          $jsonText = $rawOutput.Substring($jsonStart)
-          $envList = $jsonText | ConvertFrom-Json
-          $matched = $envList | Where-Object { $_.EnvironmentId -eq "${{ secrets.PAC_ENVIRONMENT_ID }}" }
-          if (-not $matched) {
-            Write-Error "Environment ${{ secrets.PAC_ENVIRONMENT_ID }} not found"
-            exit 1
-          }
-          $url = $matched.Url.TrimEnd('/')
-          echo "url=$url" >> $env:GITHUB_OUTPUT
-          Write-Host "Resolved environment URL: $url"
-
-      - name: Authenticate with Power Platform
-        uses: microsoft/powerplatform-actions/who-am-i@v1
-        with:
-          environment-url: ${{ steps.env.outputs.url }}
-          app-id: ${{ secrets.PAC_APP_ID }}
-          client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
-          tenant-id: ${{ secrets.PAC_TENANT_ID }}
+          $pac = $env:POWERPLATFORMTOOLS_PACPATH
+          & $pac auth create --applicationId ${{ secrets.PAC_APP_ID }} --clientSecret ${{ secrets.PAC_CLIENT_SECRET }} --tenant ${{ secrets.PAC_TENANT_ID }} --environment ${{ secrets.PAC_ENVIRONMENT_ID }}
 
       - name: Get current solution version and bump it
         id: solversion
         shell: pwsh
         run: |
-          $pacPath = $env:POWERPLATFORMTOOLS_PACPATH
-          # Get current solution version from Dataverse
-          $rawOutput = & $pacPath solution list --environment ${{ steps.env.outputs.url }} --output json 2>&1 | Out-String
-          $jsonStart = $rawOutput.IndexOf('[')
-          if ($jsonStart -lt 0) { $jsonStart = $rawOutput.IndexOf('{') }
+          $pac = $env:POWERPLATFORMTOOLS_PACPATH
+          $raw = & $pac solution list --environment ${{ secrets.PAC_ENVIRONMENT_ID }} --output json 2>&1 | Out-String
+          $jsonStart = $raw.IndexOf('[')
+          if ($jsonStart -lt 0) { $jsonStart = $raw.IndexOf('{') }
           if ($jsonStart -lt 0) {
-            Write-Host "Raw output: $rawOutput"
-            Write-Error "No JSON found in pac solution list output"
+            Write-Host "Raw: $raw"
+            Write-Error "No JSON in pac solution list output"
             exit 1
           }
-          $jsonText = $rawOutput.Substring($jsonStart)
-          $output = $jsonText | ConvertFrom-Json
-          $sol = $output | Where-Object { $_.SolutionUniqueName -eq "${{ inputs.solution_name }}" }
+          $solutions = $raw.Substring($jsonStart) | ConvertFrom-Json
+          $sol = $solutions | Where-Object { $_.SolutionUniqueName -eq "${{ inputs.solution_name }}" }
           if (-not $sol) {
-            Write-Error "Solution '${{ inputs.solution_name }}' not found in environment"
+            Write-Error "Solution '${{ inputs.solution_name }}' not found"
             exit 1
           }
           $current = $sol.VersionNumber
-          Write-Host "Current solution version: $current"
+          Write-Host "Current: $current"
 
-          # Bump the last segment (1.0.0.5 -> 1.0.0.6)
           $parts = $current.Split('.')
           $parts[$parts.Count - 1] = [string]([int]$parts[$parts.Count - 1] + 1)
           $next = $parts -join '.'
-          Write-Host "Next solution version: $next"
+          Write-Host "Next: $next"
 
-          # Set it in Dataverse
-          & $pacPath solution online-version --solution-name ${{ inputs.solution_name }} --solution-version $next --environment ${{ steps.env.outputs.url }}
+          & $pac solution online-version --solution-name ${{ inputs.solution_name }} --solution-version $next --environment ${{ secrets.PAC_ENVIRONMENT_ID }}
 
           echo "current=$current" >> $env:GITHUB_OUTPUT
           echo "next=$next" >> $env:GITHUB_OUTPUT
 
       - name: Export managed solution
-        uses: microsoft/powerplatform-actions/export-solution@v1
-        with:
-          environment-url: ${{ steps.env.outputs.url }}
-          app-id: ${{ secrets.PAC_APP_ID }}
-          client-secret: ${{ secrets.PAC_CLIENT_SECRET }}
-          tenant-id: ${{ secrets.PAC_TENANT_ID }}
-          solution-name: ${{ inputs.solution_name }}
-          solution-output-file: ${{ github.workspace }}/${{ inputs.solution_name }}_${{ steps.solversion.outputs.next }}_managed.zip
-          managed: true
+        shell: pwsh
+        run: |
+          $pac = $env:POWERPLATFORMTOOLS_PACPATH
+          & $pac solution export --name ${{ inputs.solution_name }} --path "${{ github.workspace }}\${{ inputs.solution_name }}_${{ steps.solversion.outputs.next }}_managed.zip" --managed --environment ${{ secrets.PAC_ENVIRONMENT_ID }}
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
