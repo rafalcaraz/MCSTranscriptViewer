@@ -22,8 +22,3 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
-
-# Data dumps (dev artifacts, not for source control)
-src/data/realData.ts
-src/data/mockData.ts
-src/data/dataverseDump.ts
