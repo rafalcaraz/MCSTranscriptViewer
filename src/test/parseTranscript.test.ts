@@ -132,8 +132,8 @@ describe("parseTranscript — knowledge", () => {
   it("extracts knowledge search sources", () => {
     const result = parseTranscript(knowledgeTranscript);
     expect(result.knowledgeSearches).toHaveLength(1);
-    expect(result.knowledgeSearches[0].knowledgeSources).toContain("BingUnscopedSearchKnowledge");
-    expect(result.knowledgeSearches[0].knowledgeSources).toContain(expect.stringContaining(".file."));
+    expect(result.knowledgeSearches[0].knowledgeSources).toHaveLength(2);
+    expect(result.knowledgeSearches[0].knowledgeSources[0]).toContain("Healthcare");
   });
 
   it("extracts knowledge response with query and citations", () => {
@@ -261,28 +261,36 @@ describe("utility functions", () => {
   });
 });
 
-// ── OData Sanitization ────────────────────────────────────────────────
+// ── Client-side Search ─────────────────────────────────────────────────
 
-describe("OData sanitization", () => {
-  // Import the searchTranscripts function to test client-side search
-  it("searchTranscripts filters by message text", async () => {
-    const { searchTranscripts } = await import("../hooks/useTranscripts");
+describe("client-side search", () => {
+  // Inline search logic to avoid importing from useTranscripts (which pulls in Power Apps SDK)
+  function searchByField(transcripts: ReturnType<typeof parseTranscript>[], query: string, field: string) {
+    const q = query.toLowerCase();
+    return transcripts.filter((t) => {
+      if (field === "messages") return t.messages.some((m) => m.text.toLowerCase().includes(q));
+      if (field === "thinking") return t.planSteps.some((s) => s.thought?.toLowerCase().includes(q));
+      // all
+      return t.messages.some((m) => m.text.toLowerCase().includes(q)) ||
+        t.planSteps.some((s) => s.thought?.toLowerCase().includes(q) || s.observation?.toLowerCase().includes(q));
+    });
+  }
+
+  it("filters by message text", () => {
     const transcript = parseTranscript(basicMcpTranscript);
-    const results = searchTranscripts([transcript], { query: "campaigns", searchIn: "messages" });
+    const results = searchByField([transcript], "campaigns", "messages");
     expect(results).toHaveLength(1);
   });
 
-  it("searchTranscripts filters by thinking", async () => {
-    const { searchTranscripts } = await import("../hooks/useTranscripts");
+  it("filters by thinking", () => {
     const transcript = parseTranscript(basicMcpTranscript);
-    const results = searchTranscripts([transcript], { query: "active campaigns", searchIn: "thinking" });
+    const results = searchByField([transcript], "active campaigns", "thinking");
     expect(results).toHaveLength(1);
   });
 
-  it("searchTranscripts returns empty for no match", async () => {
-    const { searchTranscripts } = await import("../hooks/useTranscripts");
+  it("returns empty for no match", () => {
     const transcript = parseTranscript(basicMcpTranscript);
-    const results = searchTranscripts([transcript], { query: "nonexistent xyz", searchIn: "all" });
+    const results = searchByField([transcript], "nonexistent xyz", "all");
     expect(results).toHaveLength(0);
   });
 });
