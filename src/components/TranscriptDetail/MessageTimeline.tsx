@@ -1,4 +1,4 @@
-import { useEffect, useRef, useMemo } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import type { ChatMessage, Reaction } from "../../types/transcript";
 import { formatTimestamp } from "../../utils/parseTranscript";
 import { OrphanReactionItem } from "./OrphanReactionItem";
@@ -36,6 +36,8 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
     }
   }, [activeMessageId]);
 
+  const [messageSearch, setMessageSearch] = useState("");
+
   const renderMessageContent = (msg: ChatMessage) => {
     // Adaptive card or OAuth card — render with card component
     if (msg.attachments?.length && (msg.textFormat === "adaptive-card" || msg.textFormat === "oauth-card")) {
@@ -65,7 +67,16 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
     <div className="panel">
       <div className="panel-title">Message Timeline</div>
       <div className="panel-body">
+        <input
+          className="debug-search"
+          placeholder="Search messages..."
+          value={messageSearch}
+          onChange={(e) => setMessageSearch(e.target.value)}
+        />
         {messages.map((msg) => {
+          // Search filter
+          const matchesSearch = !messageSearch || msg.text.toLowerCase().includes(messageSearch.toLowerCase());
+
           // A message is "active" if:
           // - It's the selected user message (clicked directly)
           // - It's a bot message that replies to the selected user message
@@ -92,7 +103,7 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
               ref={isActive ? activeRef : undefined}
               className={`message-row ${msg.role} ${isActive ? "active" : ""}`}
               onClick={handleClick}
-              style={{ cursor: "pointer" }}
+              style={{ cursor: "pointer", opacity: matchesSearch ? 1 : 0.3, transition: "opacity 0.2s" }}
             >
               <div>
                 <div className={`msg-bubble ${msg.role} ${isActive ? "highlighted" : ""}`}>

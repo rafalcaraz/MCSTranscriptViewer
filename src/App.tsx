@@ -101,7 +101,7 @@ function App() {
         >
           Analytics
         </button>
-        <span className="app-version">v1.0.5</span>
+        <span className="app-version" title={`Built: ${__BUILD_TIME__}`}>v1.0.5 · {new Date(__BUILD_TIME__).toLocaleString()}</span>
       </nav>
       <div className="app-content">
         {view === "list" && (

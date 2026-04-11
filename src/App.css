@@ -809,6 +809,22 @@
   border-bottom: 1px solid #f0f0f0;
 }
 
+/* ── Panel Search ─────────────────────────── */
+.debug-search {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 6px;
+  font-size: 12px;
+  margin-bottom: 10px;
+  box-sizing: border-box;
+}
+.debug-search:focus {
+  outline: none;
+  border-color: #0078d4;
+  box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.15);
+}
+
 /* ── Debug Mode Toggle ───────────────────── */
 .mode-toggle {
   padding: 3px 10px;
