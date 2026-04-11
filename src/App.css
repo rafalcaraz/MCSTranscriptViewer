@@ -824,6 +824,45 @@
   border-color: #0078d4;
   box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.15);
 }
+.search-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 10px;
+}
+.search-bar .debug-search { margin-bottom: 0; flex: 1; }
+.search-nav {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  flex-shrink: 0;
+}
+.search-count {
+  font-size: 11px;
+  color: #888;
+  min-width: 36px;
+  text-align: center;
+}
+.search-nav-btn {
+  padding: 2px 6px;
+  border: 1px solid #d0d0d0;
+  border-radius: 3px;
+  background: #fff;
+  font-size: 10px;
+  cursor: pointer;
+  line-height: 1;
+}
+.search-nav-btn:hover { background: #f0f0f0; }
+.search-no-results {
+  font-size: 11px;
+  color: #c4314b;
+  white-space: nowrap;
+}
+.msg-bubble.search-highlight {
+  outline: 2px solid #ca5010;
+  outline-offset: 2px;
+  box-shadow: 0 0 8px rgba(202, 80, 16, 0.3);
+}
 
 /* ── Debug Mode Toggle ───────────────────── */
 .mode-toggle {

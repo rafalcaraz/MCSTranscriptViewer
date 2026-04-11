@@ -37,6 +37,31 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
   }, [activeMessageId]);
 
   const [messageSearch, setMessageSearch] = useState("");
+  const [searchIndex, setSearchIndex] = useState(0);
+  const matchRefs = useRef<Map<number, HTMLDivElement>>(new Map());
+
+  // Collect matching message indices
+  const matchingIndices = useMemo(() => {
+    if (!messageSearch) return [];
+    return messages
+      .map((msg, i) => msg.text.toLowerCase().includes(messageSearch.toLowerCase()) ? i : -1)
+      .filter((i) => i >= 0);
+  }, [messages, messageSearch]);
+
+  // Reset search index when query changes
+  useEffect(() => { setSearchIndex(0); }, [messageSearch]);
+
+  // Scroll to current match
+  useEffect(() => {
+    if (matchingIndices.length > 0) {
+      const idx = matchingIndices[searchIndex];
+      const el = matchRefs.current.get(idx);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [searchIndex, matchingIndices]);
+
+  const goNext = () => setSearchIndex((prev) => (prev + 1) % matchingIndices.length);
+  const goPrev = () => setSearchIndex((prev) => (prev - 1 + matchingIndices.length) % matchingIndices.length);
 
   const renderMessageContent = (msg: ChatMessage) => {
     // Adaptive card or OAuth card — render with card component
@@ -67,15 +92,29 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
     <div className="panel">
       <div className="panel-title">Message Timeline</div>
       <div className="panel-body">
-        <input
-          className="debug-search"
-          placeholder="Search messages..."
-          value={messageSearch}
-          onChange={(e) => setMessageSearch(e.target.value)}
-        />
-        {messages.map((msg) => {
+        <div className="search-bar">
+          <input
+            className="debug-search"
+            placeholder="Search messages..."
+            value={messageSearch}
+            onChange={(e) => setMessageSearch(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.shiftKey ? goPrev() : goNext(); } }}
+          />
+          {messageSearch && matchingIndices.length > 0 && (
+            <div className="search-nav">
+              <span className="search-count">{searchIndex + 1}/{matchingIndices.length}</span>
+              <button className="search-nav-btn" onClick={goPrev} title="Previous (Shift+Enter)">▲</button>
+              <button className="search-nav-btn" onClick={goNext} title="Next (Enter)">▼</button>
+            </div>
+          )}
+          {messageSearch && matchingIndices.length === 0 && (
+            <span className="search-no-results">No matches</span>
+          )}
+        </div>
+        {messages.map((msg, msgIdx) => {
           // Search filter
           const matchesSearch = !messageSearch || msg.text.toLowerCase().includes(messageSearch.toLowerCase());
+          const isCurrentMatch = matchingIndices[searchIndex] === msgIdx;
 
           // A message is "active" if:
           // - It's the selected user message (clicked directly)
@@ -100,13 +139,16 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
           return (
             <div
               key={msg.id}
-              ref={isActive ? activeRef : undefined}
-              className={`message-row ${msg.role} ${isActive ? "active" : ""}`}
+              ref={(el) => {
+                if (isActive && activeRef) (activeRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
+                if (matchesSearch && el) matchRefs.current.set(msgIdx, el);
+              }}
+              className={`message-row ${msg.role} ${isActive ? "active" : ""} ${isCurrentMatch ? "search-current" : ""}`}
               onClick={handleClick}
               style={{ cursor: "pointer", opacity: matchesSearch ? 1 : 0.3, transition: "opacity 0.2s" }}
             >
               <div>
-                <div className={`msg-bubble ${msg.role} ${isActive ? "highlighted" : ""}`}>
+                <div className={`msg-bubble ${msg.role} ${isActive ? "highlighted" : ""} ${isCurrentMatch ? "search-highlight" : ""}`}>
                   {renderMessageContent(msg)}
                   {reactionsByMessageId.has(msg.id) && (
                     <div className="reaction-badges">

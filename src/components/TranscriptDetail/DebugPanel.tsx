@@ -30,6 +30,8 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
   const [openSteps, setOpenSteps] = useState<Set<string>>(new Set());
   const [advancedMode, setAdvancedMode] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
+  const [debugSearchIndex, setDebugSearchIndex] = useState(0);
+  const debugMatchRefs = useRef<Map<number, HTMLDivElement>>(new Map());
   const firstLinkedRef = useRef<HTMLDivElement>(null);
 
   // Build interleaved timeline sorted by timestamp
@@ -138,6 +140,26 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
     return true;
   };
 
+  // Debug search navigation
+  const debugMatchingIndices = useMemo(() => {
+    if (!searchQuery) return [];
+    return groupedTimeline
+      .map((item, i) => itemMatchesSearch(item) ? i : -1)
+      .filter((i) => i >= 0);
+  }, [groupedTimeline, searchQuery]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => { setDebugSearchIndex(0); }, [searchQuery]);
+
+  useEffect(() => {
+    if (debugMatchingIndices.length > 0) {
+      const el = debugMatchRefs.current.get(debugMatchingIndices[debugSearchIndex]);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }
+  }, [debugSearchIndex, debugMatchingIndices]);
+
+  const debugGoNext = () => setDebugSearchIndex((prev) => (prev + 1) % debugMatchingIndices.length);
+  const debugGoPrev = () => setDebugSearchIndex((prev) => (prev - 1 + debugMatchingIndices.length) % debugMatchingIndices.length);
+
   // Linked items for message sync
   const isLinked = (item: TimelineItem) =>
     activeMessageId != null && item.replyToId === activeMessageId;
@@ -186,12 +208,25 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
       </div>
       <div className="panel-body">
         {/* Search */}
-        <input
-          className="debug-search"
-          placeholder="Search debug events..."
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-        />
+        <div className="search-bar">
+          <input
+            className="debug-search"
+            placeholder="Search debug events..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => { if (e.key === "Enter") { e.shiftKey ? debugGoPrev() : debugGoNext(); } }}
+          />
+          {searchQuery && debugMatchingIndices.length > 0 && (
+            <div className="search-nav">
+              <span className="search-count">{debugSearchIndex + 1}/{debugMatchingIndices.length}</span>
+              <button className="search-nav-btn" onClick={debugGoPrev} title="Previous (Shift+Enter)">▲</button>
+              <button className="search-nav-btn" onClick={debugGoNext} title="Next (Enter)">▼</button>
+            </div>
+          )}
+          {searchQuery && debugMatchingIndices.length === 0 && (
+            <span className="search-no-results">No matches</span>
+          )}
+        </div>
 
         {/* MCP Server Info */}
         {mcpServerInit && (

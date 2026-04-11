@@ -374,21 +374,25 @@ function extractAdvancedEvents(rawActivities: RawActivity[]): AdvancedEvent[] {
       });
     }
 
-    // Variable assignments
+    // Variable assignments (skip noisy system variables)
     if (typ === "trace" && vtype === "VariableAssignment") {
-      events.push({
-        category: "variable",
-        label: `${(v.name as string) ?? "?"} = ${JSON.stringify(v.newValue).slice(0, 50)}`,
-        icon: "📝",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: {
-          name: v.name,
-          id: v.id,
-          newValue: v.newValue,
-          type: v.type,
-        },
-      });
+      const varId = (v.id as string) ?? "";
+      const noisy = ["Topic.CurrentTime", "Global.CurrentTime", "System."];
+      if (!noisy.some((prefix) => varId.startsWith(prefix))) {
+        events.push({
+          category: "variable",
+          label: `${(v.name as string) ?? "?"} = ${JSON.stringify(v.newValue).slice(0, 50)}`,
+          icon: "📝",
+          timestamp: a.timestamp,
+          replyToId: a.replyToId,
+          details: {
+            name: v.name,
+            id: v.id,
+            newValue: v.newValue,
+            type: v.type,
+          },
+        });
+      }
     }
 
     // Topic/dialog redirects
