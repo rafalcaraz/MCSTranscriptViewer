@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo } from "../../types/transcript";
-import { shortToolName } from "../../utils/parseTranscript";
+import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo, AdvancedEvent } from "../../types/transcript";
+import { shortToolName, formatTimestamp } from "../../utils/parseTranscript";
 
 interface DebugPanelProps {
   planSteps: PlanStep[];
@@ -9,13 +9,15 @@ interface DebugPanelProps {
   knowledgeSearches: KnowledgeSearchTrace[];
   knowledgeResponses: KnowledgeResponse[];
   knowledgeTrace?: KnowledgeTraceInfo;
+  advancedEvents: AdvancedEvent[];
   activeMessageId: string | null;
   onStepSelect: (replyToId: string | undefined) => void;
 }
 
-export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, activeMessageId, onStepSelect }: DebugPanelProps) {
+export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, advancedEvents, activeMessageId, onStepSelect }: DebugPanelProps) {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<string>>(new Set());
+  const [advancedMode, setAdvancedMode] = useState(false);
   const firstLinkedRef = useRef<HTMLDivElement>(null);
 
   // Steps linked to the active message
@@ -56,7 +58,19 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
 
   return (
     <div className="panel">
-      <div className="panel-title">Debug</div>
+      <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+        <span>Debug</span>
+        <button
+          className={`mode-toggle ${advancedMode ? "active" : ""}`}
+          onClick={() => setAdvancedMode(!advancedMode)}
+          title={advancedMode ? "Switch to basic view" : "Switch to advanced view"}
+        >
+          {advancedMode ? "🔧 Advanced" : "📋 Basic"}
+          {advancedEvents.length > 0 && !advancedMode && (
+            <span className="advanced-count">{advancedEvents.length}</span>
+          )}
+        </button>
+      </div>
       <div className="panel-body">
         {mcpServerInit && (
           <div className="server-info">
@@ -240,6 +254,51 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
           <p style={{ color: "#888", fontStyle: "italic" }}>
             No debug information available for this transcript.
           </p>
+        )}
+
+        {/* Advanced Events — only shown in advanced mode */}
+        {advancedMode && advancedEvents.length > 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div className="section-label">🔧 Advanced Events ({advancedEvents.length})</div>
+            {advancedEvents.map((evt, i) => {
+              const isLinked = activeMessageId != null && evt.replyToId === activeMessageId;
+              return (
+                <div key={i} className={`advanced-event ${evt.category} ${isLinked ? "event-linked" : ""}`}>
+                  <div className="advanced-event-header">
+                    <span className="advanced-event-icon">{evt.icon}</span>
+                    <span className="advanced-event-label">{evt.label}</span>
+                    <span className="msg-timestamp">{formatTimestamp(evt.timestamp)}</span>
+                  </div>
+                  {Object.keys(evt.details).length > 0 && (
+                    <div className="advanced-event-details">
+                      {Object.entries(evt.details).map(([k, v]) => {
+                        if (v === null || v === undefined || v === "") return null;
+                        const display = typeof v === "object" ? JSON.stringify(v) : String(v);
+                        if (display.length > 200) {
+                          return (
+                            <details key={k} className="advanced-detail-expandable">
+                              <summary><strong>{k}:</strong> {display.slice(0, 80)}...</summary>
+                              <div className="advanced-detail-full">{display}</div>
+                            </details>
+                          );
+                        }
+                        return <div key={k}><strong>{k}:</strong> {display}</div>;
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {advancedMode && advancedEvents.length === 0 && (
+          <div style={{ marginTop: 12 }}>
+            <div className="section-label">🔧 Advanced Events</div>
+            <p style={{ color: "#888", fontStyle: "italic", fontSize: 12 }}>
+              No additional events in this transcript.
+            </p>
+          </div>
         )}
       </div>
     </div>

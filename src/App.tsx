@@ -101,7 +101,7 @@ function App() {
         >
           Analytics
         </button>
-        <span className="app-version">v1.0.4</span>
+        <span className="app-version">v1.0.5</span>
       </nav>
       <div className="app-content">
         {view === "list" && (

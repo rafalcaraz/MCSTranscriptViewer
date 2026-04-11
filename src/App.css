@@ -808,6 +808,86 @@
   padding: 4px 0;
   border-bottom: 1px solid #f0f0f0;
 }
+
+/* ── Debug Mode Toggle ───────────────────── */
+.mode-toggle {
+  padding: 3px 10px;
+  border: 1px solid #d0d0d0;
+  border-radius: 12px;
+  background: #fff;
+  font-size: 11px;
+  cursor: pointer;
+  transition: all 0.15s;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+.mode-toggle:hover { background: #f0f0f0; }
+.mode-toggle.active {
+  background: #0078d4;
+  color: #fff;
+  border-color: #0078d4;
+}
+.advanced-count {
+  background: #e5f1fb;
+  color: #0078d4;
+  padding: 0 5px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+}
+
+/* ── Advanced Events ─────────────────────── */
+.advanced-event {
+  border-left: 3px solid #d0d0d0;
+  padding: 8px 12px;
+  margin-bottom: 6px;
+  font-size: 12px;
+  border-radius: 0 6px 6px 0;
+  background: #fafafa;
+  transition: all 0.2s;
+}
+.advanced-event.error { border-left-color: #c4314b; background: #fde7e9; }
+.advanced-event.serverError { border-left-color: #c4314b; background: #fde7e9; }
+.advanced-event.blocked { border-left-color: #d83b01; background: #fed9cc; }
+.advanced-event.variable { border-left-color: #0078d4; background: #f0f5ff; }
+.advanced-event.redirect { border-left-color: #8764b8; background: #f3f0ff; }
+.advanced-event.intent { border-left-color: #ca5010; background: #fff4ce; }
+.advanced-event.gptAnswer { border-left-color: #107c10; background: #f0fff0; }
+.advanced-event.generativeAnswers { border-left-color: #107c10; background: #f0fff0; }
+.advanced-event.escalation { border-left-color: #c4314b; background: #fde7e9; }
+.advanced-event.event-linked {
+  box-shadow: 0 0 0 1px #0078d4, 0 2px 8px rgba(0, 120, 212, 0.15);
+}
+.advanced-event-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+.advanced-event-icon { font-size: 14px; }
+.advanced-event-label { font-weight: 600; flex: 1; }
+.advanced-event-details {
+  margin-top: 6px;
+  padding-top: 6px;
+  border-top: 1px solid rgba(0,0,0,0.06);
+  font-family: monospace;
+  font-size: 11px;
+  color: #555;
+  line-height: 1.6;
+  word-break: break-all;
+}
+.advanced-detail-expandable summary {
+  cursor: pointer;
+  font-size: 11px;
+}
+.advanced-detail-full {
+  margin-top: 4px;
+  padding: 6px;
+  background: #fff;
+  border-radius: 4px;
+  max-height: 150px;
+  overflow-y: auto;
+}
 .orphan-reaction-row {
   display: flex;
   align-items: center;

@@ -52,6 +52,7 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: Trans
           knowledgeSearches={transcript.knowledgeSearches}
           knowledgeResponses={transcript.knowledgeResponses}
           knowledgeTrace={transcript.knowledgeTrace}
+          advancedEvents={transcript.advancedEvents}
           activeMessageId={activeMessageId}
           onStepSelect={handleStepSelect}
         />

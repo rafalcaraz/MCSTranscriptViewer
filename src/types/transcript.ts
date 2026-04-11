@@ -99,6 +99,17 @@ export interface DialogTrace {
   actionType: string;
 }
 
+// ── Advanced debug event types ────────────────────────────────────────
+
+export interface AdvancedEvent {
+  category: "error" | "variable" | "redirect" | "intent" | "escalation" | "serverError" | "blocked" | "gptAnswer" | "generativeAnswers" | "other";
+  label: string;
+  icon: string;
+  timestamp: number;
+  replyToId?: string;
+  details: Record<string, unknown>;
+}
+
 export interface Reaction {
   reaction: "like" | "dislike";
   feedbackText: string;
@@ -200,12 +211,14 @@ export interface ParsedTranscript {
   knowledgeSearches: KnowledgeSearchTrace[];
   knowledgeResponses: KnowledgeResponse[];
   knowledgeTrace?: KnowledgeTraceInfo;
+  advancedEvents: AdvancedEvent[];
 
   // Computed
   userAadObjectId?: string;
   channelId?: string;
   totalDurationSeconds?: number;
   turnCount: number;
+  hasErrors: boolean;
   globalOutcome?: string;
   globalOutcomeReason?: string;
   hasFeedback: boolean;
