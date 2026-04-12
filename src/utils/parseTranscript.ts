@@ -19,7 +19,11 @@ export { formatTimestamp, formatDuration, shortToolName } from "./formatters";
 
 /**
  * Classify transcript type based on channel, metadata, and channelData signals.
- * Priority: autonomous > evaluation > design > chat
+ * Priority: autonomous > design > evaluation > chat
+ *
+ * Note: The studio test pane always injects testMode + enableDiagnostics into
+ * user message channelData, so we must check isDesignMode BEFORE testMode to
+ * avoid misclassifying test pane sessions as evaluations.
  */
 function classifyTranscriptType(
   rawActivities: RawActivity[],
@@ -33,14 +37,14 @@ function classifyTranscriptType(
   );
   if (hasTriggerTest) return "autonomous";
 
-  // Check for evaluation: testMode + enableDiagnostics in user message channelData
+  // Check for design mode BEFORE evaluation — test pane also sets testMode+enableDiagnostics
+  if (conversationInfo?.isDesignMode) return "design";
+
+  // Evaluation: testMode + enableDiagnostics but NOT design mode (external test harness)
   const hasTestMode = rawActivities.some(
     (a) => a.type === "message" && a.from.role === 1 && a.channelData?.testMode && a.channelData?.enableDiagnostics
   );
   if (hasTestMode) return "evaluation";
-
-  // Check for design mode
-  if (conversationInfo?.isDesignMode) return "design";
 
   return "chat";
 }

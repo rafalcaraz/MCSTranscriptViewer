@@ -397,6 +397,13 @@ describe("parseTranscript — transcript type classification", () => {
     const parsed = parseTranscript(autonomousTranscript);
     expect(parsed.transcriptType).toBe("autonomous");
   });
+
+  it("design mode with testMode+enableDiagnostics is still design (test pane)", () => {
+    // The studio test pane injects testMode+enableDiagnostics, but isDesignMode=true means design, not evaluation
+    const parsed = parseTranscript(basicMcpTranscript);
+    expect(parsed.transcriptType).toBe("design");
+    // basicMcpTranscript has isDesignMode: true — even though test pane would add testMode to channelData
+  });
 });
 
 // ── New Advanced Events ───────────────────────────────────────────────

@@ -71,10 +71,10 @@ Has triggerTest in any user message channelData?
   └─ YES → ⚡ AUTONOMOUS
 Has channelId === "pva-autonomous"?
   └─ YES → ⚡ AUTONOMOUS
-Has testMode + enableDiagnostics in user message channelData?
-  └─ YES → 🧪 EVALUATION
 Has isDesignMode === true in ConversationInfo?
-  └─ YES → 🛠️ DESIGN
+  └─ YES → 🛠️ DESIGN  (test pane also sets testMode+enableDiagnostics, so check design FIRST)
+Has testMode + enableDiagnostics in user message channelData?
+  └─ YES → 🧪 EVALUATION  (external test harness, not studio test pane)
 None of the above?
   └─ 💬 CHAT
 ```
@@ -798,7 +798,7 @@ The `content` field is a JSON string:
 ### Chat (production)
 - None of the above signals present
 
-### Priority order: autonomous > evaluation > design > chat
+### Priority order: autonomous > design > evaluation > chat
 
 ---
 

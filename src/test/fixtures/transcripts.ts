@@ -204,7 +204,7 @@ export const evaluationTranscript: DataverseTranscriptRecord = {
   schemaversion: "0.2.2",
   content: JSON.stringify({
     activities: [
-      { valueType: "ConversationInfo", type: "trace", timestamp: 1776000000, from: { id: "", role: 0 }, value: { lastSessionOutcome: "None", lastSessionOutcomeReason: "NoError", isDesignMode: true, locale: "en-US" } },
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1776000000, from: { id: "", role: 0 }, value: { lastSessionOutcome: "None", lastSessionOutcomeReason: "NoError", isDesignMode: false, locale: "en-US" } },
       { id: "start-eval", type: "event", timestamp: 1776000000, from: { id: "user-eval", aadObjectId: "aad-eval-001", role: 1 }, name: "startConversation", channelId: "pva-studio", attachments: [] },
       { id: "msg-eval-user", type: "message", timestamp: 1776000001, from: { id: "user-eval", role: 1 }, channelId: "pva-studio", text: "Tell me a joke", channelData: { clientActivityID: "test-123", enableDiagnostics: true, testMode: "Text", attachmentSizes: [] } },
       { id: "msg-eval-bot", type: "message", timestamp: 1776000003, from: { id: "bot-eval", role: 0 }, channelId: "pva-studio", text: "Why did the chicken...", channelData: { feedbackLoop: { type: "default" } } },
