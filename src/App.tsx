@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import { useTranscripts, useTranscript, type TranscriptFilters } from "./hooks/useTranscripts";
 import type { ContentSearchOptions } from "./hooks/useTranscripts";
 import { useBotLookup } from "./hooks/useLookups";
@@ -24,6 +24,7 @@ export interface ListFilterState {
   selectedBotIds: string[];
   userSearchQuery: string;
   feedbackFilter: "" | "any" | "likes" | "dislikes";
+  transcriptTypeFilter: "" | "chat" | "autonomous" | "evaluation" | "design";
 }
 
 const INITIAL_FILTER_STATE: ListFilterState = {
@@ -38,12 +39,26 @@ const INITIAL_FILTER_STATE: ListFilterState = {
   selectedBotIds: [],
   userSearchQuery: "",
   feedbackFilter: "",
+  transcriptTypeFilter: "",
 };
 
 function App() {
   const [view, setView] = useState<View>("list");
   const [selectedId, setSelectedId] = useState<string | undefined>();
   const [listFilters, setListFilters] = useState<ListFilterState>(INITIAL_FILTER_STATE);
+  const [darkMode, setDarkMode] = useState(() => {
+    if (typeof window !== "undefined") {
+      const saved = localStorage.getItem("theme");
+      if (saved) return saved === "dark";
+      return window.matchMedia("(prefers-color-scheme: dark)").matches;
+    }
+    return false;
+  });
+
+  useEffect(() => {
+    document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
+    localStorage.setItem("theme", darkMode ? "dark" : "light");
+  }, [darkMode]);
 
   const { accessibleBots, ready: botsReady } = useBotLookup();
 
@@ -102,6 +117,9 @@ function App() {
           Analytics
         </button>
         <span className="app-version" title={`Built: ${__BUILD_TIME__}`}>v1.0.5 · {new Date(__BUILD_TIME__).toLocaleString()}</span>
+        <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
+          {darkMode ? "☀️" : "🌙"}
+        </button>
       </nav>
       <div className="app-content">
         {view === "list" && (

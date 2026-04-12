@@ -1,5 +1,5 @@
 import { useMemo, useEffect, useRef, useCallback } from "react";
-import type { ParsedTranscript } from "../../types/transcript";
+import type { ParsedTranscript, TranscriptType } from "../../types/transcript";
 import { formatDuration } from "../../utils/parseTranscript";
 import { searchTranscripts, type ContentSearchOptions } from "../../hooks/useTranscripts";
 import { useBotLookup, useUserDisplayNames, type BotInfo } from "../../hooks/useLookups";
@@ -11,6 +11,13 @@ const outcomeBadgeClass: Record<string, string> = {
   Resolved: "badge-success",
   Abandoned: "badge-warning",
   Escalated: "badge-danger",
+};
+
+const TRANSCRIPT_TYPE_LABELS: Record<TranscriptType, { icon: string; label: string }> = {
+  chat: { icon: "💬", label: "Chat" },
+  autonomous: { icon: "⚡", label: "Autonomous" },
+  evaluation: { icon: "🧪", label: "Eval" },
+  design: { icon: "🛠️", label: "Design" },
 };
 
 interface TranscriptListProps {
@@ -89,13 +96,18 @@ export function TranscriptList({
       results = results.filter((t) => t.dislikeCount > 0);
     }
 
+    // Transcript type filter
+    if (f.transcriptTypeFilter) {
+      results = results.filter((t) => t.transcriptType === f.transcriptTypeFilter);
+    }
+
     // Client-side content search
     if (f.clientSearch.trim()) {
       results = searchTranscripts(results, { query: f.clientSearch, searchIn: f.clientSearchIn });
     }
 
     return results;
-  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.clientSearch, f.clientSearchIn]);
+  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.transcriptTypeFilter, f.clientSearch, f.clientSearchIn]);
 
   // Resolve user display names for visible transcripts
   const userAadIds = useMemo(
@@ -115,9 +127,8 @@ export function TranscriptList({
         </span>
       </div>
 
-      {/* Server-side filters */}
+      {/* Unified filter toolbar */}
       <div className="filter-section">
-        <div className="filter-label">🔍 Server Filters</div>
         <div className="list-toolbar">
           <div className="filter-group">
             <label>From</label>
@@ -136,9 +147,9 @@ export function TranscriptList({
             />
           </div>
           <div className="filter-group" style={{ flex: 1 }}>
-            <label>Content Search (server-side)</label>
+            <label>Search conversations</label>
             <input
-              placeholder="Search in transcript content (user ID, text, tool names...)"
+              placeholder="Search by message text, user, topic..."
               value={f.serverSearchInput}
               onChange={(e) => update({ serverSearchInput: e.target.value })}
               onKeyDown={handleKeyDown}
@@ -146,16 +157,10 @@ export function TranscriptList({
             />
           </div>
           <button className="apply-btn" onClick={applyServerFilters} disabled={loading}>
-            {loading ? "Loading..." : "Apply"}
+            {loading ? "Loading..." : "Search"}
           </button>
         </div>
-        <UserSearch onUserSelect={handleUserSelect} initialQuery={f.userSearchQuery} />
-      </div>
-
-      {/* Client-side refinement filters */}
-      <div className="filter-section">
-        <div className="filter-label">🔎 Refine Loaded Results</div>
-        <div className="list-toolbar">
+        <div className="list-toolbar" style={{ marginTop: 8 }}>
           {accessibleBots.length > 0 && (
             <select
               value={f.selectedBotIds.length === 1 ? f.selectedBotIds[0] : ""}
@@ -177,21 +182,15 @@ export function TranscriptList({
             </select>
           )}
           <select
-            value={f.clientSearchIn}
-            onChange={(e) => update({ clientSearchIn: e.target.value as ContentSearchOptions["searchIn"] })}
+            value={f.transcriptTypeFilter}
+            onChange={(e) => update({ transcriptTypeFilter: e.target.value as ListFilterState["transcriptTypeFilter"] })}
           >
-            <option value="all">All Fields</option>
-            <option value="messages">Messages Only</option>
-            <option value="thinking">Agent Thinking Only</option>
-            <option value="toolNames">Tool Names Only</option>
-            <option value="userId">User ID Only</option>
+            <option value="">All Types</option>
+            <option value="chat">💬 Chat</option>
+            <option value="autonomous">⚡ Autonomous</option>
+            <option value="evaluation">🧪 Evaluation</option>
+            <option value="design">🛠️ Design</option>
           </select>
-          <input
-            placeholder="Refine search within loaded results..."
-            value={f.clientSearch}
-            onChange={(e) => update({ clientSearch: e.target.value })}
-            style={{ flex: 1 }}
-          />
           <select
             value={f.outcomeFilter}
             onChange={(e) => update({ outcomeFilter: e.target.value })}
@@ -210,7 +209,24 @@ export function TranscriptList({
             <option value="likes">Has 👍</option>
             <option value="dislikes">Has 👎</option>
           </select>
+          <select
+            value={f.clientSearchIn}
+            onChange={(e) => update({ clientSearchIn: e.target.value as ContentSearchOptions["searchIn"] })}
+          >
+            <option value="all">All Fields</option>
+            <option value="messages">Messages</option>
+            <option value="thinking">Agent Thinking</option>
+            <option value="toolNames">Tool Names</option>
+            <option value="userId">User ID</option>
+          </select>
+          <input
+            placeholder="Refine within results..."
+            value={f.clientSearch}
+            onChange={(e) => update({ clientSearch: e.target.value })}
+            style={{ flex: 1, minWidth: 150 }}
+          />
         </div>
+        <UserSearch onUserSelect={handleUserSelect} initialQuery={f.userSearchQuery} />
       </div>
 
       {error && (
@@ -223,7 +239,7 @@ export function TranscriptList({
             <th>Agent</th>
             <th>User</th>
             <th>Conversation Start</th>
-            <th>Channel</th>
+            <th>Type</th>
             <th>Turns</th>
             <th>Duration</th>
             <th>Feedback</th>
@@ -236,7 +252,11 @@ export function TranscriptList({
               <td><strong>{getDisplayName(t.metadata.botName, t.metadata.botId) || "—"}</strong></td>
               <td>{getUserDisplayName(t.userAadObjectId)}</td>
               <td>{new Date(t.conversationstarttime).toLocaleString()}</td>
-              <td>{t.channelId ?? "—"}</td>
+              <td>
+                <span className={`type-badge ${t.transcriptType}`}>
+                  {TRANSCRIPT_TYPE_LABELS[t.transcriptType].icon} {TRANSCRIPT_TYPE_LABELS[t.transcriptType].label}
+                </span>
+              </td>
               <td>{t.turnCount}</td>
               <td>{t.totalDurationSeconds != null ? formatDuration(t.totalDurationSeconds) : "—"}</td>
               <td>

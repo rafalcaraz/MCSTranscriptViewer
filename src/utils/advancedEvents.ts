@@ -155,6 +155,70 @@ export function extractAdvancedEvents(rawActivities: RawActivity[]): AdvancedEve
         details: v,
       });
     }
+
+    // Intent recognition
+    if (typ === "trace" && vtype === "IntentRecognition") {
+      const intent = (v.intentName as string) ?? (v.topIntent as string) ?? "?";
+      const score = (v.score as number) ?? (v.confidence as number);
+      const scoreStr = score != null ? ` (${(score * 100).toFixed(0)}%)` : "";
+      events.push({
+        category: "intentRecognition",
+        label: `Intent: ${intent}${scoreStr}`,
+        icon: "🎯",
+        timestamp: a.timestamp,
+        replyToId: a.replyToId,
+        details: v,
+      });
+    }
+
+    // Node trace data
+    if (typ === "trace" && vtype === "NodeTraceData") {
+      const nodeId = (v.nodeId as string) ?? (v.actionId as string) ?? "";
+      const nodeType = (v.nodeType as string) ?? (v.actionType as string) ?? "";
+      const label = nodeType ? `Node: ${nodeType}` : `Node: ${nodeId.split("-")[0] || "?"}`;
+      events.push({
+        category: "nodeTrace",
+        label,
+        icon: "📍",
+        timestamp: a.timestamp,
+        replyToId: a.replyToId,
+        details: v,
+      });
+    }
+
+    // Catch-all: non-message activity types (endOfConversation, conversationUpdate, etc.)
+    // and named events not handled elsewhere
+    const handledEventNames = new Set([
+      "DialogTracing", "DynamicServerInitialize", "DynamicServerToolsList",
+      "DynamicPlanReceived", "DynamicPlanReceivedDebug", "DynamicPlanStepTriggered",
+      "DynamicPlanStepBindUpdate", "DynamicPlanStepFinished", "DynamicPlanFinished",
+      "UniversalSearchToolTraceData", "ResponseGeneratorSupportData",
+      "GenerativeAnswersSupportData", "DynamicServerError", "DynamicPlanStepBlocked",
+      "startConversation", "DynamicServerInitializeConfirmation",
+    ]);
+    const handledTraceTypes = new Set([
+      "ConversationInfo", "SessionInfo", "ErrorTraceData", "VariableAssignment",
+      "DialogRedirect", "UnknownIntent", "GPTAnswer", "HandOff", "EscalationRequested",
+      "KnowledgeTraceData", "IntentRecognition", "NodeTraceData",
+    ]);
+
+    const isUnhandledActivityType = (typ === "endOfConversation" || typ === "conversationUpdate" || typ === "installationUpdate");
+    const isUnhandledEvent = typ === "event" && name && !handledEventNames.has(name);
+    const isUnhandledTrace = typ === "trace" && vtype && !handledTraceTypes.has(vtype);
+
+    if (isUnhandledActivityType || isUnhandledEvent || isUnhandledTrace) {
+      const actLabel = isUnhandledActivityType
+        ? typ
+        : name || vtype || typ;
+      events.push({
+        category: "activity",
+        label: actLabel,
+        icon: "📋",
+        timestamp: a.timestamp,
+        replyToId: a.replyToId,
+        details: typeof v === "object" && Object.keys(v).length > 0 ? v : { type: typ, name, valueType: vtype },
+      });
+    }
   }
 
   events.sort((a, b) => a.timestamp - b.timestamp);

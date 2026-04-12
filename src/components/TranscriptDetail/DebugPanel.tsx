@@ -195,7 +195,7 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
   return (
     <div className="panel">
       <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-        <span>Debug</span>
+        <span>Agent Activity</span>
         <button
           className={`mode-toggle ${advancedMode ? "active" : ""}`}
           onClick={() => setAdvancedMode(!advancedMode)}
@@ -211,7 +211,7 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
         <div className="search-bar">
           <input
             className="debug-search"
-            placeholder="Search debug events..."
+            placeholder="Search agent activity..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             onKeyDown={(e) => { if (e.key === "Enter") { e.shiftKey ? debugGoPrev() : debugGoNext(); } }}

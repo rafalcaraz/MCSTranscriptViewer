@@ -10,11 +10,40 @@ import type {
   ToolDefinition,
   DialogTrace,
   TranscriptMetadata,
+  TranscriptType,
 } from "../types/transcript";
 import { extractAdvancedEvents } from "./advancedEvents";
 
 // Re-export formatters for backward compatibility
 export { formatTimestamp, formatDuration, shortToolName } from "./formatters";
+
+/**
+ * Classify transcript type based on channel, metadata, and channelData signals.
+ * Priority: autonomous > evaluation > design > chat
+ */
+function classifyTranscriptType(
+  rawActivities: RawActivity[],
+  conversationInfo: ConversationInfo | undefined,
+  channelId: string | undefined,
+): TranscriptType {
+  // Check for autonomous: pva-autonomous channel or triggerTest in any user message
+  if (channelId === "pva-autonomous") return "autonomous";
+  const hasTriggerTest = rawActivities.some(
+    (a) => a.type === "message" && a.from.role === 1 && a.channelData?.triggerTest
+  );
+  if (hasTriggerTest) return "autonomous";
+
+  // Check for evaluation: testMode + enableDiagnostics in user message channelData
+  const hasTestMode = rawActivities.some(
+    (a) => a.type === "message" && a.from.role === 1 && a.channelData?.testMode && a.channelData?.enableDiagnostics
+  );
+  if (hasTestMode) return "evaluation";
+
+  // Check for design mode
+  if (conversationInfo?.isDesignMode) return "design";
+
+  return "chat";
+}
 
 function classifyActivity(raw: RawActivity): ParsedActivityType {
   if (raw.type === "trace") {
@@ -352,6 +381,8 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
 
   const channelId = rawActivities.find((a) => a.channelId)?.channelId;
 
+  const transcriptType = classifyTranscriptType(rawActivities, conversationInfo, channelId);
+
   let totalDurationSeconds: number | undefined;
   if (sessionInfo?.startTimeUtc && sessionInfo?.endTimeUtc) {
     totalDurationSeconds = Math.round(
@@ -407,6 +438,7 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     knowledgeResponses,
     knowledgeTrace,
     advancedEvents,
+    transcriptType,
     userAadObjectId,
     channelId,
     totalDurationSeconds,

@@ -8,6 +8,10 @@ import {
   advancedEventsTranscript,
   adaptiveCardTranscript,
   noUserMessagesTranscript,
+  autonomousTranscript,
+  evaluationTranscript,
+  chatTranscript,
+  newAdvancedEventsTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -362,5 +366,82 @@ describe("generateTranscriptHTML", () => {
     const transcript = parseTranscript(basicMcpTranscript);
     const html = generate(transcript);
     expect(html).toContain("Exported from MCS Conversation Viewer");
+  });
+});
+
+// ── Transcript Type Classification ────────────────────────────────────
+
+describe("parseTranscript — transcript type classification", () => {
+  it("classifies autonomous transcripts (pva-autonomous channel + triggerTest)", () => {
+    const parsed = parseTranscript(autonomousTranscript);
+    expect(parsed.transcriptType).toBe("autonomous");
+  });
+
+  it("classifies evaluation transcripts (testMode + enableDiagnostics, no triggerTest)", () => {
+    const parsed = parseTranscript(evaluationTranscript);
+    expect(parsed.transcriptType).toBe("evaluation");
+  });
+
+  it("classifies design transcripts (isDesignMode, no test flags in channelData)", () => {
+    const parsed = parseTranscript(basicMcpTranscript);
+    expect(parsed.transcriptType).toBe("design");
+  });
+
+  it("classifies chat transcripts (no test flags, no design mode)", () => {
+    const parsed = parseTranscript(chatTranscript);
+    expect(parsed.transcriptType).toBe("chat");
+  });
+
+  it("autonomous takes priority over evaluation flags", () => {
+    // autonomousTranscript has both triggerTest AND testMode+enableDiagnostics
+    const parsed = parseTranscript(autonomousTranscript);
+    expect(parsed.transcriptType).toBe("autonomous");
+  });
+});
+
+// ── New Advanced Events ───────────────────────────────────────────────
+
+describe("parseTranscript — new advanced events", () => {
+  it("extracts IntentRecognition events", () => {
+    const parsed = parseTranscript(newAdvancedEventsTranscript);
+    const intent = parsed.advancedEvents.find((e) => e.category === "intentRecognition");
+    expect(intent).toBeDefined();
+    expect(intent!.label).toContain("ServiceNowHelp");
+    expect(intent!.label).toContain("92%");
+    expect(intent!.icon).toBe("🎯");
+  });
+
+  it("extracts NodeTraceData events", () => {
+    const parsed = parseTranscript(newAdvancedEventsTranscript);
+    const node = parsed.advancedEvents.find((e) => e.category === "nodeTrace");
+    expect(node).toBeDefined();
+    expect(node!.label).toContain("ConditionGroup");
+    expect(node!.icon).toBe("📍");
+  });
+
+  it("extracts endOfConversation as catch-all activity", () => {
+    const parsed = parseTranscript(newAdvancedEventsTranscript);
+    const eoc = parsed.advancedEvents.find((e) => e.category === "activity" && e.label === "endOfConversation");
+    expect(eoc).toBeDefined();
+    expect(eoc!.icon).toBe("📋");
+  });
+
+  it("extracts pvaSetContext as catch-all activity", () => {
+    const parsed = parseTranscript(newAdvancedEventsTranscript);
+    const ctx = parsed.advancedEvents.find((e) => e.category === "activity" && e.label === "pvaSetContext");
+    expect(ctx).toBeDefined();
+  });
+
+  it("extracts ConsentNotProvidedByUser error", () => {
+    const parsed = parseTranscript(newAdvancedEventsTranscript);
+    const err = parsed.advancedEvents.find((e) => e.category === "error");
+    expect(err).toBeDefined();
+    expect(err!.label).toContain("ConsentNotProvidedByUser");
+  });
+
+  it("chat transcript has no test-related classification", () => {
+    const parsed = parseTranscript(chatTranscript);
+    expect(parsed.transcriptType).toBe("chat");
+    expect(parsed.channelId).toBe("msteams");
   });
 });

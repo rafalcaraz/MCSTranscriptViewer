@@ -13,7 +13,7 @@ export interface ActivityFrom {
 
 export interface RawActivity {
   id?: string;
-  type: "trace" | "event" | "message" | "invoke" | "invokeResponse";
+  type: "trace" | "event" | "message" | "invoke" | "invokeResponse" | "endOfConversation" | "conversationUpdate" | "installationUpdate";
   timestamp: number;
   from: ActivityFrom;
   name?: string;
@@ -102,7 +102,7 @@ export interface DialogTrace {
 // ── Advanced debug event types ────────────────────────────────────────
 
 export interface AdvancedEvent {
-  category: "error" | "variable" | "redirect" | "intent" | "escalation" | "serverError" | "blocked" | "gptAnswer" | "generativeAnswers" | "other";
+  category: "error" | "variable" | "redirect" | "intent" | "escalation" | "serverError" | "blocked" | "gptAnswer" | "generativeAnswers" | "intentRecognition" | "nodeTrace" | "activity" | "other";
   label: string;
   icon: string;
   timestamp: number;
@@ -180,6 +180,10 @@ export interface ParsedActivity {
   planStep?: PlanStep;
 }
 
+// ── Transcript classification ─────────────────────────────────────────
+
+export type TranscriptType = "chat" | "autonomous" | "evaluation" | "design";
+
 // ── Aggregated transcript ─────────────────────────────────────────────
 
 export interface TranscriptMetadata {
@@ -214,6 +218,7 @@ export interface ParsedTranscript {
   advancedEvents: AdvancedEvent[];
 
   // Computed
+  transcriptType: TranscriptType;
   userAadObjectId?: string;
   channelId?: string;
   totalDurationSeconds?: number;

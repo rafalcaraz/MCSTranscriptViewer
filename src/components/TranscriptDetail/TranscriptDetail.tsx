@@ -1,9 +1,17 @@
-import { useState } from "react";
-import type { ParsedTranscript } from "../../types/transcript";
+import { useState, useMemo } from "react";
+import type { ParsedTranscript, TranscriptType } from "../../types/transcript";
 import { GeneralInfo } from "./GeneralInfo";
 import { MessageTimeline } from "./MessageTimeline";
 import { DebugPanel } from "./DebugPanel";
-import { exportTranscriptHTML } from "../../utils/exportTranscript";
+import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTranscript";
+import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
+
+const TYPE_BADGE: Record<TranscriptType, { icon: string; label: string }> = {
+  chat: { icon: "💬", label: "Chat" },
+  autonomous: { icon: "⚡", label: "Autonomous Run" },
+  evaluation: { icon: "🧪", label: "Evaluation" },
+  design: { icon: "🛠️", label: "Design Mode" },
+};
 
 interface TranscriptDetailProps {
   transcript: ParsedTranscript;
@@ -12,8 +20,18 @@ interface TranscriptDetailProps {
 }
 
 export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: TranscriptDetailProps) {
-  // The ID of the user message currently selected for sync
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+
+  // Resolve display names for export
+  const { getDisplayName: getBotName } = useBotLookup();
+  const userIds = useMemo(
+    () => transcript.userAadObjectId ? [transcript.userAadObjectId] : [],
+    [transcript.userAadObjectId]
+  );
+  const { getDisplayName: getUserName } = useUserDisplayNames(userIds);
+
+  const agentDisplayName = getBotName(transcript.metadata.botName, transcript.metadata.botId) || undefined;
+  const userDisplayName = getUserName(transcript.userAadObjectId) || undefined;
 
   // Click a message → highlight linked plan steps
   const handleMessageSelect = (messageId: string) => {
@@ -31,14 +49,25 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: Trans
       <div className="detail-topbar">
         <button className="back-btn" onClick={onBack}>← Back</button>
         <strong>Transcript Review</strong>
+        <span className={`type-badge ${transcript.transcriptType}`}>
+          {TYPE_BADGE[transcript.transcriptType].icon} {TYPE_BADGE[transcript.transcriptType].label}
+        </span>
         <span className="conversation-id">{transcript.conversationtranscriptid}</span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <button
             className="export-btn"
-            onClick={() => exportTranscriptHTML(transcript)}
-            title="Export conversation as HTML"
+            onClick={() => exportTranscriptPDF(transcript, agentDisplayName, userDisplayName)}
+            title="Export conversation as PDF (opens print dialog)"
           >
-            📥 Export
+            📥 Export PDF
+          </button>
+          <button
+            className="back-btn"
+            style={{ fontSize: 12 }}
+            onClick={() => exportTranscriptHTML(transcript, agentDisplayName, userDisplayName)}
+            title="Export conversation as HTML file"
+          >
+            📄 HTML
           </button>
           {activeMessageId && (
             <button

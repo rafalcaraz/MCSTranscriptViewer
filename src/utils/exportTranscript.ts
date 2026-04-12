@@ -53,6 +53,12 @@ export function generateTranscriptHTML(transcript: ParsedTranscript, agentDispla
     .badge-info { background: #e5f1fb; color: #0078d4; }
     .messages { padding: 24px; max-width: 800px; margin: 0 auto; }
     .footer { text-align: center; padding: 16px; font-size: 11px; color: #aaa; }
+    @media print {
+      body { background: #fff; }
+      .header { border-bottom: 2px solid #333; }
+      .messages { max-width: 100%; padding: 12px 0; }
+      .footer { page-break-before: avoid; }
+    }
   </style>
 </head>
 <body>
@@ -95,6 +101,20 @@ export function generateTranscriptHTML(transcript: ParsedTranscript, agentDispla
 </html>`;
 
   return html;
+}
+
+/**
+ * Export a transcript as PDF via the browser print dialog.
+ * Opens the HTML in a new window and triggers print — user can "Save as PDF".
+ */
+export function exportTranscriptPDF(transcript: ParsedTranscript, agentDisplayName?: string, userDisplayName?: string) {
+  const html = generateTranscriptHTML(transcript, agentDisplayName, userDisplayName);
+  const printWindow = window.open("", "_blank");
+  if (!printWindow) return;
+  printWindow.document.write(html);
+  printWindow.document.close();
+  // Wait for content to render, then trigger print
+  printWindow.onload = () => printWindow.print();
 }
 
 /**

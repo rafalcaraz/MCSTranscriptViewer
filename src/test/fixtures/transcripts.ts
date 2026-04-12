@@ -171,3 +171,93 @@ export const noUserMessagesTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+
+/** Autonomous transcript — flow-triggered via Power Automate */
+export const autonomousTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-autonomous-001",
+  name: "test_autonomous",
+  createdon: "2026-03-16T02:17:42Z",
+  conversationstarttime: "2026-03-16T01:43:27Z",
+  metadata: '{"BotId":"bot-auto","AADTenantId":"tenant-test","BotName":"msftcsa_serffagent","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1775000000, from: { id: "", role: 0 }, value: { lastSessionOutcome: "Abandoned", lastSessionOutcomeReason: "UserExit", isDesignMode: false, locale: "en-US" } },
+      { id: "start-auto", type: "event", timestamp: 1775000000, from: { id: "user-auto", aadObjectId: "aad-auto-001", role: 1 }, name: "startConversation", channelId: "pva-autonomous", attachments: [] },
+      { id: "msg-auto-user", type: "message", timestamp: 1775000001, from: { id: "user-auto", role: 1 }, channelId: "pva-autonomous", text: "Use content from {}", channelData: { triggerTest: { flowId: "flow-001", flowRunId: "run-001", trigger: { displayName: "When a file is created", connectorDisplayName: "SharePoint" } }, enableDiagnostics: true, testMode: "Text" } },
+      { id: "msg-auto-bot", type: "message", timestamp: 1775000005, from: { id: "bot-auto", role: 0 }, channelId: "pva-autonomous", textFormat: "markdown", text: "Processing your document.", channelData: { feedbackLoop: { type: "default" } } },
+      { id: "msg-postback", type: "message", timestamp: 1775000006, from: { id: "user-auto", role: 1 }, channelId: "pva-autonomous", text: "", channelData: { postBack: true, enableDiagnostics: true, testMode: "Text" } },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1775000010, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-03-16T01:43:27Z", endTimeUtc: "2026-03-16T01:47:34Z", type: "Engaged", outcome: "Abandoned", turnCount: 6, impliedSuccess: false, outcomeReason: "UserExit" } },
+    ],
+  }),
+};
+
+/** Evaluation transcript — testMode + enableDiagnostics but no triggerTest */
+export const evaluationTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-eval-001",
+  name: "test_eval",
+  createdon: "2026-04-10T14:00:00Z",
+  conversationstarttime: "2026-04-10T13:50:00Z",
+  metadata: '{"BotId":"bot-eval","AADTenantId":"tenant-test","BotName":"msftcsa_testbot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1776000000, from: { id: "", role: 0 }, value: { lastSessionOutcome: "None", lastSessionOutcomeReason: "NoError", isDesignMode: true, locale: "en-US" } },
+      { id: "start-eval", type: "event", timestamp: 1776000000, from: { id: "user-eval", aadObjectId: "aad-eval-001", role: 1 }, name: "startConversation", channelId: "pva-studio", attachments: [] },
+      { id: "msg-eval-user", type: "message", timestamp: 1776000001, from: { id: "user-eval", role: 1 }, channelId: "pva-studio", text: "Tell me a joke", channelData: { clientActivityID: "test-123", enableDiagnostics: true, testMode: "Text", attachmentSizes: [] } },
+      { id: "msg-eval-bot", type: "message", timestamp: 1776000003, from: { id: "bot-eval", role: 0 }, channelId: "pva-studio", text: "Why did the chicken...", channelData: { feedbackLoop: { type: "default" } } },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776000005, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-10T13:50:00Z", endTimeUtc: "2026-04-10T13:50:05Z", type: "Engaged", outcome: "None", turnCount: 1, impliedSuccess: false, outcomeReason: "NoError" } },
+    ],
+  }),
+};
+
+/** Chat transcript — real production interactive chat, no test flags */
+export const chatTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-chat-001",
+  name: "test_chat",
+  createdon: "2026-04-10T15:00:00Z",
+  conversationstarttime: "2026-04-10T14:50:00Z",
+  metadata: '{"BotId":"bot-chat","AADTenantId":"tenant-test","BotName":"msftcsa_prodbot","BatchId":""}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1776010000, from: { id: "", role: 0 }, value: { lastSessionOutcome: "Resolved", lastSessionOutcomeReason: "Resolved", isDesignMode: false, locale: "en-US" } },
+      { id: "start-chat", type: "event", timestamp: 1776010000, from: { id: "user-chat", aadObjectId: "aad-chat-001", role: 1 }, name: "startConversation", channelId: "msteams", attachments: [] },
+      { id: "msg-chat-user", type: "message", timestamp: 1776010001, from: { id: "user-chat", role: 1 }, channelId: "msteams", text: "What's the status of my order?", channelData: { source: "teams", tenant: "tenant-test" } },
+      { id: "msg-chat-bot", type: "message", timestamp: 1776010005, from: { id: "bot-chat", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "Your order #1234 is in transit.", channelData: { feedbackLoop: { type: "default" } } },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776010010, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-10T14:50:00Z", endTimeUtc: "2026-04-10T14:50:10Z", type: "Engaged", outcome: "Resolved", turnCount: 2, impliedSuccess: true, outcomeReason: "Resolved" } },
+    ],
+  }),
+};
+
+/** Transcript with new advanced event types */
+export const newAdvancedEventsTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-new-adv-001",
+  name: "test_new_advanced",
+  createdon: "2026-04-10T16:00:00Z",
+  conversationstarttime: "2026-04-10T15:50:00Z",
+  metadata: '{"BotId":"bot-adv","AADTenantId":"tenant-test","BotName":"msftcsa_advbot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1776020000, from: { id: "", role: 0 }, value: { lastSessionOutcome: "Abandoned", lastSessionOutcomeReason: "UserExit", isDesignMode: false, locale: "en-US" } },
+      { id: "start-adv", type: "event", timestamp: 1776020000, from: { id: "user-adv", aadObjectId: "aad-adv-001", role: 1 }, name: "startConversation", channelId: "msteams", attachments: [] },
+      { id: "msg-adv-user", type: "message", timestamp: 1776020001, from: { id: "user-adv", role: 1 }, channelId: "msteams", text: "Help me with ServiceNow" },
+      // IntentRecognition trace
+      { valueType: "IntentRecognition", type: "trace", timestamp: 1776020002, from: { id: "", role: 0 }, replyToId: "msg-adv-user", value: { intentName: "ServiceNowHelp", score: 0.92, topIntent: "ServiceNowHelp" } },
+      // NodeTraceData trace
+      { valueType: "NodeTraceData", type: "trace", timestamp: 1776020003, from: { id: "", role: 0 }, replyToId: "msg-adv-user", value: { nodeId: "node-abc-123", nodeType: "ConditionGroup", actionType: "Condition" } },
+      // endOfConversation activity type
+      { type: "endOfConversation", timestamp: 1776020008, from: { id: "bot-adv", role: 0 }, value: { code: "completedSuccessfully" } },
+      // pvaSetContext (should show as catch-all activity)
+      { type: "event", timestamp: 1776020000, from: { id: "", role: 0 }, name: "pvaSetContext", value: { context: "test-context" } },
+      // ConsentNotProvidedByUser error
+      { valueType: "ErrorTraceData", type: "trace", timestamp: 1776020004, from: { id: "", role: 0 }, replyToId: "msg-adv-user", value: { errorCode: "ConsentNotProvidedByUser", errorMessage: "User declined connector consent", isUserError: true } },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776020010, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-10T15:50:00Z", endTimeUtc: "2026-04-10T15:50:10Z", type: "Engaged", outcome: "Abandoned", turnCount: 1, impliedSuccess: false, outcomeReason: "UserExit" } },
+    ],
+  }),
+};
