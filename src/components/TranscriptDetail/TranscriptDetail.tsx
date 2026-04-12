@@ -3,6 +3,7 @@ import type { ParsedTranscript } from "../../types/transcript";
 import { GeneralInfo } from "./GeneralInfo";
 import { MessageTimeline } from "./MessageTimeline";
 import { DebugPanel } from "./DebugPanel";
+import { exportTranscriptHTML } from "../../utils/exportTranscript";
 
 interface TranscriptDetailProps {
   transcript: ParsedTranscript;
@@ -31,15 +32,24 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: Trans
         <button className="back-btn" onClick={onBack}>← Back</button>
         <strong>Transcript Review</strong>
         <span className="conversation-id">{transcript.conversationtranscriptid}</span>
-        {activeMessageId && (
+        <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <button
-            className="back-btn"
-            style={{ marginLeft: "auto", fontSize: 12 }}
-            onClick={() => setActiveMessageId(null)}
+            className="export-btn"
+            onClick={() => exportTranscriptHTML(transcript)}
+            title="Export conversation as HTML"
           >
-            ✕ Clear Selection
+            📥 Export
           </button>
-        )}
+          {activeMessageId && (
+            <button
+              className="back-btn"
+              style={{ fontSize: 12 }}
+              onClick={() => setActiveMessageId(null)}
+            >
+              ✕ Clear Selection
+            </button>
+          )}
+        </div>
       </div>
 
       <GeneralInfo transcript={transcript} />

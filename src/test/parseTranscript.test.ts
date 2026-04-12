@@ -294,3 +294,73 @@ describe("client-side search", () => {
     expect(results).toHaveLength(0);
   });
 });
+
+// ── Export Transcript ─────────────────────────────────────────────────
+
+describe("generateTranscriptHTML", () => {
+  async function getGenerator() {
+    const { generateTranscriptHTML } = await import("../utils/exportTranscript");
+    return generateTranscriptHTML;
+  }
+
+  it("generates valid HTML document", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript);
+    expect(html).toContain("<!DOCTYPE html>");
+    expect(html).toContain("</html>");
+    expect(html).toContain("<title>");
+  });
+
+  it("includes agent name in header", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript, "Test Agent Display");
+    expect(html).toContain("Test Agent Display");
+  });
+
+  it("includes user display name when provided", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript, undefined, "John Doe");
+    expect(html).toContain("John Doe");
+  });
+
+  it("falls back to bot schema name when no display name", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript);
+    expect(html).toContain("msftcsa_testbot");
+  });
+
+  it("includes all user and bot messages", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript);
+    expect(html).toContain("What campaigns are active?");
+    expect(html).toContain("Hello, how can I help?");
+    expect(html).toContain("7 active campaigns");
+  });
+
+  it("includes conversation metadata", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript);
+    expect(html).toContain("test-basic-001");
+    expect(html).toContain("Abandoned");
+  });
+
+  it("includes outcome badge styling", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript);
+    expect(html).toContain("badge-warning");
+  });
+
+  it("includes export footer", async () => {
+    const generate = await getGenerator();
+    const transcript = parseTranscript(basicMcpTranscript);
+    const html = generate(transcript);
+    expect(html).toContain("Exported from MCS Conversation Viewer");
+  });
+});
