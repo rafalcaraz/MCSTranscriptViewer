@@ -260,9 +260,20 @@ export function TranscriptList({
             </td></tr>
           )}
           {loading && (
-            <tr><td colSpan={8} style={{ textAlign: "center", color: "#888", padding: "24px" }}>
-              Loading transcripts...
-            </td></tr>
+            <>
+              {[...Array(6)].map((_, i) => (
+                <tr key={`skeleton-${i}`} className="skeleton-row">
+                  <td><div className="skeleton-bar" style={{ width: `${60 + Math.random() * 30}%` }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: `${50 + Math.random() * 40}%` }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: "75%" }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: "60%" }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: "30%" }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: "40%" }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: "25%" }} /></td>
+                  <td><div className="skeleton-bar" style={{ width: `${40 + Math.random() * 30}%` }} /></td>
+                </tr>
+              ))}
+            </>
           )}
         </tbody>
       </table>
