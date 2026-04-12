@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useEffect, useRef, useCallback } from "react";
 import type { ParsedTranscript } from "../../types/transcript";
 import { formatDuration } from "../../utils/parseTranscript";
 import { searchTranscripts, type ContentSearchOptions } from "../../hooks/useTranscripts";
@@ -278,12 +278,42 @@ export function TranscriptList({
         </tbody>
       </table>
 
-      {hasMore && !loading && (
-        <div style={{ textAlign: "center", padding: "16px" }}>
-          <button className="load-more-btn" onClick={onLoadMore}>
-            Load More
-          </button>
-        </div>
+      {/* Infinite scroll sentinel */}
+      {hasMore && (
+        <InfiniteScrollSentinel loading={loading} onLoadMore={onLoadMore} />
+      )}
+    </div>
+  );
+}
+
+/** Triggers onLoadMore when scrolled into view */
+function InfiniteScrollSentinel({ loading, onLoadMore }: { loading: boolean; onLoadMore: () => void }) {
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const handleIntersection = useCallback(
+    (entries: IntersectionObserverEntry[]) => {
+      if (entries[0]?.isIntersecting && !loading) {
+        onLoadMore();
+      }
+    },
+    [loading, onLoadMore]
+  );
+
+  useEffect(() => {
+    const el = sentinelRef.current;
+    if (!el) return;
+
+    const observer = new IntersectionObserver(handleIntersection, {
+      rootMargin: "200px", // Trigger 200px before reaching the bottom
+    });
+    observer.observe(el);
+    return () => observer.disconnect();
+  }, [handleIntersection]);
+
+  return (
+    <div ref={sentinelRef} style={{ textAlign: "center", padding: "16px" }}>
+      {loading && (
+        <span style={{ color: "#888", fontSize: 13 }}>Loading more...</span>
       )}
     </div>
   );
