@@ -3,6 +3,8 @@ import type { ChatMessage, Reaction } from "../../types/transcript";
 import { formatTimestamp } from "../../utils/parseTranscript";
 import { OrphanReactionItem } from "./OrphanReactionItem";
 import { AdaptiveCardRenderer } from "./AdaptiveCardRenderer";
+import Markdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 
 interface MessageTimelineProps {
   messages: ChatMessage[];
@@ -68,7 +70,7 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
     if (msg.attachments?.length && (msg.textFormat === "adaptive-card" || msg.textFormat === "oauth-card")) {
       return (
         <div>
-          {msg.text && <div dangerouslySetInnerHTML={{ __html: simpleMarkdown(msg.text) }} />}
+          {msg.text && <Markdown remarkPlugins={[remarkGfm]}>{msg.text}</Markdown>}
           {msg.attachments.map((att, i) => (
             <div key={i}>
               <AdaptiveCardRenderer content={att.content} contentType={att.contentType} />
@@ -81,7 +83,7 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
 
     // Regular bot message with markdown
     if (msg.role === "bot") {
-      return <div dangerouslySetInnerHTML={{ __html: simpleMarkdown(msg.text) }} />;
+      return <Markdown remarkPlugins={[remarkGfm]}>{msg.text}</Markdown>;
     }
 
     // User message
@@ -185,48 +187,4 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
       </div>
     </div>
   );
-}
-
-/** Lightweight markdown-to-HTML for bot messages (tables, bold, code, headers, lists, hr, blockquotes) */
-function simpleMarkdown(text: string): string {
-  let html = escapeHtml(text);
-
-  // Tables
-  html = html.replace(
-    /^(\|.+\|)\n(\|[-| :]+\|)\n((?:\|.+\|\n?)+)/gm,
-    (_match, headerRow: string, _sep: string, bodyRows: string) => {
-      const headers = headerRow.split("|").filter((c: string) => c.trim());
-      const rows = bodyRows.trim().split("\n").map((r: string) => r.split("|").filter((c: string) => c.trim()));
-      return `<table><thead><tr>${headers.map((h: string) => `<th>${h.trim()}</th>`).join("")}</tr></thead><tbody>${rows.map((r: string[]) => `<tr>${r.map((c: string) => `<td>${c.trim()}</td>`).join("")}</tr>`).join("")}</tbody></table>`;
-    }
-  );
-
-  // Block quotes
-  html = html.replace(/^&gt; (.+)$/gm, "<blockquote>$1</blockquote>");
-  // Headers
-  html = html.replace(/^### (.+)$/gm, "<h3>$1</h3>");
-  html = html.replace(/^## (.+)$/gm, "<h2>$1</h2>");
-  // HR
-  html = html.replace(/^---$/gm, "<hr/>");
-  // Bold
-  html = html.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>");
-  // Inline code
-  html = html.replace(/`([^`]+)`/g, "<code>$1</code>");
-  // Unordered lists
-  html = html.replace(/^- (.+)$/gm, "<li>$1</li>");
-  html = html.replace(/(<li>.*<\/li>\n?)+/g, (m) => `<ul>${m}</ul>`);
-  // Paragraphs (double newlines)
-  html = html.replace(/\n\n/g, "</p><p>");
-  html = `<p>${html}</p>`;
-  // Clean up empty paragraphs
-  html = html.replace(/<p>\s*<\/p>/g, "");
-
-  return html;
-}
-
-function escapeHtml(text: string): string {
-  return text
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
 }

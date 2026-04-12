@@ -24,6 +24,14 @@ vi.mock("../generated/services/BotsService", () => ({
   BotsService: { getAll: vi.fn() },
 }));
 
+// Mock react-markdown (renders children as plain text in tests)
+vi.mock("react-markdown", () => ({
+  default: ({ children }: { children: string }) => <div>{children}</div>,
+}));
+vi.mock("remark-gfm", () => ({
+  default: () => {},
+}));
+
 // Mock the hooks that components call internally
 vi.mock("../hooks/useLookups", () => ({
   useBotLookup: () => ({
