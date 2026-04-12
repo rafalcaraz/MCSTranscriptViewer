@@ -5,13 +5,16 @@ import type {
   ParsedTranscript,
   PlanStep,
   Reaction,
-  AdvancedEvent,
   ConversationInfo,
   SessionInfo,
   ToolDefinition,
   DialogTrace,
   TranscriptMetadata,
 } from "../types/transcript";
+import { extractAdvancedEvents } from "./advancedEvents";
+
+// Re-export formatters for backward compatibility
+export { formatTimestamp, formatDuration, shortToolName } from "./formatters";
 
 function classifyActivity(raw: RawActivity): ParsedActivityType {
   if (raw.type === "trace") {
@@ -74,7 +77,6 @@ function parseActivity(raw: RawActivity): ParsedActivity {
       let text = raw.text ?? "";
       let textFormat = raw.textFormat;
 
-      // Parse attachments
       const attachments: { contentType: string; content: Record<string, unknown> }[] = [];
       if (raw.attachments && Array.isArray(raw.attachments)) {
         for (const att of raw.attachments as { contentType?: string; content?: Record<string, unknown> }[]) {
@@ -84,7 +86,6 @@ function parseActivity(raw: RawActivity): ParsedActivity {
         }
       }
 
-      // If no text, determine what to show based on attachments
       if (!text && attachments.length > 0) {
         const firstAtt = attachments[0];
         if (firstAtt.contentType === "application/vnd.microsoft.card.adaptive") {
@@ -94,13 +95,11 @@ function parseActivity(raw: RawActivity): ParsedActivity {
         }
       }
 
-      // Empty user messages are button clicks / invoke actions
       if (!text && attachments.length === 0 && raw.from.role === 1) {
         text = "⚡ [User action]";
         textFormat = "system";
       }
 
-      // Empty bot messages with no attachments — likely a redacted knowledge response (SharePoint security)
       if (!text && attachments.length === 0 && raw.from.role === 0) {
         text = "🔒 [Response not stored in transcript — may contain knowledge source content]";
         textFormat = "system";
@@ -127,9 +126,7 @@ function parseActivity(raw: RawActivity): ParsedActivity {
     }
     case "mcpServerInit": {
       const v = raw.value as {
-        initializationResult?: {
-          serverInfo?: { name: string; version: string };
-        };
+        initializationResult?: { serverInfo?: { name: string; version: string } };
         dialogSchemaName?: string;
       };
       if (v?.initializationResult?.serverInfo) {
@@ -211,7 +208,6 @@ function parseActivity(raw: RawActivity): ParsedActivity {
       const av = v?.actionValue;
       const reactionType = av?.reaction === "like" ? "like" as const : "dislike" as const;
 
-      // Handle both feedback formats: object (pva-studio) vs JSON string (Teams)
       let feedbackText = "";
       if (av?.feedback) {
         if (typeof av.feedback === "string") {
@@ -232,7 +228,7 @@ function parseActivity(raw: RawActivity): ParsedActivity {
         replyToId: raw.replyToId ?? "",
         timestamp: raw.timestamp,
         fromAadObjectId: raw.from.aadObjectId,
-        isOrphan: false, // Will be set later in parseTranscript
+        isOrphan: false,
       };
       break;
     }
@@ -281,9 +277,6 @@ function parseActivity(raw: RawActivity): ParsedActivity {
   return parsed;
 }
 
-/**
- * Merge plan step events (triggered → bind → finished) into unified PlanStep objects.
- */
 function mergePlanSteps(activities: ParsedActivity[]): PlanStep[] {
   const stepMap = new Map<string, PlanStep>();
 
@@ -294,7 +287,6 @@ function mergePlanSteps(activities: ParsedActivity[]): PlanStep[] {
     if (!existing) {
       stepMap.set(key, { ...a.planStep });
     } else {
-      // Merge fields
       if (a.planStep.thought) existing.thought = a.planStep.thought;
       if (a.planStep.arguments) existing.arguments = a.planStep.arguments;
       if (a.planStep.observation) existing.observation = a.planStep.observation;
@@ -306,168 +298,6 @@ function mergePlanSteps(activities: ParsedActivity[]): PlanStep[] {
   }
 
   return Array.from(stepMap.values());
-}
-
-/**
- * Extract advanced debug events from raw activities.
- * These are the "hidden" events not shown in basic mode.
- */
-function extractAdvancedEvents(rawActivities: RawActivity[]): AdvancedEvent[] {
-  const events: AdvancedEvent[] = [];
-
-  for (const a of rawActivities) {
-    const typ = a.type;
-    const name = a.name ?? "";
-    const vtype = a.valueType ?? "";
-    const v = (a.value ?? {}) as Record<string, unknown>;
-
-    // Error traces
-    if (typ === "trace" && vtype === "ErrorTraceData") {
-      events.push({
-        category: "error",
-        label: `Error: ${(v.errorCode as string) ?? "Unknown"}`,
-        icon: "🔴",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: {
-          errorCode: v.errorCode,
-          errorMessage: v.errorMessage,
-          errorSubCode: v.errorSubCode,
-          isUserError: v.isUserError,
-        },
-      });
-    }
-
-    // MCP server errors
-    if (typ === "event" && name === "DynamicServerError") {
-      events.push({
-        category: "serverError",
-        label: `Server Error: ${(v.reasonCode as string) ?? "Unknown"}`,
-        icon: "💥",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: {
-          reasonCode: v.reasonCode,
-          errorMessage: v.errorMessage,
-          httpStatusCode: v.HttpStatusCode,
-          errorResponse: v.errorResponse,
-          dialogSchemaName: v.dialogSchemaName,
-        },
-      });
-    }
-
-    // Plan step blocked (content filtering, etc.)
-    if (typ === "event" && name === "DynamicPlanStepBlocked") {
-      const blocked = v.messageBlockedError as Record<string, unknown> | undefined;
-      events.push({
-        category: "blocked",
-        label: `Step Blocked: ${(blocked?.code as string) ?? "Unknown"}`,
-        icon: "🚫",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: {
-          code: blocked?.code,
-          message: blocked?.message,
-          stepId: v.stepId,
-          taskDialogId: v.taskDialogId,
-        },
-      });
-    }
-
-    // Variable assignments (skip noisy system variables)
-    if (typ === "trace" && vtype === "VariableAssignment") {
-      const varId = (v.id as string) ?? "";
-      const noisy = ["Topic.CurrentTime", "Global.CurrentTime", "System."];
-      if (!noisy.some((prefix) => varId.startsWith(prefix))) {
-        events.push({
-          category: "variable",
-          label: `${(v.name as string) ?? "?"} = ${JSON.stringify(v.newValue).slice(0, 50)}`,
-          icon: "📝",
-          timestamp: a.timestamp,
-          replyToId: a.replyToId,
-          details: {
-            name: v.name,
-            id: v.id,
-            newValue: v.newValue,
-            type: v.type,
-          },
-        });
-      }
-    }
-
-    // Topic/dialog redirects
-    if (typ === "trace" && vtype === "DialogRedirect") {
-      events.push({
-        category: "redirect",
-        label: `Redirect → ${(v.targetDialogId as string)?.split("-")[0] ?? "?"}`,
-        icon: "↪️",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: {
-          targetDialogId: v.targetDialogId,
-          targetDialogType: v.targetDialogType,
-        },
-      });
-    }
-
-    // Unknown intent
-    if (typ === "trace" && vtype === "UnknownIntent") {
-      events.push({
-        category: "intent",
-        label: "Unknown Intent — no topic matched",
-        icon: "❓",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: v,
-      });
-    }
-
-    // GPT answer trace
-    if (typ === "trace" && vtype === "GPTAnswer") {
-      events.push({
-        category: "gptAnswer",
-        label: `GPT Answer: ${(v.gptAnswerState as string) ?? "?"}`,
-        icon: "🤖",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: v,
-      });
-    }
-
-    // Generative answers support data
-    if (typ === "event" && name === "GenerativeAnswersSupportData") {
-      events.push({
-        category: "generativeAnswers",
-        label: `Generative Answers: ${(v.completionState as string) ?? (v.gptAnswerState as string) ?? "?"}`,
-        icon: "✨",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: {
-          completionState: v.completionState,
-          gptAnswerState: v.gptAnswerState,
-          searchTerms: v.searchTerms,
-          message: v.message,
-          rewrittenMessage: v.rewrittenMessage,
-        },
-      });
-    }
-
-    // Escalation / handoff
-    if (typ === "trace" && (vtype === "HandOff" || vtype === "EscalationRequested")) {
-      events.push({
-        category: "escalation",
-        label: vtype === "HandOff" ? "Handed off to human agent" : "Escalation requested",
-        icon: "🆘",
-        timestamp: a.timestamp,
-        replyToId: a.replyToId,
-        details: v,
-      });
-    }
-  }
-
-  // Sort by timestamp
-  events.sort((a, b) => a.timestamp - b.timestamp);
-  return events;
 }
 
 export interface DataverseTranscriptRecord {
@@ -502,7 +332,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     .filter((a) => a.dialogTrace)
     .map((a) => a.dialogTrace!);
 
-  // Knowledge sources
   const knowledgeSearches = activities
     .filter((a) => a.knowledgeSearch)
     .map((a) => a.knowledgeSearch!);
@@ -513,20 +342,16 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
 
   const knowledgeTrace = activities.find((a) => a.knowledgeTrace)?.knowledgeTrace;
 
-  // Advanced debug events
   const advancedEvents = extractAdvancedEvents(rawActivities);
 
-  // Find user AAD ID — check user messages first, then startConversation event
   const firstUserMsg = messages.find((m) => m.role === "user");
   const startEvent = rawActivities.find((a) => a.type === "event" && a.name === "startConversation");
   const userAadObjectId =
     firstUserMsg?.from.aadObjectId ??
     startEvent?.from.aadObjectId;
 
-  // Channel from first message
   const channelId = rawActivities.find((a) => a.channelId)?.channelId;
 
-  // Duration from session info
   let totalDurationSeconds: number | undefined;
   if (sessionInfo?.startTimeUtc && sessionInfo?.endTimeUtc) {
     totalDurationSeconds = Math.round(
@@ -536,7 +361,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     );
   }
 
-  // Parse metadata JSON
   let meta: TranscriptMetadata = { botId: "", botName: "", aadTenantId: "" };
   if (record.metadata) {
     try {
@@ -551,7 +375,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     }
   }
 
-  // Extract reactions and mark orphans
   const messageIds = new Set(messages.map((m) => m.id));
   const reactions: Reaction[] = activities
     .filter((a) => a.reaction)
@@ -595,23 +418,4 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     likeCount,
     dislikeCount,
   };
-}
-
-/** Format a unix epoch seconds timestamp to a readable datetime string */
-export function formatTimestamp(epoch: number): string {
-  return new Date(epoch * 1000).toLocaleString();
-}
-
-/** Format a duration in seconds to a human-readable string */
-export function formatDuration(seconds: number): string {
-  if (seconds < 60) return `${seconds}s`;
-  const mins = Math.floor(seconds / 60);
-  const secs = seconds % 60;
-  return secs > 0 ? `${mins}m ${secs}s` : `${mins}m`;
-}
-
-/** Extract the short tool name from a full taskDialogId like "MCP:schema.topic:tool_name" */
-export function shortToolName(taskDialogId: string): string {
-  const parts = taskDialogId.split(":");
-  return parts[parts.length - 1] ?? taskDialogId;
 }
