@@ -1249,3 +1249,12 @@
   overflow: auto;
   white-space: pre;
 }
+.trigger-link {
+  text-decoration: none;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+.trigger-link:hover {
+  background: var(--color-primary-light);
+  color: var(--color-primary);
+}

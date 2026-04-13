@@ -89,7 +89,6 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
     // User message — detect large JSON payloads and prettify them collapsed
     if (msg.role === "user" && msg.text.length > 200) {
       try {
-        // Try to extract JSON from "Use content from {...}" or raw JSON
         const jsonMatch = msg.text.match(/\{[\s\S]*\}/);
         if (jsonMatch) {
           const parsed = JSON.parse(jsonMatch[0]);
@@ -98,8 +97,8 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
           return (
             <div>
               {prefix && <div style={{ marginBottom: 4 }}>{prefix}</div>}
-              <details className="json-collapse">
-                <summary>📋 JSON payload ({pretty.split("\n").length} lines)</summary>
+              <details className="json-collapse" onClick={(e) => e.stopPropagation()}>
+                <summary>📋 JSON payload ({pretty.split("\n").length} lines) — click to expand</summary>
                 <pre className="json-pretty">{pretty}</pre>
               </details>
             </div>

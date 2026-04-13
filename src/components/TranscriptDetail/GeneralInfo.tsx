@@ -64,10 +64,22 @@ export function GeneralInfo({ transcript }: GeneralInfoProps) {
           <div className="trigger-info-grid">
             <span className="trigger-chip">🔗 {transcript.triggerInfo.triggerDisplayName || "Unknown trigger"}</span>
             <span className="trigger-chip">📎 {transcript.triggerInfo.connectorDisplayName || "Unknown connector"}</span>
-            {transcript.triggerInfo.flowRunId && (
+            {transcript.triggerInfo.flowId && (
               <span className="trigger-chip" style={{ fontFamily: "monospace", fontSize: 11 }}>
-                🔄 Run: {transcript.triggerInfo.flowRunId.slice(0, 20)}…
+                📄 Flow: {transcript.triggerInfo.flowId.slice(0, 12)}…
               </span>
+            )}
+            {transcript.triggerInfo.flowRunId && (
+              <a
+                className="trigger-chip trigger-link"
+                href={`https://make.powerautomate.com/flows/${transcript.triggerInfo.flowId}/runs/${transcript.triggerInfo.flowRunId}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                title="Open flow run in Power Automate"
+              >
+                🔄 View Run ↗
+              </a>
             )}
           </div>
         </div>
