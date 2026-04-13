@@ -377,9 +377,9 @@ describe("parseTranscript — transcript type classification", () => {
     expect(parsed.transcriptType).toBe("autonomous");
   });
 
-  it("classifies evaluation transcripts (testMode + enableDiagnostics, no triggerTest)", () => {
+  it("classifies evaluation fixture as chat (evaluation disabled pending confirmed signal)", () => {
     const parsed = parseTranscript(evaluationTranscript);
-    expect(parsed.transcriptType).toBe("evaluation");
+    expect(parsed.transcriptType).toBe("chat");
   });
 
   it("classifies design transcripts (isDesignMode, no test flags in channelData)", () => {
@@ -392,17 +392,15 @@ describe("parseTranscript — transcript type classification", () => {
     expect(parsed.transcriptType).toBe("chat");
   });
 
-  it("autonomous takes priority over evaluation flags", () => {
-    // autonomousTranscript has both triggerTest AND testMode+enableDiagnostics
+  it("autonomous takes priority over other flags", () => {
     const parsed = parseTranscript(autonomousTranscript);
     expect(parsed.transcriptType).toBe("autonomous");
   });
 
   it("design mode with testMode+enableDiagnostics is still design (test pane)", () => {
-    // The studio test pane injects testMode+enableDiagnostics, but isDesignMode=true means design, not evaluation
     const parsed = parseTranscript(basicMcpTranscript);
     expect(parsed.transcriptType).toBe("design");
-    // basicMcpTranscript has isDesignMode: true — even though test pane would add testMode to channelData
+  });
   });
 });
 

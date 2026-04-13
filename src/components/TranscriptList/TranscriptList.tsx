@@ -188,7 +188,6 @@ export function TranscriptList({
             <option value="">All Types</option>
             <option value="chat">💬 Chat</option>
             <option value="autonomous">⚡ Autonomous</option>
-            <option value="evaluation">🧪 Evaluation</option>
             <option value="design">🛠️ Design</option>
           </select>
           <select
