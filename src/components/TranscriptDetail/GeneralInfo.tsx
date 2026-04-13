@@ -58,6 +58,20 @@ export function GeneralInfo({ transcript }: GeneralInfoProps) {
           </div>
         ))}
       </div>
+      {transcript.triggerInfo && (
+        <div className="trigger-info">
+          <div className="trigger-info-label">⚡ Flow Trigger</div>
+          <div className="trigger-info-grid">
+            <span className="trigger-chip">🔗 {transcript.triggerInfo.triggerDisplayName || "Unknown trigger"}</span>
+            <span className="trigger-chip">📎 {transcript.triggerInfo.connectorDisplayName || "Unknown connector"}</span>
+            {transcript.triggerInfo.flowRunId && (
+              <span className="trigger-chip" style={{ fontFamily: "monospace", fontSize: 11 }}>
+                🔄 Run: {transcript.triggerInfo.flowRunId.slice(0, 20)}…
+              </span>
+            )}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

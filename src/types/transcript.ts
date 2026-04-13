@@ -184,6 +184,16 @@ export interface ParsedActivity {
 
 export type TranscriptType = "chat" | "autonomous" | "evaluation" | "design";
 
+// ── Trigger info (autonomous transcripts) ─────────────────────────────
+
+export interface TriggerInfo {
+  flowId: string;
+  flowRunId: string;
+  triggerDisplayName: string;
+  connectorDisplayName: string;
+  connectorIconUri?: string;
+}
+
 // ── Aggregated transcript ─────────────────────────────────────────────
 
 export interface TranscriptMetadata {
@@ -219,6 +229,7 @@ export interface ParsedTranscript {
 
   // Computed
   transcriptType: TranscriptType;
+  triggerInfo?: TriggerInfo;
   userAadObjectId?: string;
   channelId?: string;
   totalDurationSeconds?: number;

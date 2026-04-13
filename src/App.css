@@ -1205,3 +1205,47 @@
 .advanced-event.intentRecognition { border-left-color: #0078d4; background: var(--color-primary-light); }
 .advanced-event.nodeTrace { border-left-color: #8764b8; background: var(--event-redirect-bg); }
 .advanced-event.activity { border-left-color: #888; background: var(--bg-tertiary); }
+/* ── Trigger Info (autonomous) ───────────── */
+.trigger-info {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 1px solid var(--border-light);
+}
+.trigger-info-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--warning-text);
+  margin-bottom: 6px;
+}
+.trigger-info-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+.trigger-chip {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  background: var(--warning-bg);
+  color: var(--warning-text);
+  font-weight: 500;
+}
+
+/* ── JSON Collapse (autonomous payloads) ─── */
+.json-collapse summary {
+  cursor: pointer;
+  font-size: 12px;
+  color: var(--color-primary);
+  font-weight: 600;
+}
+.json-pretty {
+  margin-top: 6px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border-radius: 6px;
+  font-size: 11px;
+  line-height: 1.4;
+  max-height: 300px;
+  overflow: auto;
+  white-space: pre;
+}

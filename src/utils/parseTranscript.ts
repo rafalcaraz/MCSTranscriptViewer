@@ -11,6 +11,7 @@ import type {
   DialogTrace,
   TranscriptMetadata,
   TranscriptType,
+  TriggerInfo,
 } from "../types/transcript";
 import { extractAdvancedEvents } from "./advancedEvents";
 
@@ -387,6 +388,25 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
 
   const transcriptType = classifyTranscriptType(rawActivities, conversationInfo, channelId);
 
+  // Extract trigger info for autonomous transcripts
+  let triggerInfo: TriggerInfo | undefined;
+  for (const a of rawActivities) {
+    if (a.type === "message" && a.from.role === 1 && a.channelData?.triggerTest) {
+      const tt = a.channelData.triggerTest as {
+        flowId?: string; flowRunId?: string;
+        trigger?: { displayName?: string; connectorDisplayName?: string; connectorIconUri?: string };
+      };
+      triggerInfo = {
+        flowId: tt.flowId ?? "",
+        flowRunId: tt.flowRunId ?? "",
+        triggerDisplayName: tt.trigger?.displayName ?? "",
+        connectorDisplayName: tt.trigger?.connectorDisplayName ?? "",
+        connectorIconUri: tt.trigger?.connectorIconUri,
+      };
+      break;
+    }
+  }
+
   let totalDurationSeconds: number | undefined;
   if (sessionInfo?.startTimeUtc && sessionInfo?.endTimeUtc) {
     totalDurationSeconds = Math.round(
@@ -443,6 +463,7 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     knowledgeTrace,
     advancedEvents,
     transcriptType,
+    triggerInfo,
     userAadObjectId,
     channelId,
     totalDurationSeconds,

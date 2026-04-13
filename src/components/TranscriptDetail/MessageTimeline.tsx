@@ -86,6 +86,30 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
       return <Markdown remarkPlugins={[remarkGfm]}>{msg.text}</Markdown>;
     }
 
+    // User message — detect large JSON payloads and prettify them collapsed
+    if (msg.role === "user" && msg.text.length > 200) {
+      try {
+        // Try to extract JSON from "Use content from {...}" or raw JSON
+        const jsonMatch = msg.text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          const prefix = msg.text.slice(0, msg.text.indexOf(jsonMatch[0])).trim();
+          const pretty = JSON.stringify(parsed, null, 2);
+          return (
+            <div>
+              {prefix && <div style={{ marginBottom: 4 }}>{prefix}</div>}
+              <details className="json-collapse">
+                <summary>📋 JSON payload ({pretty.split("\n").length} lines)</summary>
+                <pre className="json-pretty">{pretty}</pre>
+              </details>
+            </div>
+          );
+        }
+      } catch {
+        // Not valid JSON — render as normal text
+      }
+    }
+
     // User message
     return <>{msg.text}</>;
   };
