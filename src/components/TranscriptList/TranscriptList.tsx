@@ -101,13 +101,19 @@ export function TranscriptList({
       results = results.filter((t) => t.transcriptType === f.transcriptTypeFilter);
     }
 
+    // Minimum turns filter
+    const minTurns = parseInt(f.minTurns, 10);
+    if (minTurns > 0) {
+      results = results.filter((t) => t.turnCount >= minTurns);
+    }
+
     // Client-side content search
     if (f.clientSearch.trim()) {
       results = searchTranscripts(results, { query: f.clientSearch, searchIn: f.clientSearchIn });
     }
 
     return results;
-  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.transcriptTypeFilter, f.clientSearch, f.clientSearchIn]);
+  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.transcriptTypeFilter, f.minTurns, f.clientSearch, f.clientSearchIn]);
 
   // Resolve user display names for visible transcripts
   const userAadIds = useMemo(
@@ -208,6 +214,14 @@ export function TranscriptList({
             <option value="likes">Has 👍</option>
             <option value="dislikes">Has 👎</option>
           </select>
+          <input
+            type="number"
+            min="0"
+            placeholder="Min turns"
+            value={f.minTurns}
+            onChange={(e) => update({ minTurns: e.target.value })}
+            style={{ width: 90 }}
+          />
           <select
             value={f.clientSearchIn}
             onChange={(e) => update({ clientSearchIn: e.target.value as ContentSearchOptions["searchIn"] })}

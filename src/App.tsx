@@ -25,6 +25,7 @@ export interface ListFilterState {
   userSearchQuery: string;
   feedbackFilter: "" | "any" | "likes" | "dislikes";
   transcriptTypeFilter: "" | "chat" | "autonomous" | "evaluation" | "design";
+  minTurns: string;
 }
 
 const INITIAL_FILTER_STATE: ListFilterState = {
@@ -40,6 +41,7 @@ const INITIAL_FILTER_STATE: ListFilterState = {
   userSearchQuery: "",
   feedbackFilter: "",
   transcriptTypeFilter: "",
+  minTurns: "",
 };
 
 function App() {
