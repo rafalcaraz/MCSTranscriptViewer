@@ -401,7 +401,6 @@ describe("parseTranscript — transcript type classification", () => {
     const parsed = parseTranscript(basicMcpTranscript);
     expect(parsed.transcriptType).toBe("design");
   });
-  });
 });
 
 // ── New Advanced Events ───────────────────────────────────────────────
