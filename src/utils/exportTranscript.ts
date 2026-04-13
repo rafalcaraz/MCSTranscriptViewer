@@ -20,13 +20,14 @@ export function generateTranscriptHTML(transcript: ParsedTranscript, agentDispla
     const textColor = isUser ? "#fff" : "#1a1a1a";
     const align = isUser ? "flex-end" : "flex-start";
     const text = msg.text || (msg.textFormat === "system" ? msg.text : "[No content]");
+    const rendered = isUser ? escapeHTML(text).replace(/\n/g, "<br>") : simpleMarkdownToHTML(text);
 
     return `
       <div style="display:flex;justify-content:${align};margin-bottom:12px;">
         <div style="max-width:75%;">
           <div style="font-size:11px;color:#888;margin-bottom:2px;${isUser ? "text-align:right;" : ""}">${label}</div>
           <div style="background:${bgColor};color:${textColor};padding:10px 14px;border-radius:12px;font-size:14px;line-height:1.5;word-break:break-word;">
-            ${escapeHTML(text).replace(/\n/g, "<br>")}
+            ${rendered}
           </div>
           <div style="font-size:10px;color:#999;margin-top:2px;${isUser ? "text-align:right;" : ""}">${time}</div>
         </div>
@@ -40,7 +41,7 @@ export function generateTranscriptHTML(transcript: ParsedTranscript, agentDispla
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Transcript — ${agent} — ${startTime}</title>
   <style>
-    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #1a1a1a; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 0; background: #f5f5f5; color: #1a1a1a; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
     .header { background: #fff; padding: 20px 24px; border-bottom: 1px solid #e0e0e0; }
     .header h1 { font-size: 18px; margin: 0 0 12px; }
     .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; }
@@ -152,4 +153,35 @@ function downloadFile(content: string, filename: string, mimeType: string) {
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
+}
+
+/** Simple markdown → HTML for export (no React dependency) */
+function simpleMarkdownToHTML(text: string): string {
+  let html = escapeHTML(text);
+
+  // Horizontal rules
+  html = html.replace(/^---$/gm, '<hr style="border:none;border-top:1px solid #d0d0d0;margin:8px 0;">');
+
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h3 style="margin:10px 0 4px;font-size:14px;">$1</h3>');
+  html = html.replace(/^## (.+)$/gm, '<h2 style="margin:10px 0 4px;font-size:15px;">$1</h2>');
+  html = html.replace(/^# (.+)$/gm, '<h1 style="margin:10px 0 4px;font-size:16px;">$1</h1>');
+
+  // Bold and italic
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  html = html.replace(/\*(.+?)\*/g, '<em>$1</em>');
+
+  // Inline code
+  html = html.replace(/`([^`]+)`/g, '<code style="background:#e0e0e0;padding:1px 4px;border-radius:3px;font-size:12px;">$1</code>');
+
+  // Ordered lists
+  html = html.replace(/^(\d+)\. (.+)$/gm, '<div style="padding-left:18px;">$1. $2</div>');
+
+  // Unordered lists
+  html = html.replace(/^- (.+)$/gm, '<div style="padding-left:18px;">• $1</div>');
+
+  // Line breaks (remaining newlines)
+  html = html.replace(/\n/g, '<br>');
+
+  return html;
 }
