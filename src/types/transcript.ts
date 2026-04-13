@@ -119,10 +119,18 @@ export interface Reaction {
   isOrphan: boolean;
 }
 
+export interface SearchResult {
+  name: string;
+  text: string;
+  fileType: string;
+  sourceId: string;
+}
+
 export interface KnowledgeSearchTrace {
   toolId: string;
   knowledgeSources: string[];
   outputKnowledgeSources: string[];
+  searchResults: SearchResult[];
   replyToId?: string;
 }
 

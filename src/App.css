@@ -1258,3 +1258,32 @@
   background: var(--color-primary-light);
   color: var(--color-primary);
 }
+/* ── Search Results in Knowledge ─────────── */
+.search-result-item {
+  padding: 6px 0;
+  border-bottom: 1px solid var(--border-light);
+}
+.search-result-item:last-child { border-bottom: none; }
+.search-result-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-primary);
+  margin-bottom: 2px;
+}
+.search-result-content summary {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.search-result-text {
+  margin-top: 4px;
+  padding: 8px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  max-height: 200px;
+  overflow: auto;
+  white-space: pre-wrap;
+  word-break: break-word;
+}

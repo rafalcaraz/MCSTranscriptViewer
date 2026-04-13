@@ -370,6 +370,24 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
                     </span>
                   ))}
                 </div>
+                {ks.searchResults.length > 0 && (
+                  <details className="knowledge-response-detail" onClick={(e) => e.stopPropagation()}>
+                    <summary>🔍 Search Results ({ks.searchResults.length})</summary>
+                    {ks.searchResults.map((r, j) => (
+                      <div key={j} className="search-result-item">
+                        <div className="search-result-title">
+                          {r.fileType ? `📄 ` : "🌐 "}{r.name || "Untitled"}
+                        </div>
+                        {r.text && (
+                          <details className="search-result-content" onClick={(e) => e.stopPropagation()}>
+                            <summary>View content ({r.text.length > 1000 ? `${Math.round(r.text.length / 1000)}K chars` : `${r.text.length} chars`})</summary>
+                            <pre className="search-result-text">{r.text}</pre>
+                          </details>
+                        )}
+                      </div>
+                    ))}
+                  </details>
+                )}
               </div>
             );
           }

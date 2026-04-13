@@ -267,6 +267,7 @@ function parseActivity(raw: RawActivity): ParsedActivity {
         toolId: v?.toolId ?? "",
         knowledgeSources: v?.knowledgeSources ?? [],
         outputKnowledgeSources: v?.outputKnowledgeSources ?? [],
+        searchResults: [], // populated later from DynamicPlanStepFinished observations
         replyToId: raw.replyToId,
       };
       break;
@@ -364,6 +365,47 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
   const knowledgeSearches = activities
     .filter((a) => a.knowledgeSearch)
     .map((a) => a.knowledgeSearch!);
+
+  // Enrich knowledge searches with search results from plan step observations
+  // The UniversalSearchToolTraceData has empty fullResults/filteredResults for Bing,
+  // but DynamicPlanStepFinished observations contain the actual search_result data
+  const finishedSteps = activities.filter((a) => a.type === "planStepFinished" && a.planStep);
+  for (const ks of knowledgeSearches) {
+    if (ks.searchResults.length > 0) continue;
+    // Find a matching finished step for this knowledge search tool
+    for (const step of finishedSteps) {
+      if (step.raw.value && step.raw.name === "DynamicPlanStepFinished") {
+        const v = step.raw.value as { taskDialogId?: string; observation?: { search_result?: { search_results?: { Name?: string; Text?: string; FileType?: string; SourceId?: string }[] } } };
+        if (v.taskDialogId === ks.toolId && v.observation?.search_result?.search_results?.length) {
+          ks.searchResults = v.observation.search_result.search_results.map((r) => ({
+            name: r.Name ?? "",
+            text: r.Text ?? "",
+            fileType: r.FileType ?? "",
+            sourceId: r.SourceId ?? "",
+          }));
+          break;
+        }
+      }
+    }
+  }
+  // Also check raw activities directly for unmatched searches
+  for (const ks of knowledgeSearches) {
+    if (ks.searchResults.length > 0) continue;
+    for (const a of rawActivities) {
+      if (a.name === "DynamicPlanStepFinished") {
+        const v = a.value as { taskDialogId?: string; observation?: { search_result?: { search_results?: { Name?: string; Text?: string; FileType?: string; SourceId?: string }[] } } };
+        if (v?.taskDialogId === ks.toolId && v?.observation?.search_result?.search_results?.length) {
+          ks.searchResults = v.observation.search_result.search_results.map((r) => ({
+            name: r.Name ?? "",
+            text: r.Text ?? "",
+            fileType: r.FileType ?? "",
+            sourceId: r.SourceId ?? "",
+          }));
+          break;
+        }
+      }
+    }
+  }
 
   const knowledgeResponses = activities
     .filter((a) => a.knowledgeResponse)
