@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { parseTranscript, formatTimestamp, formatDuration, shortToolName } from "../utils/parseTranscript";
+import { parseTranscript, formatTimestamp, formatDuration, shortToolName, prettyAgentName } from "../utils/parseTranscript";
 import {
   basicMcpTranscript,
   pvaStudioReactionsTranscript,
@@ -12,6 +12,7 @@ import {
   evaluationTranscript,
   chatTranscript,
   newAdvancedEventsTranscript,
+  multiAgentTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -605,3 +606,94 @@ describe("parseTranscript — userAttachmentCount", () => {
     expect(t.userAttachmentCount).toBe(0);
   });
 });
+
+// ── Multi-agent (connected agents) ────────────────────────────────────
+
+describe("prettyAgentName", () => {
+  it("strips publisher prefix and splits CamelCase", () => {
+    expect(prettyAgentName("msftcsa_HelpDeskAgent")).toBe("Help Desk Agent");
+    expect(prettyAgentName("msftcsa_Cybersecurity")).toBe("Cybersecurity");
+  });
+  it("preserves all-caps acronyms", () => {
+    expect(prettyAgentName("msftcsa_MainITAgent")).toBe("Main IT Agent");
+    expect(prettyAgentName("cr290_APIHelper")).toBe("API Helper");
+  });
+  it("handles names with no prefix", () => {
+    expect(prettyAgentName("HelpDeskAgent")).toBe("Help Desk Agent");
+  });
+  it("handles empty string", () => {
+    expect(prettyAgentName("")).toBe("");
+  });
+});
+
+describe("parseTranscript — multi-agent (connected agents)", () => {
+  it("extracts connected-agent invocations in chronological order", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    expect(t.connectedAgentInvocations).toHaveLength(2);
+    expect(t.connectedAgentInvocations[0].childSchemaName).toBe("msftcsa_HelpDeskAgent");
+    expect(t.connectedAgentInvocations[1].childSchemaName).toBe("msftcsa_Cybersecurity");
+  });
+
+  it("captures parent display name", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    expect(t.parentAgentSchemaName).toBe("msftcsa_MainITAgent");
+    expect(t.parentAgentDisplayName).toBe("Main IT Agent");
+  });
+
+  it("links the planner thought to each invocation", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    expect(t.connectedAgentInvocations[0].thought).toContain("Routing to Help-Desk-Agent");
+    expect(t.connectedAgentInvocations[1].thought).toContain("Cybersecurity specialist");
+  });
+
+  it("populates pretty display names on invocations", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    expect(t.connectedAgentInvocations[0].childDisplayName).toBe("Help Desk Agent");
+    expect(t.connectedAgentInvocations[0].parentDisplayName).toBe("Main IT Agent");
+    expect(t.connectedAgentInvocations[1].childDisplayName).toBe("Cybersecurity");
+  });
+
+  it("tags bot messages within child windows with the child agent", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    const helpdeskMsg = t.messages.find((m) => m.id === "msg-helpdesk-1");
+    const cyberMsg = t.messages.find((m) => m.id === "msg-cyber-1");
+    expect(helpdeskMsg?.speakingAgent?.schemaName).toBe("msftcsa_HelpDeskAgent");
+    expect(helpdeskMsg?.speakingAgent?.isChild).toBe(true);
+    expect(helpdeskMsg?.speakingAgent?.displayName).toBe("Help Desk Agent");
+    expect(cyberMsg?.speakingAgent?.schemaName).toBe("msftcsa_Cybersecurity");
+    expect(cyberMsg?.speakingAgent?.isChild).toBe(true);
+  });
+
+  it("tags bot messages outside child windows with the parent agent", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    const greetMsg = t.messages.find((m) => m.id === "msg-parent-greet");
+    const parent2 = t.messages.find((m) => m.id === "msg-parent-2");
+    expect(greetMsg?.speakingAgent?.schemaName).toBe("msftcsa_MainITAgent");
+    expect(greetMsg?.speakingAgent?.isChild).toBe(false);
+    expect(parent2?.speakingAgent?.isChild).toBe(false);
+  });
+
+  it("captures message ids inside each invocation window", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    expect(t.connectedAgentInvocations[0].messageIds).toContain("msg-helpdesk-1");
+    expect(t.connectedAgentInvocations[1].messageIds).toContain("msg-cyber-1");
+  });
+
+  it("does not tag user messages with a speakingAgent", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    const userMsgs = t.messages.filter((m) => m.role === "user");
+    for (const m of userMsgs) {
+      expect(m.speakingAgent).toBeUndefined();
+    }
+  });
+
+  it("leaves single-agent transcripts untouched (no invocations, no speakingAgent)", () => {
+    const t = parseTranscript(basicMcpTranscript);
+    expect(t.connectedAgentInvocations).toHaveLength(0);
+    expect(t.parentAgentSchemaName).toBeUndefined();
+    for (const m of t.messages) {
+      expect(m.speakingAgent).toBeUndefined();
+    }
+  });
+});
+

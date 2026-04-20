@@ -92,6 +92,8 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: Trans
           knowledgeResponses={transcript.knowledgeResponses}
           knowledgeTrace={transcript.knowledgeTrace}
           advancedEvents={transcript.advancedEvents}
+          connectedAgentInvocations={transcript.connectedAgentInvocations}
+          parentAgentDisplayName={transcript.parentAgentDisplayName}
           activeMessageId={activeMessageId}
           onStepSelect={handleStepSelect}
         />

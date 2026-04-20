@@ -1615,3 +1615,127 @@ button, input, select, textarea {
   font-weight: 600;
   cursor: help;
 }
+
+/* ── Multi-agent (connected agents) ──────────────────────────────── */
+
+.agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--agent-accent, var(--text-color, #4f8cff));
+  margin-bottom: 4px;
+  padding: 2px 8px 2px 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--agent-accent, #4f8cff) 12%, transparent);
+  border: 1px solid color-mix(in srgb, var(--agent-accent, #4f8cff) 35%, transparent);
+  letter-spacing: 0.2px;
+  width: fit-content;
+}
+
+.agent-badge.from-parent {
+  opacity: 0.75;
+}
+
+.agent-badge-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--agent-accent, #4f8cff);
+  display: inline-block;
+}
+
+.agent-badge-tag {
+  font-size: 9px;
+  font-weight: 700;
+  text-transform: uppercase;
+  padding: 1px 5px;
+  border-radius: 4px;
+  background: var(--agent-accent, #4f8cff);
+  color: #fff;
+  letter-spacing: 0.5px;
+}
+
+.msg-bubble.bot.from-child {
+  border-left: 3px solid var(--agent-accent, #4f8cff);
+  padding-left: calc(12px - 3px);
+}
+
+.connected-agents-section {
+  margin: 10px 0 14px 0;
+  padding: 10px 12px;
+  border-radius: 6px;
+  background: color-mix(in srgb, currentColor 4%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.connected-agent-group {
+  margin-top: 8px;
+  padding: 8px 10px;
+  border-left: 3px solid var(--agent-accent, #4f8cff);
+  background: color-mix(in srgb, var(--agent-accent, #4f8cff) 6%, transparent);
+  border-radius: 0 6px 6px 0;
+}
+
+.connected-agent-group.connected-agent-linked {
+  background: color-mix(in srgb, var(--agent-accent, #4f8cff) 18%, transparent);
+  box-shadow: 0 0 0 1px var(--agent-accent, #4f8cff);
+}
+
+.connected-agent-header {
+  margin-bottom: 6px;
+}
+
+.connected-agent-flow {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.connected-agent-arrow {
+  opacity: 0.5;
+  font-weight: 400;
+}
+
+.agent-name.parent {
+  opacity: 0.85;
+}
+
+.agent-name.child {
+  font-weight: 700;
+}
+
+.connected-agent-thought {
+  margin-bottom: 6px;
+  font-style: italic;
+}
+
+.connected-agent-messages {
+  font-size: 11px;
+  margin-top: 4px;
+}
+
+.connected-agent-msg-link {
+  background: none;
+  border: 1px solid color-mix(in srgb, currentColor 25%, transparent);
+  border-radius: 4px;
+  padding: 1px 6px;
+  margin-left: 4px;
+  cursor: pointer;
+  font-size: 10px;
+  color: inherit;
+}
+
+.connected-agent-msg-link:hover {
+  background: color-mix(in srgb, currentColor 12%, transparent);
+}
+
+.connected-agents-hint {
+  margin-top: 8px;
+  font-size: 11px;
+  opacity: 0.7;
+}

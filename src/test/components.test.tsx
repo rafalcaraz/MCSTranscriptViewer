@@ -6,6 +6,7 @@ import {
   pvaStudioReactionsTranscript,
   knowledgeTranscript,
   advancedEventsTranscript,
+  multiAgentTranscript,
 } from "./fixtures/transcripts";
 
 // Mock the Power Apps SDK (not available in test environment)
@@ -287,5 +288,32 @@ describe("TranscriptDetail", () => {
     await renderDetail(transcript);
     expect(screen.getByText("Debug")).toBeDefined();
     expect(screen.getByText("Message Timeline")).toBeDefined();
+  });
+
+  it("does NOT render agent badges for single-agent transcripts", async () => {
+    const transcript = parseTranscript(basicMcpTranscript);
+    await renderDetail(transcript);
+    expect(screen.queryByText(/Connected Agents \(/)).toBeNull();
+    expect(document.querySelector(".agent-badge")).toBeNull();
+  });
+
+  it("renders connected-agent group, child badge and child-bubble accent for multi-agent transcripts", async () => {
+    const transcript = parseTranscript(multiAgentTranscript);
+    await renderDetail(transcript);
+
+    // Routing summary in the activity panel
+    expect(screen.getByText(/Connected Agents \(2 routings\)/)).toBeDefined();
+
+    // Both child agent names appear in some form somewhere in the page
+    expect(screen.getAllByText("Help Desk Agent").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Cybersecurity").length).toBeGreaterThan(0);
+
+    // Routing thoughts surfaced
+    expect(screen.getByText(/Routing to Help-Desk-Agent/)).toBeDefined();
+    expect(screen.getByText(/Cybersecurity specialist/)).toBeDefined();
+
+    // Child-bubble accent applied to the child messages
+    const childBubbles = document.querySelectorAll(".msg-bubble.bot.from-child");
+    expect(childBubbles.length).toBe(2);
   });
 });

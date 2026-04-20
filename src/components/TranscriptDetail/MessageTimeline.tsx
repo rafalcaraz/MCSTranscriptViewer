@@ -23,6 +23,26 @@ function attachmentItemTitle(item: AttachmentItem): string {
   return parts.join(" · ");
 }
 
+// Deterministic accent palette so the same agent gets the same color across re-renders.
+const AGENT_ACCENT_PALETTE = [
+  "#4f8cff", // blue
+  "#7d5fff", // purple
+  "#22c55e", // green
+  "#f59e0b", // amber
+  "#ec4899", // pink
+  "#14b8a6", // teal
+  "#ef4444", // red
+  "#a855f7", // violet
+];
+
+function agentAccent(schemaName: string): string {
+  let hash = 0;
+  for (let i = 0; i < schemaName.length; i++) {
+    hash = (hash * 31 + schemaName.charCodeAt(i)) | 0;
+  }
+  return AGENT_ACCENT_PALETTE[Math.abs(hash) % AGENT_ACCENT_PALETTE.length];
+}
+
 interface MessageTimelineProps {
   messages: ChatMessage[];
   reactions: Reaction[];
@@ -193,7 +213,21 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
               style={{ cursor: "pointer", opacity: matchesSearch ? 1 : 0.3, transition: "opacity 0.2s" }}
             >
               <div>
-                <div className={`msg-bubble ${msg.role} ${isActive ? "highlighted" : ""} ${isCurrentMatch ? "search-highlight" : ""}`}>
+                {msg.role === "bot" && msg.speakingAgent && (
+                  <div
+                    className={`agent-badge ${msg.speakingAgent.isChild ? "from-child" : "from-parent"}`}
+                    style={{ "--agent-accent": agentAccent(msg.speakingAgent.schemaName) } as React.CSSProperties}
+                    title={msg.speakingAgent.isChild ? `Child agent: ${msg.speakingAgent.schemaName}` : `Parent agent: ${msg.speakingAgent.schemaName}`}
+                  >
+                    <span className="agent-badge-dot" />
+                    {msg.speakingAgent.displayName}
+                    {msg.speakingAgent.isChild && <span className="agent-badge-tag">child</span>}
+                  </div>
+                )}
+                <div
+                  className={`msg-bubble ${msg.role} ${isActive ? "highlighted" : ""} ${isCurrentMatch ? "search-highlight" : ""} ${msg.speakingAgent?.isChild ? "from-child" : ""}`}
+                  style={msg.speakingAgent?.isChild ? ({ "--agent-accent": agentAccent(msg.speakingAgent.schemaName) } as React.CSSProperties) : undefined}
+                >
                   {renderMessageContent(msg)}
                   {msg.attachmentSummary && msg.attachmentSummary.kind !== "card" && (
                     <div className="msg-attachments">

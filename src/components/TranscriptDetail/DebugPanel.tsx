@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo, AdvancedEvent } from "../../types/transcript";
+import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo, AdvancedEvent, ConnectedAgentInvocation } from "../../types/transcript";
 import { shortToolName, formatTimestamp } from "../../utils/parseTranscript";
 
 interface DebugPanelProps {
@@ -10,8 +10,24 @@ interface DebugPanelProps {
   knowledgeResponses: KnowledgeResponse[];
   knowledgeTrace?: KnowledgeTraceInfo;
   advancedEvents: AdvancedEvent[];
+  connectedAgentInvocations?: ConnectedAgentInvocation[];
+  parentAgentDisplayName?: string;
   activeMessageId: string | null;
   onStepSelect: (replyToId: string | undefined) => void;
+}
+
+// Deterministic accent palette (mirrors MessageTimeline so the same agent gets the same color).
+const AGENT_ACCENT_PALETTE = [
+  "#4f8cff", "#7d5fff", "#22c55e", "#f59e0b",
+  "#ec4899", "#14b8a6", "#ef4444", "#a855f7",
+];
+
+function agentAccentInline(schemaName: string): string {
+  let hash = 0;
+  for (let i = 0; i < schemaName.length; i++) {
+    hash = (hash * 31 + schemaName.charCodeAt(i)) | 0;
+  }
+  return AGENT_ACCENT_PALETTE[Math.abs(hash) % AGENT_ACCENT_PALETTE.length];
 }
 
 // Unified timeline item for interleaved display
@@ -25,7 +41,7 @@ interface TimelineItem {
   advancedEvent?: AdvancedEvent;
 }
 
-export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, advancedEvents, activeMessageId, onStepSelect }: DebugPanelProps) {
+export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, advancedEvents, connectedAgentInvocations, parentAgentDisplayName, activeMessageId, onStepSelect }: DebugPanelProps) {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<string>>(new Set());
   const [advancedMode, setAdvancedMode] = useState(false);
@@ -285,6 +301,63 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
             {knowledgeTrace.failedKnowledgeSourcesTypes.length > 0 && (
               <div className="knowledge-label" style={{ color: "#c4314b" }}>
                 ❌ Failed: {knowledgeTrace.failedKnowledgeSourcesTypes.join(", ")}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Connected Agent Routing */}
+        {connectedAgentInvocations && connectedAgentInvocations.length > 0 && (
+          <div className="connected-agents-section">
+            <div className="section-label">
+              🔗 Connected Agents ({connectedAgentInvocations.length} routing{connectedAgentInvocations.length === 1 ? "" : "s"})
+            </div>
+            {connectedAgentInvocations.map((inv, i) => {
+              const isLinked = activeMessageId != null && inv.messageIds.includes(activeMessageId);
+              return (
+                <div
+                  key={`inv-${i}`}
+                  className={`connected-agent-group ${isLinked ? "connected-agent-linked" : ""}`}
+                  style={{ "--agent-accent": agentAccentInline(inv.childSchemaName) } as React.CSSProperties}
+                >
+                  <div className="connected-agent-header">
+                    <span className="connected-agent-flow">
+                      <span className="agent-name parent">{inv.parentDisplayName}</span>
+                      <span className="connected-agent-arrow">→</span>
+                      <span className="agent-name child" style={{ color: agentAccentInline(inv.childSchemaName) }}>
+                        {inv.childDisplayName}
+                      </span>
+                      <span className="connected-agent-arrow">↩</span>
+                      <span className="agent-name parent">{inv.parentDisplayName}</span>
+                    </span>
+                  </div>
+                  {inv.thought && (
+                    <>
+                      <div className="step-section-label">🧠 Routing thought</div>
+                      <div className="thought-box connected-agent-thought">{inv.thought}</div>
+                    </>
+                  )}
+                  {inv.messageIds.length > 0 && (
+                    <div className="connected-agent-messages">
+                      <span className="step-section-label" style={{ display: "inline" }}>💬 Replied:</span>{" "}
+                      {inv.messageIds.map((mid) => (
+                        <button
+                          key={mid}
+                          className="connected-agent-msg-link"
+                          onClick={() => onStepSelect(mid)}
+                          title="Jump to message"
+                        >
+                          jump
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+            {parentAgentDisplayName && (
+              <div className="connected-agents-hint">
+                Parent: <strong>{parentAgentDisplayName}</strong>
               </div>
             )}
           </div>

@@ -261,3 +261,44 @@ export const newAdvancedEventsTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+
+/**
+ * Multi-agent transcript: parent (MainITAgent) calls 2 different connected
+ * children (HelpDeskAgent, then Cybersecurity). Includes a `thought` on the
+ * second child's plan step and a signin/failure invoke inside the 2nd child window.
+ */
+export const multiAgentTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-multi-agent-001",
+  name: "test_multi_agent",
+  createdon: "2026-04-20T18:43:16Z",
+  conversationstarttime: "2026-04-20T18:08:23Z",
+  metadata: '{"BotId":"main-it-agent","AADTenantId":"tenant-test","BotName":"msftcsa_MainITAgent","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1776708500, from: { id: "", role: 0 }, value: { lastSessionOutcome: "Resolved", lastSessionOutcomeReason: "Resolved", isDesignMode: false, locale: "en-US" } },
+      // Parent greets
+      { id: "msg-parent-greet", type: "message", timestamp: 1776708510, from: { id: "parent-bot", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "Hello, I'm Main IT Agent. How can I help?", attachments: [] },
+      // User asks about ticketing -> routed to HelpDesk
+      { id: "msg-user-1", type: "message", timestamp: 1776708630, from: { id: "user-1", aadObjectId: "aad-user-multi", role: 1 }, channelId: "msteams", textFormat: "plain", text: "I have an issue with my ticketing system", attachments: [] },
+      { valueType: "DynamicPlanStepTriggered", type: "event", timestamp: 1776708635, from: { id: "parent-bot", role: 0 }, name: "DynamicPlanStepTriggered", channelId: "msteams", attachments: [], replyToId: "msg-user-1", value: { planIdentifier: "plan-1", stepId: "step-helpdesk", taskDialogId: "msftcsa_MainITAgent.InvokeConnectedAgentTaskAction.HelpDeskAgent", thought: "Issue with ticketing system. Routing to Help-Desk-Agent.", state: 1, type: "Action" } },
+      { valueType: "ConnectedAgentInitializeTraceData", type: "event", timestamp: 1776708635, from: { id: "parent-bot", role: 0 }, name: "ConnectedAgentInitializeTraceData", channelId: "msteams", attachments: [], value: { conversationId: "c1", sessionId: "s1", channelId: "msteams", userId: "u1", planStepId: "step-helpdesk", botSchemaName: "msftcsa_HelpDeskAgent", parentBotSchemaName: "msftcsa_MainITAgent", dialogSchemaName: "msftcsa_MainITAgent.InvokeConnectedAgentTaskAction.HelpDeskAgent" } },
+      // Child speaks (HelpDesk)
+      { id: "msg-helpdesk-1", type: "message", timestamp: 1776708640, from: { id: "parent-bot", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "You're now connected with the Help Desk Agent! Please describe your issue.", attachments: [] },
+      { valueType: "ConnectedAgentCompletedTraceData", type: "event", timestamp: 1776708645, from: { id: "parent-bot", role: 0 }, name: "ConnectedAgentCompletedTraceData", channelId: "msteams", attachments: [], value: { parentBotSchemaName: "msftcsa_MainITAgent", connectedAgentBotSchemaName: "msftcsa_HelpDeskAgent" } },
+      // Parent message after child returns
+      { id: "msg-parent-2", type: "message", timestamp: 1776708650, from: { id: "parent-bot", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "Anything else I can help with?", attachments: [] },
+      // User asks about cybersecurity -> routed to Cybersecurity child (with signin/failure inside)
+      { id: "msg-user-2", type: "message", timestamp: 1776708720, from: { id: "user-1", aadObjectId: "aad-user-multi", role: 1 }, channelId: "msteams", textFormat: "plain", text: "I am dealing with authentication and authorization issues", attachments: [] },
+      { valueType: "DynamicPlanStepTriggered", type: "event", timestamp: 1776708725, from: { id: "parent-bot", role: 0 }, name: "DynamicPlanStepTriggered", channelId: "msteams", attachments: [], replyToId: "msg-user-2", value: { planIdentifier: "plan-2", stepId: "step-cyber", taskDialogId: "msftcsa_MainITAgent.InvokeConnectedAgentTaskAction.Cybersecurity", thought: "Authentication issues. Routing to Cybersecurity specialist.", state: 1, type: "Action" } },
+      { valueType: "ConnectedAgentInitializeTraceData", type: "event", timestamp: 1776708725, from: { id: "parent-bot", role: 0 }, name: "ConnectedAgentInitializeTraceData", channelId: "msteams", attachments: [], value: { conversationId: "c1", sessionId: "s2", channelId: "msteams", userId: "u1", planStepId: "step-cyber", botSchemaName: "msftcsa_Cybersecurity", parentBotSchemaName: "msftcsa_MainITAgent", dialogSchemaName: "msftcsa_MainITAgent.InvokeConnectedAgentTaskAction.Cybersecurity" } },
+      // signin/failure mid-child
+      { id: "inv-fail", type: "invoke", timestamp: 1776708730, from: { id: "user-1", aadObjectId: "aad-user-multi", role: 1 }, name: "signin/failure", channelId: "msteams", attachments: [], value: { code: "invokeerror", message: "Invoke error occurred" } },
+      { id: "msg-cyber-1", type: "message", timestamp: 1776708780, from: { id: "parent-bot", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "Here's a comprehensive guide to troubleshoot your auth issues.", attachments: [] },
+      { valueType: "ConnectedAgentCompletedTraceData", type: "event", timestamp: 1776708785, from: { id: "parent-bot", role: 0 }, name: "ConnectedAgentCompletedTraceData", channelId: "msteams", attachments: [], value: { parentBotSchemaName: "msftcsa_MainITAgent", connectedAgentBotSchemaName: "msftcsa_Cybersecurity" } },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776708790, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-20T18:08:23Z", endTimeUtc: "2026-04-20T18:13:10Z", type: "Engaged", outcome: "Resolved", turnCount: 4, impliedSuccess: true, outcomeReason: "Resolved" } },
+    ],
+  }),
+};
+

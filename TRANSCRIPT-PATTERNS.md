@@ -26,11 +26,11 @@ When a new transcript file is shared, run this checklist:
 **All Known Trace ValueTypes (19):**
 `ConversationInfo`, `SessionInfo`, `ErrorTraceData`, `VariableAssignment`, `DialogRedirect`, `UnknownIntent`, `GPTAnswer`, `HandOff`, `EscalationRequested`, `KnowledgeTraceData`, `IntentRecognition`, `NodeTraceData`, `IntentCandidates`, `CSATSurveyRequest`, `CSATSurveyResponse`, `PRRSurveyRequest`, `PRRSurveyResponse`, `ImpliedSuccess`, `DynamicPlanFinished`
 
-**All Known Event Names (30+):**
-`DialogTracing`, `startConversation`, `DynamicServerInitialize`, `DynamicServerInitializeConfirmation`, `DynamicServerToolsList`, `DynamicServerCancellation`, `DynamicServerError`, `DynamicPlanReceived`, `DynamicPlanReceivedDebug`, `DynamicPlanStepTriggered`, `DynamicPlanStepBindUpdate`, `DynamicPlanStepFinished`, `DynamicPlanFinished`, `DynamicPlanStepBlocked`, `UniversalSearchToolTraceData`, `ResponseGeneratorSupportData`, `GenerativeAnswersSupportData`, `connectors/consentCard`, `connectors/connectionManagerCard`, `pvaSetContext`, `TEST-Clear-State`, `webchat/join`, `SidePaneAgent.InitializeContext`, `ProtocolInfo`, `Microsoft.PowerApps.Copilot.CopilotFeatures`, `Microsoft.PowerApps.Copilot.SetCanvasEntityContext`, `Microsoft.PowerApps.Copilot.ResetConversation`, `Microsoft.PowerApps.Copilot.SetModelFCSContext`, `AIBuilderTraceData`, `MS.PA.CopilotFeatures`, `MS.PA.DVCopilot`
+**All Known Event Names (32+):**
+`DialogTracing`, `startConversation`, `DynamicServerInitialize`, `DynamicServerInitializeConfirmation`, `DynamicServerToolsList`, `DynamicServerCancellation`, `DynamicServerError`, `DynamicPlanReceived`, `DynamicPlanReceivedDebug`, `DynamicPlanStepTriggered`, `DynamicPlanStepBindUpdate`, `DynamicPlanStepFinished`, `DynamicPlanFinished`, `DynamicPlanStepBlocked`, `UniversalSearchToolTraceData`, `ResponseGeneratorSupportData`, `GenerativeAnswersSupportData`, `ConnectedAgentInitializeTraceData`, `ConnectedAgentCompletedTraceData`, `connectors/consentCard`, `connectors/connectionManagerCard`, `pvaSetContext`, `TEST-Clear-State`, `webchat/join`, `SidePaneAgent.InitializeContext`, `ProtocolInfo`, `Microsoft.PowerApps.Copilot.CopilotFeatures`, `Microsoft.PowerApps.Copilot.SetCanvasEntityContext`, `Microsoft.PowerApps.Copilot.ResetConversation`, `Microsoft.PowerApps.Copilot.SetModelFCSContext`, `AIBuilderTraceData`, `MS.PA.CopilotFeatures`, `MS.PA.DVCopilot`
 
-**All Known Invoke Names (2):**
-`signin/tokenExchange`, `message/submitAction`
+**All Known Invoke Names (3):**
+`signin/tokenExchange`, `signin/failure`, `message/submitAction`
 
 **All Known ChannelData Keys (28):**
 `feedbackLoop`, `testMode`, `enableDiagnostics`, `triggerTest`, `postBack`, `clientActivityID`, `attachmentSizes`, `source`, `tenant`, `legacy`, `settings`, `cci_trace_id`, `correlationId`, `pva:gpt-feedback`, `answersUrl1`, `answersUrl2`, `answersUrl3`, `answersUrl4`, `DialogTraceDetail`, `CurrentMessageDetail`, `DialogErrorDetail`, `ConversationUnderstandingDetail`, `VariableDetail`, `traceHistory`, `appId`, `userAgent`, `clientRequestId`, `SetCanvasEntityContext`
@@ -41,22 +41,25 @@ When a new transcript file is shared, run this checklist:
 **All Known Error Codes (3):**
 `ConnectorRequestFailure`, `SystemError`, `ConsentNotProvidedByUser`
 
-**All Known Attachment ContentTypes (2):**
-`application/vnd.microsoft.card.adaptive`, `application/vnd.microsoft.card.oauth`
+**All Known Attachment ContentTypes (3):**
+`application/vnd.microsoft.card.adaptive`, `application/vnd.microsoft.card.oauth`, `image/png`
 
 **All Known Session Outcomes (5):**
 `Resolved`, `Abandoned`, `None`, `Escalated`, `HandOff`
 
-**All Known Outcome Reasons (4):**
-`UserExit`, `NoError`, `Resolved`, `UserError`
+**All Known Outcome Reasons (5):**
+`UserExit`, `NoError`, `Resolved`, `UserError`, `SystemError`
 
 **All Known taskDialogId Formats:**
 - `MCP:{schema}.topic:{toolName}` — MCP server tools
 - `P:UniversalSearchTool` — built-in knowledge search
 - `{agent_schema}.action.{Connector}-{ActionName}` — connector actions (e.g. `agent.action.Office365Outlook-SendanemailV2`)
+- `{parent_schema}.InvokeConnectedAgentTaskAction.{Child}` — parent agent invoking a connected child agent
 
-**All Known DynamicPlanStepTriggered `type` values (2 observed):**
-`KnowledgeSource`, `LlmSkill`
+**All Known DynamicPlanStepTriggered `type` values (3 observed):**
+`KnowledgeSource`, `LlmSkill`, `Action`
+
+> Plan steps may also include a `thought` field — the planner's English-language explanation of *why* it picked this step (e.g. "Routing to Help-Desk-Agent because the user reported a ticketing issue.").
 
 **All Known Plan Step `state` values:**
 - Numeric: `1` (triggered/in-progress)
@@ -1067,6 +1070,53 @@ Connection management UI (different from consent).
 }
 ```
 **Frequency:** 72x in research dataset. OAuth token exchange.
+
+---
+
+## 15.5 Multi-Agent (Connected Agents) Pattern
+
+A Copilot Studio agent can be configured to call **other full agents** as connected (child) agents. The parent's planner picks a child to handle a turn, the child runs and produces messages, then control returns to the parent.
+
+**Identifying signals:**
+- Presence of `ConnectedAgentInitializeTraceData` events in the timeline
+- A matching `ConnectedAgentCompletedTraceData` event later (same `planStepId`)
+- A `DynamicPlanStepTriggered` with `type: "Action"` and `taskDialogId` of the form `{parent}.InvokeConnectedAgentTaskAction.{Child}` whose `value.thought` describes the routing rationale
+
+**Critical caveat:**
+> **All bot messages share the parent's `from.id`.** The `from` field on a message activity is **not** reliable for identifying *which* agent (parent vs. child) actually spoke. The speaking child must be **inferred from timeline position** — any bot message whose timestamp falls between an `Initialize`/`Completed` pair was spoken by that child.
+
+**Trace value shape (`ConnectedAgentInitializeTraceData`):**
+```json
+{
+  "valueType": "ConnectedAgentInitializeTraceData",
+  "value": {
+    "botSchemaName": "msftcsa_HelpDeskAgent",
+    "parentBotSchemaName": "msftcsa_MainITAgent",
+    "planStepId": "step-uuid-…"
+  }
+}
+```
+
+**Plan step shape (linkable via `planStepId`):**
+```json
+{
+  "name": "DynamicPlanStepTriggered",
+  "value": {
+    "stepId": "step-uuid-…",
+    "type": "Action",
+    "taskDialogId": "msftcsa_MainITAgent.InvokeConnectedAgentTaskAction.HelpDeskAgent",
+    "thought": "Routing to Help-Desk-Agent because the user reported a ticketing-system issue."
+  }
+}
+```
+
+**Nesting:** Treat invocations as a stack — children may theoretically invoke grandchildren (not yet seen in the wild but the parser supports it).
+
+**Errors inside a child window** (e.g. `signin/failure` invokes) belong to that child, not the parent.
+
+**Display:**
+- The viewer's **right panel** shows a small agent-name badge above each bot bubble (parent vs. child + accent color from a deterministic `schemaName → palette` hash); child bubbles get a left-border accent.
+- The viewer's **left panel** ("Agent Activity") shows a "Connected Agents" routing summary listing each invocation in order, with the parent → child → parent flow and the planner's `thought`.
 
 ---
 

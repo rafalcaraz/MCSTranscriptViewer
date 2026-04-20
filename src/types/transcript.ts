@@ -116,6 +116,22 @@ export interface AttachmentSummary {
   items: AttachmentItem[];
 }
 
+/**
+ * Identity of the agent that authored a bot message.
+ * In multi-agent (connected agent) transcripts, all bot messages share the
+ * parent agent's `from.id`. We infer the actual speaker by tracking
+ * ConnectedAgentInitializeTraceData / ConnectedAgentCompletedTraceData
+ * boundaries and tagging each bot message with the topmost active agent.
+ */
+export interface SpeakingAgent {
+  /** Raw schema name, e.g. "msftcsa_HelpDeskAgent" */
+  schemaName: string;
+  /** Pretty display name, e.g. "Help Desk Agent" */
+  displayName: string;
+  /** True if this is a connected child agent; false if it is the root parent */
+  isChild: boolean;
+}
+
 export interface ChatMessage {
   id: string;
   timestamp: number;
@@ -126,6 +142,8 @@ export interface ChatMessage {
   replyToId?: string;
   attachments?: MessageAttachment[];
   attachmentSummary?: AttachmentSummary;
+  /** For bot messages in multi-agent transcripts, identifies the speaking agent. */
+  speakingAgent?: SpeakingAgent;
 }
 
 export interface DialogTrace {
@@ -176,6 +194,33 @@ export interface KnowledgeResponse {
   completionState: string;
   citations: { id: string; text: string }[];
   replyToId?: string;
+}
+
+/**
+ * One invocation of a connected (child) agent by a parent agent.
+ * Built from a matching pair of ConnectedAgentInitializeTraceData /
+ * ConnectedAgentCompletedTraceData events, linked back to the
+ * triggering DynamicPlanStepTriggered (via planStepId) for the `thought`.
+ */
+export interface ConnectedAgentInvocation {
+  /** Raw schema name of the parent agent (e.g. "msftcsa_MainITAgent") */
+  parentSchemaName: string;
+  /** Raw schema name of the child agent (e.g. "msftcsa_HelpDeskAgent") */
+  childSchemaName: string;
+  /** Pretty display name for the child agent */
+  childDisplayName: string;
+  /** Pretty display name for the parent agent */
+  parentDisplayName: string;
+  /** planStepId from the triggering DynamicPlanStepTriggered, when known */
+  planStepId?: string;
+  /** Planner's reasoning for choosing this child, when present */
+  thought?: string;
+  /** Timestamp of the Initialize event */
+  startTimestamp: number;
+  /** Timestamp of the Completed event (or last event in window if missing) */
+  endTimestamp: number;
+  /** Ids of bot ChatMessages that fall within this invocation window */
+  messageIds: string[];
 }
 
 export interface KnowledgeTraceInfo {
@@ -285,4 +330,10 @@ export interface ParsedTranscript {
   dislikeCount: number;
   /** Number of user-sent messages that contained a non-card attachment (paste/upload/file). */
   userAttachmentCount: number;
+  /** All connected-agent invocations, in chronological order. Empty for single-agent transcripts. */
+  connectedAgentInvocations: ConnectedAgentInvocation[];
+  /** Pretty display name for the root/parent agent, when known (from connected-agent traces). */
+  parentAgentDisplayName?: string;
+  /** Raw schema name for the root/parent agent, when known. */
+  parentAgentSchemaName?: string;
 }
