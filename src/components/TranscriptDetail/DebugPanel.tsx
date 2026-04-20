@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo, AdvancedEvent, ConnectedAgentInvocation } from "../../types/transcript";
+import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo, AdvancedEvent, ConnectedAgentInvocation, ParsedTranscript } from "../../types/transcript";
 import { shortToolName, formatTimestamp } from "../../utils/parseTranscript";
 
 interface DebugPanelProps {
@@ -14,6 +14,9 @@ interface DebugPanelProps {
   parentAgentDisplayName?: string;
   activeMessageId: string | null;
   onStepSelect: (replyToId: string | undefined) => void;
+  /** Map keyed `${childSchemaName}__${startTimestamp}` → matched child transcript, when one is loaded. */
+  childTranscriptLookup?: Map<string, ParsedTranscript>;
+  onOpenTranscript?: (transcriptId: string) => void;
 }
 
 // Deterministic accent palette (mirrors MessageTimeline so the same agent gets the same color).
@@ -41,7 +44,7 @@ interface TimelineItem {
   advancedEvent?: AdvancedEvent;
 }
 
-export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, advancedEvents, connectedAgentInvocations, parentAgentDisplayName, activeMessageId, onStepSelect }: DebugPanelProps) {
+export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, advancedEvents, connectedAgentInvocations, parentAgentDisplayName, activeMessageId, onStepSelect, childTranscriptLookup, onOpenTranscript }: DebugPanelProps) {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<string>>(new Set());
   const [advancedMode, setAdvancedMode] = useState(false);
@@ -314,6 +317,8 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
             </div>
             {connectedAgentInvocations.map((inv, i) => {
               const isLinked = activeMessageId != null && inv.messageIds.includes(activeMessageId);
+              const childMatchKey = `${inv.childSchemaName}__${inv.startTimestamp}`;
+              const childMatch = childTranscriptLookup?.get(childMatchKey);
               return (
                 <div
                   key={`inv-${i}`}
@@ -331,6 +336,15 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
                       <span className="agent-name parent">{inv.parentDisplayName}</span>
                     </span>
                   </div>
+                  {childMatch && onOpenTranscript && (
+                    <button
+                      className="connected-agent-child-link"
+                      onClick={() => onOpenTranscript(childMatch.conversationtranscriptid)}
+                      title={`Open ${inv.childDisplayName}'s side of this conversation (transcript ${childMatch.conversationtranscriptid})`}
+                    >
+                      View {inv.childDisplayName}'s side →
+                    </button>
+                  )}
                   {inv.thought && (
                     <>
                       <div className="step-section-label">🧠 Routing thought</div>

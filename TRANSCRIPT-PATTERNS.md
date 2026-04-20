@@ -1133,6 +1133,12 @@ A transcript is a connected agent session iff its `metadata.BotName` appears as 
 
 **Filtering:** the viewer ships a "Hide connected agent sessions" toggle (default ON) that drops these transcripts from the list, so by default users see only the parent-perspective conversation. A `🔗 child` badge appears next to the agent name on rows that are connected agent sessions (visible whenever the toggle is off, or when no parent in the loaded set has invoked them yet).
 
+**Cross-transcript navigation (Phase 2):** when both sides are loaded, the viewer wires up two-way links between them:
+- **From a parent's invocation card:** a "View {child}'s side →" button opens the child-side transcript.
+- **From a child-side detail view:** a banner at the top reads "🔗 This is a connected agent session — Open parent conversation ↑" linking back to the parent.
+
+Matching is heuristic (no Dataverse FK exists): same `userAadObjectId` + child's `metadata.botName` matches the invocation's `childSchemaName` + start timestamps within ±10 minutes. Closest timestamp wins. Links only appear when a confident match is found in the currently-loaded set.
+
 ---
 
 ## 16. Unhandled / Future Patterns

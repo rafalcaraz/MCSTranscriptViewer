@@ -1774,4 +1774,65 @@ button, input, select, textarea {
 .filter-toggle input[type="checkbox"] {
   cursor: pointer;
   margin: 0;
+  min-width: 0;
+  width: auto;
+  padding: 0;
+  border: none;
+  background: transparent;
+}
+
+/* ---- Connected agent cross-transcript navigation (Phase 2) ---- */
+
+.connected-agent-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 14px;
+  margin: 8px 0 0;
+  background: color-mix(in srgb, var(--accent-primary, #4f8cff) 8%, var(--bg-primary));
+  border: 1px solid color-mix(in srgb, var(--accent-primary, #4f8cff) 35%, transparent);
+  border-left: 3px solid var(--accent-primary, #4f8cff);
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text-primary);
+}
+
+.connected-agent-banner-icon {
+  font-size: 16px;
+}
+
+.connected-agent-banner-link {
+  margin-left: auto;
+  background: var(--accent-primary, #4f8cff);
+  color: #fff;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 5px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.connected-agent-banner-link:hover {
+  filter: brightness(1.1);
+}
+
+.connected-agent-child-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-top: 6px;
+  padding: 4px 10px;
+  background: transparent;
+  border: 1px solid var(--agent-accent, var(--accent-primary, #4f8cff));
+  color: var(--agent-accent, var(--accent-primary, #4f8cff));
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.connected-agent-child-link:hover {
+  background: color-mix(in srgb, var(--agent-accent, #4f8cff) 12%, transparent);
 }

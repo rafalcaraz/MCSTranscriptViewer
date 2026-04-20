@@ -5,6 +5,7 @@ import { MessageTimeline } from "./MessageTimeline";
 import { DebugPanel } from "./DebugPanel";
 import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTranscript";
 import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
+import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
 
 const TYPE_BADGE: Record<TranscriptType, { icon: string; label: string }> = {
   chat: { icon: "💬", label: "Chat" },
@@ -17,9 +18,12 @@ interface TranscriptDetailProps {
   transcript: ParsedTranscript;
   onBack: () => void;
   onOpenTranscript?: (transcriptId: string) => void;
+  /** All transcripts currently loaded in the list — used to resolve cross-transcript navigation
+   *  (parent ↔ child connected-agent links). Pass empty/omit to disable navigation. */
+  allLoadedTranscripts?: ParsedTranscript[];
 }
 
-export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: TranscriptDetailProps) {
+export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoadedTranscripts = [] }: TranscriptDetailProps) {
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
 
   // Resolve display names for export
@@ -32,6 +36,23 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: Trans
 
   const agentDisplayName = getBotName(transcript.metadata.botName, transcript.metadata.botId) || undefined;
   const userDisplayName = getUserName(transcript.userAadObjectId) || undefined;
+
+  // Cross-transcript matching for connected-agent navigation.
+  // - parentMatch: this transcript IS the child side; show "Open parent" link in the header.
+  // - childLookup: this transcript IS the parent; per-invocation lookup powers the "View child's side" link.
+  const parentMatch = useMemo(
+    () => findParentTranscript(transcript, allLoadedTranscripts),
+    [transcript, allLoadedTranscripts]
+  );
+  const childLookup = useMemo(() => {
+    const map = new Map<string, ParsedTranscript>();
+    for (const inv of transcript.connectedAgentInvocations) {
+      const key = `${inv.childSchemaName}__${inv.startTimestamp}`;
+      const match = findChildTranscript(transcript, inv, allLoadedTranscripts);
+      if (match) map.set(key, match);
+    }
+    return map;
+  }, [transcript, allLoadedTranscripts]);
 
   // Click a message → highlight linked plan steps
   const handleMessageSelect = (messageId: string) => {
@@ -81,6 +102,23 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: Trans
         </div>
       </div>
 
+      {parentMatch && onOpenTranscript && (
+        <div className="connected-agent-banner">
+          <span className="connected-agent-banner-icon">🔗</span>
+          <span>
+            This is a <strong>connected agent session</strong> — the child-side view of a conversation
+            invoked by <strong>{parentMatch.invocation.parentDisplayName}</strong>.
+          </span>
+          <button
+            className="connected-agent-banner-link"
+            onClick={() => onOpenTranscript(parentMatch.parent.conversationtranscriptid)}
+            title="Switch to the parent agent's transcript"
+          >
+            Open parent conversation ↑
+          </button>
+        </div>
+      )}
+
       <GeneralInfo transcript={transcript} />
 
       <div className="detail-panels">
@@ -96,6 +134,8 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript }: Trans
           parentAgentDisplayName={transcript.parentAgentDisplayName}
           activeMessageId={activeMessageId}
           onStepSelect={handleStepSelect}
+          childTranscriptLookup={childLookup}
+          onOpenTranscript={onOpenTranscript}
         />
         <MessageTimeline
           messages={transcript.messages}

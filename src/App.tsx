@@ -65,6 +65,7 @@ function App() {
           transcript={transcript}
           onBack={handleBack}
           onOpenTranscript={handleSelect}
+          allLoadedTranscripts={transcripts}
         />
       );
     }
