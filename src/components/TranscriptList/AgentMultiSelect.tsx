@@ -92,12 +92,16 @@ export function AgentMultiSelect({ agents, selectedSchemaNames, onChange }: Agen
                     checked={isSelected}
                     onChange={() => toggle(agent.schemaName)}
                   />
-                  <span className="agent-multiselect-name">
-                    {agent.displayName || agent.schemaName}
+                  <span className="agent-multiselect-text">
+                    <span className="agent-multiselect-name">
+                      {agent.displayName || agent.schemaName}
+                    </span>
+                    {agent.displayName && agent.displayName !== agent.schemaName && (
+                      <span className="agent-multiselect-schema" title={agent.schemaName}>
+                        {agent.schemaName}
+                      </span>
+                    )}
                   </span>
-                  {agent.displayName && agent.displayName !== agent.schemaName && (
-                    <span className="agent-multiselect-schema">{agent.schemaName}</span>
-                  )}
                 </label>
               );
             })}
