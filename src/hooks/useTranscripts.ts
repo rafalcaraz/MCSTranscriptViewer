@@ -8,6 +8,7 @@ export interface TranscriptFilters {
   dateFrom?: string;
   dateTo?: string;
   contentSearch?: string;
+  participantAadId?: string;
   pageSize: number;
 }
 
@@ -47,6 +48,12 @@ function buildODataFilter(filters: TranscriptFilters): string | undefined {
   }
   if (filters.contentSearch?.trim()) {
     clauses.push(`contains(content,'${escapeOData(filters.contentSearch.trim())}')`);
+  }
+  if (filters.participantAadId?.trim()) {
+    // Coarse server-side pre-filter: any transcript whose JSON content mentions
+    // this AAD object ID. The list view applies a strict client-side
+    // `isParticipant` check on top to drop non-participant matches.
+    clauses.push(`contains(content,'${escapeOData(filters.participantAadId.trim())}')`);
   }
 
   return clauses.length > 0 ? clauses.join(" and ") : undefined;

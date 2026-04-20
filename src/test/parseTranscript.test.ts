@@ -449,3 +449,42 @@ describe("parseTranscript — new advanced events", () => {
     expect(parsed.channelId).toBe("msteams");
   });
 });
+
+
+// ── isParticipant helper ──────────────────────────────────────────────
+
+describe("isParticipant", () => {
+  it("returns true when AAD ID matches the resolved userAadObjectId", async () => {
+    const { isParticipant } = await import("../utils/parseTranscript");
+    const t = parseTranscript(basicMcpTranscript);
+    expect(t.userAadObjectId).toBe("aad-user-123");
+    expect(isParticipant(t, "aad-user-123")).toBe(true);
+  });
+
+  it("is case-insensitive", async () => {
+    const { isParticipant } = await import("../utils/parseTranscript");
+    const t = parseTranscript(basicMcpTranscript);
+    expect(isParticipant(t, "AAD-User-123")).toBe(true);
+  });
+
+  it("returns false when AAD ID is unrelated", async () => {
+    const { isParticipant } = await import("../utils/parseTranscript");
+    const t = parseTranscript(basicMcpTranscript);
+    expect(isParticipant(t, "some-other-guid")).toBe(false);
+  });
+
+  it("returns true when AAD ID matches a user-role message author", async () => {
+    const { isParticipant } = await import("../utils/parseTranscript");
+    const t = parseTranscript(basicMcpTranscript);
+    // basicMcpTranscript user message author is aad-user-123
+    expect(isParticipant(t, "aad-user-123")).toBe(true);
+  });
+
+  it("returns false when AAD ID only matches a non-participant role", async () => {
+    // Synthesize a transcript where the GUID appears as a bot/from id but never as a user participant.
+    const { isParticipant } = await import("../utils/parseTranscript");
+    const t = parseTranscript(basicMcpTranscript);
+    // Bot ids in basicMcpTranscript are "bot-xyz" with no aadObjectId set
+    expect(isParticipant(t, "bot-xyz")).toBe(false);
+  });
+});

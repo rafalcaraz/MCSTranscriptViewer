@@ -1,6 +1,6 @@
 import { useMemo, useEffect, useRef, useCallback } from "react";
 import type { ParsedTranscript, TranscriptType } from "../../types/transcript";
-import { formatDuration } from "../../utils/parseTranscript";
+import { formatDuration, isParticipant } from "../../utils/parseTranscript";
 import { searchTranscripts, type ContentSearchOptions } from "../../hooks/useTranscripts";
 import { useBotLookup, useUserDisplayNames, type BotInfo } from "../../hooks/useLookups";
 import { UserSearch } from "./UserSearch";
@@ -28,7 +28,7 @@ interface TranscriptListProps {
   totalLoaded: number;
   onSelect: (id: string) => void;
   onLoadMore: () => void;
-  onFiltersChange: (filters: { dateFrom?: string; dateTo?: string; contentSearch?: string }) => void;
+  onFiltersChange: (filters: { dateFrom?: string; dateTo?: string; contentSearch?: string; participantAadId?: string }) => void;
   filterState: ListFilterState;
   onFilterStateChange: (state: ListFilterState) => void;
   accessibleBots: BotInfo[];
@@ -52,11 +52,25 @@ export function TranscriptList({
   const update = (patch: Partial<ListFilterState>) => setF({ ...f, ...patch });
 
   const handleUserSelect = (user: AadUser) => {
-    update({ serverSearchInput: user.objectId, serverSearch: user.objectId, userSearchQuery: `${user.displayname} (${user.mail})` });
+    update({
+      participantAadId: user.objectId,
+      userSearchQuery: `${user.displayname} (${user.mail})`,
+    });
     onFiltersChange({
       dateFrom: f.dateFrom || undefined,
       dateTo: f.dateTo || undefined,
-      contentSearch: user.objectId,
+      contentSearch: f.serverSearch || undefined,
+      participantAadId: user.objectId,
+    });
+  };
+
+  const clearParticipant = () => {
+    update({ participantAadId: "", userSearchQuery: "" });
+    onFiltersChange({
+      dateFrom: f.dateFrom || undefined,
+      dateTo: f.dateTo || undefined,
+      contentSearch: f.serverSearch || undefined,
+      participantAadId: undefined,
     });
   };
 
@@ -66,6 +80,7 @@ export function TranscriptList({
       dateFrom: f.dateFrom || undefined,
       dateTo: f.dateTo || undefined,
       contentSearch: f.serverSearchInput || undefined,
+      participantAadId: f.participantAadId || undefined,
     });
   };
 
@@ -107,13 +122,21 @@ export function TranscriptList({
       results = results.filter((t) => t.turnCount >= minTurns);
     }
 
+    // Strict participant filter: drop transcripts where the AAD GUID was only
+    // matched as a substring in content (e.g. as a reaction author from a
+    // different identity) rather than the actual conversation participant.
+    if (f.participantAadId) {
+      const aadId = f.participantAadId;
+      results = results.filter((t) => isParticipant(t, aadId));
+    }
+
     // Client-side content search
     if (f.clientSearch.trim()) {
       results = searchTranscripts(results, { query: f.clientSearch, searchIn: f.clientSearchIn });
     }
 
     return results;
-  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.transcriptTypeFilter, f.minTurns, f.clientSearch, f.clientSearchIn]);
+  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.transcriptTypeFilter, f.minTurns, f.clientSearch, f.clientSearchIn, f.participantAadId]);
 
   // Resolve user display names for visible transcripts
   const userAadIds = useMemo(
@@ -239,7 +262,32 @@ export function TranscriptList({
             style={{ flex: 1, minWidth: 150 }}
           />
         </div>
-        <UserSearch onUserSelect={handleUserSelect} initialQuery={f.userSearchQuery} />
+        <UserSearch
+          key={f.participantAadId || "empty"}
+          onUserSelect={handleUserSelect}
+          initialQuery={f.userSearchQuery}
+        />
+        {f.participantAadId && (
+          <div className="participant-chip-row">
+            <span className="participant-chip" title={`AAD: ${f.participantAadId}`}>
+              <span className="participant-chip-label">
+                👤 Participant: <strong>{f.userSearchQuery || f.participantAadId}</strong>
+              </span>
+              <button
+                type="button"
+                className="participant-chip-close"
+                onClick={clearParticipant}
+                aria-label="Clear participant filter"
+                title="Clear participant filter"
+              >
+                ✕
+              </button>
+            </span>
+            <span className="participant-chip-hint">
+              Showing transcripts where this user actively participated. To search anywhere the GUID appears, paste it into the conversation search above.
+            </span>
+          </div>
+        )}
       </div>
 
       {error && (
@@ -289,7 +337,7 @@ export function TranscriptList({
           ))}
           {clientFiltered.length === 0 && !loading && (
             <tr><td colSpan={8} style={{ textAlign: "center", color: "#888", padding: "24px" }}>
-              {f.serverSearch || f.dateFrom || f.dateTo ? "No transcripts match your filters" : "No transcripts found"}
+              {f.serverSearch || f.dateFrom || f.dateTo || f.participantAadId ? "No transcripts match your filters" : "No transcripts found"}
             </td></tr>
           )}
           {loading && (

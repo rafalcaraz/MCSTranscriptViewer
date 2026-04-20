@@ -19,6 +19,21 @@ import { extractAdvancedEvents } from "./advancedEvents";
 export { formatTimestamp, formatDuration, shortToolName } from "./formatters";
 
 /**
+ * Strict participant check: returns true only when the AAD object ID is the
+ * actual conversation participant (i.e. the bot's user, or the author of any
+ * user-role message). Used to filter out transcripts where the GUID merely
+ * appears in content (e.g. as a reaction author from a different identity,
+ * or in some other non-participant context).
+ */
+export function isParticipant(t: ParsedTranscript, aadId: string): boolean {
+  const id = aadId.toLowerCase();
+  if (t.userAadObjectId?.toLowerCase() === id) return true;
+  return t.messages.some(
+    (m) => m.role === "user" && m.from.aadObjectId?.toLowerCase() === id
+  );
+}
+
+/**
  * Classify transcript type based on channel, metadata, and channelData signals.
  * Priority: autonomous > design > chat
  *

@@ -23,6 +23,8 @@ export interface ListFilterState {
   agentFilter: string;
   selectedBotIds: string[];
   userSearchQuery: string;
+  /** Resolved AAD Object ID of the user selected via "Find by User" — applies a strict participant filter, separate from content text search. */
+  participantAadId: string;
   feedbackFilter: "" | "any" | "likes" | "dislikes";
   transcriptTypeFilter: "" | "chat" | "autonomous" | "evaluation" | "design";
   minTurns: string;
@@ -39,6 +41,7 @@ const INITIAL_FILTER_STATE: ListFilterState = {
   agentFilter: "",
   selectedBotIds: [],
   userSearchQuery: "",
+  participantAadId: "",
   feedbackFilter: "",
   transcriptTypeFilter: "",
   minTurns: "",
@@ -81,7 +84,7 @@ function App() {
     setSelectedId(undefined);
   };
 
-  const handleFiltersChange = useCallback((newFilters: { dateFrom?: string; dateTo?: string; contentSearch?: string }) => {
+  const handleFiltersChange = useCallback((newFilters: { dateFrom?: string; dateTo?: string; contentSearch?: string; participantAadId?: string }) => {
     setFilters((prev) => ({
       ...prev,
       ...newFilters,

@@ -710,6 +710,51 @@
   color: var(--text-tertiary);
 }
 
+/* ── Participant Filter Chip ─────────────── */
+.participant-chip-row {
+  margin-top: 8px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px;
+}
+.participant-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 6px 4px 12px;
+  border-radius: 16px;
+  background: var(--color-primary-light, #e7f0ff);
+  color: var(--color-primary, #0b5ed7);
+  border: 1px solid var(--color-primary, #0b5ed7);
+  font-size: 13px;
+  font-weight: 500;
+  max-width: 100%;
+}
+.participant-chip-label {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.participant-chip-close {
+  border: none;
+  background: transparent;
+  color: inherit;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  padding: 2px 6px;
+  border-radius: 50%;
+}
+.participant-chip-close:hover {
+  background: rgba(0, 0, 0, 0.08);
+}
+.participant-chip-hint {
+  font-size: 11px;
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+
 /* ── Agent Picker Chips ──────────────────── */
 .agent-picker {
   display: flex;
