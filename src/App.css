@@ -1,4 +1,13 @@
 /* ── Theme Variables ──────────────────────── */
+html, body {
+  background: var(--bg-secondary);
+  color: var(--text-primary);
+}
+/* Form controls don't inherit color by default — force them to follow the theme */
+button, input, select, textarea {
+  color: inherit;
+}
+
 :root {
   --bg-primary: #fff;
   --bg-secondary: #f5f5f5;
