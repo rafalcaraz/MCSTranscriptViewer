@@ -832,12 +832,14 @@
 }
 .agent-multiselect-search input {
   width: 100%;
+  min-width: 0;
   padding: 6px 10px;
   border: 1px solid var(--border-medium);
   border-radius: 4px;
   font-size: 13px;
   background: var(--bg-primary);
   color: var(--text-primary);
+  box-sizing: border-box;
 }
 .agent-multiselect-list {
   max-height: 320px;
@@ -861,6 +863,9 @@
 }
 .agent-multiselect-item input[type="checkbox"] {
   margin: 0;
+  width: 16px;
+  min-width: 16px;
+  height: 16px;
   flex-shrink: 0;
   cursor: pointer;
 }
