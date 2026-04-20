@@ -42,7 +42,26 @@ export function isParticipant(t: ParsedTranscript, aadId: string): boolean {
 // ── Attachment classification ────────────────────────────────────────────
 
 const CARD_CT_PREFIX = "application/vnd.microsoft.card.";
-const SKYPE_AMS_HOST = "us-api.asm.skype.com";
+const SKYPE_AMS_HOST_SUFFIX = ".asm.skype.com";
+
+/**
+ * Returns true iff `url` is an absolute URL whose hostname is `asm.skype.com`
+ * itself or any subdomain of it (e.g. `us-api.asm.skype.com`).
+ *
+ * Uses URL parsing rather than substring matching so we are not fooled by
+ * attacker-controlled URLs like `https://evil.com/?x=us-api.asm.skype.com`
+ * or `https://us-api.asm.skype.com.evil.com/...`.
+ */
+function isSkypeAmsUrl(url: string | undefined): boolean {
+  if (!url) return false;
+  let host: string;
+  try {
+    host = new URL(url).hostname.toLowerCase();
+  } catch {
+    return false;
+  }
+  return host === SKYPE_AMS_HOST_SUFFIX.slice(1) || host.endsWith(SKYPE_AMS_HOST_SUFFIX);
+}
 
 function cardKindLabel(contentType: string): string {
   // e.g. "application/vnd.microsoft.card.adaptive" -> "Adaptive Card"
@@ -113,7 +132,7 @@ export function classifyAttachments(
   }
 
   const img = htmlBlob ? firstImgFromHtml(htmlBlob) : undefined;
-  const hasSkypeInline = img?.src?.includes(SKYPE_AMS_HOST) ?? false;
+  const hasSkypeInline = isSkypeAmsUrl(img?.src);
 
   const items: AttachmentItem[] = [];
 
