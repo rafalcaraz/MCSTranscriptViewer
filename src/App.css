@@ -710,49 +710,249 @@
   color: var(--text-tertiary);
 }
 
-/* ── Participant Filter Chip ─────────────── */
-.participant-chip-row {
-  margin-top: 8px;
+/* ── Active Filters Strip ────────────────── */
+.active-filters {
   display: flex;
   flex-wrap: wrap;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
+  padding: 10px 12px;
+  margin: 8px 0 4px;
+  background: var(--bg-hover, rgba(0, 0, 0, 0.03));
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
 }
-.participant-chip {
+.active-filters-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-secondary, #555);
+  margin-right: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.active-filter-chip {
   display: inline-flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 6px 4px 12px;
-  border-radius: 16px;
-  background: var(--color-primary-light, #e7f0ff);
-  color: var(--color-primary, #0b5ed7);
-  border: 1px solid var(--color-primary, #0b5ed7);
-  font-size: 13px;
-  font-weight: 500;
-  max-width: 100%;
+  gap: 4px;
+  padding: 3px 4px 3px 10px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: 14px;
+  font-size: 12.5px;
+  color: var(--text-primary);
+  max-width: 320px;
 }
-.participant-chip-label {
+.active-filter-chip-label {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
 }
-.participant-chip-close {
+.active-filter-chip-close {
   border: none;
   background: transparent;
-  color: inherit;
+  color: var(--text-tertiary);
   cursor: pointer;
-  font-size: 14px;
+  font-size: 13px;
   line-height: 1;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 50%;
 }
-.participant-chip-close:hover {
+.active-filter-chip-close:hover {
   background: rgba(0, 0, 0, 0.08);
+  color: var(--text-primary);
 }
-.participant-chip-hint {
+.active-filters-clear-all {
+  margin-left: auto;
+  border: none;
+  background: transparent;
+  color: var(--color-danger, #c0392b);
+  cursor: pointer;
+  font-size: 12.5px;
+  font-weight: 500;
+  padding: 4px 10px;
+  border-radius: 4px;
+  text-decoration: underline;
+}
+.active-filters-clear-all:hover {
+  background: rgba(192, 57, 43, 0.08);
+  text-decoration: none;
+}
+
+/* ── Agent Multi-Select ──────────────────── */
+.agent-multiselect {
+  position: relative;
+  display: inline-block;
+}
+.agent-multiselect-trigger {
+  padding: 6px 12px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 160px;
+  transition: border-color 0.1s, background 0.1s;
+}
+.agent-multiselect-trigger:hover {
+  border-color: var(--color-primary);
+}
+.agent-multiselect-trigger.active {
+  background: var(--color-primary-light, #e7f0ff);
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+  font-weight: 500;
+}
+.agent-multiselect-caret {
+  margin-left: auto;
+  font-size: 10px;
+  opacity: 0.7;
+}
+.agent-multiselect-panel {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 4px;
+  min-width: 320px;
+  max-width: 460px;
+  background: var(--bg-primary);
+  border: 1px solid var(--border-medium);
+  border-radius: 8px;
+  box-shadow: var(--shadow-dropdown);
+  z-index: 200;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.agent-multiselect-search {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-medium);
+}
+.agent-multiselect-search input {
+  width: 100%;
+  padding: 6px 10px;
+  border: 1px solid var(--border-medium);
+  border-radius: 4px;
+  font-size: 13px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+}
+.agent-multiselect-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+.agent-multiselect-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.1s;
+}
+.agent-multiselect-item:hover {
+  background: var(--bg-highlight);
+}
+.agent-multiselect-item.selected {
+  background: var(--color-primary-light, #e7f0ff);
+}
+.agent-multiselect-item input[type="checkbox"] {
+  margin: 0;
+  cursor: pointer;
+}
+.agent-multiselect-name {
+  font-weight: 500;
+  color: var(--text-primary);
+  flex: 1;
+}
+.agent-multiselect-schema {
   font-size: 11px;
   color: var(--text-tertiary);
+  font-family: monospace;
+}
+.agent-multiselect-empty {
+  padding: 12px;
+  text-align: center;
+  color: var(--text-tertiary);
   font-style: italic;
+  font-size: 13px;
+}
+.agent-multiselect-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-top: 1px solid var(--border-medium);
+  background: var(--bg-hover, rgba(0, 0, 0, 0.02));
+  font-size: 12px;
+  color: var(--text-tertiary);
+}
+.agent-multiselect-clear {
+  border: none;
+  background: transparent;
+  color: var(--color-danger, #c0392b);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  padding: 2px 8px;
+}
+.agent-multiselect-clear:hover {
+  text-decoration: underline;
+}
+
+/* ── Empty State ─────────────────────────── */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  max-width: 480px;
+  margin: 0 auto;
+}
+.empty-state-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-primary);
+}
+.empty-state-hint {
+  font-size: 13px;
+  color: var(--text-tertiary);
+  line-height: 1.5;
+}
+.empty-state-actions {
+  display: flex;
+  gap: 8px;
+  margin-top: 4px;
+}
+.empty-state-btn {
+  padding: 6px 14px;
+  border: 1px solid var(--border-medium);
+  border-radius: 6px;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  cursor: pointer;
+  font-size: 13px;
+}
+.empty-state-btn:hover {
+  border-color: var(--color-primary);
+  color: var(--color-primary);
+}
+.empty-state-btn.primary {
+  background: var(--color-primary);
+  color: #fff;
+  border-color: var(--color-primary);
+}
+.empty-state-btn.primary:hover {
+  filter: brightness(0.95);
+  color: #fff;
+}
+.empty-state-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 /* ── Agent Picker Chips ──────────────────── */

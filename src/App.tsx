@@ -1,51 +1,15 @@
 import { useState, useCallback, useEffect } from "react";
 import { useTranscripts, useTranscript, type TranscriptFilters } from "./hooks/useTranscripts";
-import type { ContentSearchOptions } from "./hooks/useTranscripts";
 import { useBotLookup } from "./hooks/useLookups";
 import { TranscriptList } from "./components/TranscriptList/TranscriptList";
 import { TranscriptDetail } from "./components/TranscriptDetail/TranscriptDetail";
 import { AnalyticsSummary } from "./components/Analytics/AnalyticsSummary";
+import { INITIAL_FILTER_STATE, type ListFilterState } from "./state/listFilters";
 import "./App.css";
 
 type View = "list" | "detail" | "analytics";
 
 const DEFAULT_PAGE_SIZE = 25;
-
-/** All filter state lifted to App so it persists across view changes */
-export interface ListFilterState {
-  dateFrom: string;
-  dateTo: string;
-  serverSearchInput: string;
-  serverSearch: string;
-  clientSearch: string;
-  clientSearchIn: ContentSearchOptions["searchIn"];
-  outcomeFilter: string;
-  agentFilter: string;
-  selectedBotIds: string[];
-  userSearchQuery: string;
-  /** Resolved AAD Object ID of the user selected via "Find by User" — applies a strict participant filter, separate from content text search. */
-  participantAadId: string;
-  feedbackFilter: "" | "any" | "likes" | "dislikes";
-  transcriptTypeFilter: "" | "chat" | "autonomous" | "evaluation" | "design";
-  minTurns: string;
-}
-
-const INITIAL_FILTER_STATE: ListFilterState = {
-  dateFrom: "",
-  dateTo: "",
-  serverSearchInput: "",
-  serverSearch: "",
-  clientSearch: "",
-  clientSearchIn: "all",
-  outcomeFilter: "",
-  agentFilter: "",
-  selectedBotIds: [],
-  userSearchQuery: "",
-  participantAadId: "",
-  feedbackFilter: "",
-  transcriptTypeFilter: "",
-  minTurns: "",
-};
 
 function App() {
   const [view, setView] = useState<View>("list");

@@ -4,8 +4,10 @@ import { formatDuration, isParticipant } from "../../utils/parseTranscript";
 import { searchTranscripts, type ContentSearchOptions } from "../../hooks/useTranscripts";
 import { useBotLookup, useUserDisplayNames, type BotInfo } from "../../hooks/useLookups";
 import { UserSearch } from "./UserSearch";
+import { AgentMultiSelect } from "./AgentMultiSelect";
+import { ActiveFilters, type RemovableFilterKey } from "./ActiveFilters";
 import type { AadUser } from "../../hooks/useLookups";
-import type { ListFilterState } from "../../App";
+import { INITIAL_FILTER_STATE, type ListFilterState } from "../../state/listFilters";
 
 const outcomeBadgeClass: Record<string, string> = {
   Resolved: "badge-success",
@@ -64,16 +66,6 @@ export function TranscriptList({
     });
   };
 
-  const clearParticipant = () => {
-    update({ participantAadId: "", userSearchQuery: "" });
-    onFiltersChange({
-      dateFrom: f.dateFrom || undefined,
-      dateTo: f.dateTo || undefined,
-      contentSearch: f.serverSearch || undefined,
-      participantAadId: undefined,
-    });
-  };
-
   const applyServerFilters = () => {
     update({ serverSearch: f.serverSearchInput });
     onFiltersChange({
@@ -87,6 +79,73 @@ export function TranscriptList({
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter") applyServerFilters();
   };
+
+  /** Removes a single filter by key. Updates local state and re-issues the
+   *  server fetch when the filter is server-impacting (date / search / participant). */
+  const removeFilter = (key: RemovableFilterKey) => {
+    switch (key) {
+      case "dateRange":
+        update({ dateFrom: "", dateTo: "" });
+        onFiltersChange({
+          dateFrom: undefined,
+          dateTo: undefined,
+          contentSearch: f.serverSearch || undefined,
+          participantAadId: f.participantAadId || undefined,
+        });
+        return;
+      case "serverSearch":
+        update({ serverSearch: "", serverSearchInput: "" });
+        onFiltersChange({
+          dateFrom: f.dateFrom || undefined,
+          dateTo: f.dateTo || undefined,
+          contentSearch: undefined,
+          participantAadId: f.participantAadId || undefined,
+        });
+        return;
+      case "participantAadId":
+        update({ participantAadId: "", userSearchQuery: "" });
+        onFiltersChange({
+          dateFrom: f.dateFrom || undefined,
+          dateTo: f.dateTo || undefined,
+          contentSearch: f.serverSearch || undefined,
+          participantAadId: undefined,
+        });
+        return;
+      case "selectedBotIds":
+        update({ selectedBotIds: [] });
+        return;
+      case "transcriptTypeFilter":
+        update({ transcriptTypeFilter: "" });
+        return;
+      case "outcomeFilter":
+        update({ outcomeFilter: "" });
+        return;
+      case "feedbackFilter":
+        update({ feedbackFilter: "" });
+        return;
+      case "minTurns":
+        update({ minTurns: "" });
+        return;
+      case "clientSearch":
+        update({ clientSearch: "" });
+        return;
+    }
+  };
+
+  const clearAllFilters = () => {
+    setF(INITIAL_FILTER_STATE);
+    onFiltersChange({
+      dateFrom: undefined,
+      dateTo: undefined,
+      contentSearch: undefined,
+      participantAadId: undefined,
+    });
+  };
+
+  const hasAnyFilter =
+    !!(f.dateFrom || f.dateTo || f.serverSearch || f.participantAadId ||
+       f.selectedBotIds.length > 0 || f.transcriptTypeFilter || f.outcomeFilter ||
+       f.feedbackFilter || (parseInt(f.minTurns, 10) > 0) || f.clientSearch.trim());
 
   const clientFiltered = useMemo(() => {
     let results = transcripts;
@@ -191,24 +250,11 @@ export function TranscriptList({
         </div>
         <div className="list-toolbar" style={{ marginTop: 8 }}>
           {accessibleBots.length > 0 && (
-            <select
-              value={f.selectedBotIds.length === 1 ? f.selectedBotIds[0] : ""}
-              onChange={(e) => {
-                const val = e.target.value;
-                if (val === "") {
-                  update({ selectedBotIds: [] });
-                } else {
-                  update({ selectedBotIds: [val] });
-                }
-              }}
-            >
-              <option value="">All Agents</option>
-              {accessibleBots.map((bot) => (
-                <option key={bot.schemaName} value={bot.schemaName}>
-                  {bot.displayName || bot.schemaName}
-                </option>
-              ))}
-            </select>
+            <AgentMultiSelect
+              agents={accessibleBots}
+              selectedSchemaNames={f.selectedBotIds}
+              onChange={(schemaNames) => update({ selectedBotIds: schemaNames })}
+            />
           )}
           <select
             value={f.transcriptTypeFilter}
@@ -267,28 +313,14 @@ export function TranscriptList({
           onUserSelect={handleUserSelect}
           initialQuery={f.userSearchQuery}
         />
-        {f.participantAadId && (
-          <div className="participant-chip-row">
-            <span className="participant-chip" title={`AAD: ${f.participantAadId}`}>
-              <span className="participant-chip-label">
-                👤 Participant: <strong>{f.userSearchQuery || f.participantAadId}</strong>
-              </span>
-              <button
-                type="button"
-                className="participant-chip-close"
-                onClick={clearParticipant}
-                aria-label="Clear participant filter"
-                title="Clear participant filter"
-              >
-                ✕
-              </button>
-            </span>
-            <span className="participant-chip-hint">
-              Showing transcripts where this user actively participated. To search anywhere the GUID appears, paste it into the conversation search above.
-            </span>
-          </div>
-        )}
       </div>
+
+      <ActiveFilters
+        f={f}
+        agents={accessibleBots}
+        onRemove={removeFilter}
+        onClearAll={clearAllFilters}
+      />
 
       {error && (
         <div className="error-banner">⚠️ {error}</div>
@@ -336,8 +368,34 @@ export function TranscriptList({
             </tr>
           ))}
           {clientFiltered.length === 0 && !loading && (
-            <tr><td colSpan={8} style={{ textAlign: "center", color: "#888", padding: "24px" }}>
-              {f.serverSearch || f.dateFrom || f.dateTo || f.participantAadId ? "No transcripts match your filters" : "No transcripts found"}
+            <tr><td colSpan={8} style={{ textAlign: "center", color: "var(--text-tertiary)", padding: "32px 16px" }}>
+              {hasAnyFilter ? (
+                <div className="empty-state">
+                  <div className="empty-state-title">No transcripts match your filters</div>
+                  <div className="empty-state-hint">
+                    {totalLoaded > 0
+                      ? `${totalLoaded} transcripts loaded — none match the active filters above.`
+                      : `0 transcripts loaded from the server with the current date / search filters.`}
+                  </div>
+                  <div className="empty-state-actions">
+                    <button type="button" className="empty-state-btn primary" onClick={clearAllFilters}>
+                      Clear all filters
+                    </button>
+                    {hasMore && (
+                      <button type="button" className="empty-state-btn" onClick={onLoadMore} disabled={loading}>
+                        Load more from server
+                      </button>
+                    )}
+                  </div>
+                </div>
+              ) : (
+                <div className="empty-state">
+                  <div className="empty-state-title">No transcripts found</div>
+                  <div className="empty-state-hint">
+                    Nothing was returned by the server. Try expanding the date range or check that you have access to a Copilot Studio environment with transcripts.
+                  </div>
+                </div>
+              )}
             </td></tr>
           )}
           {loading && (
