@@ -12,6 +12,10 @@ import type {
   TranscriptMetadata,
   TranscriptType,
   TriggerInfo,
+  AttachmentItem,
+  AttachmentKind,
+  AttachmentSummary,
+  MessageAttachment,
 } from "../types/transcript";
 import { extractAdvancedEvents } from "./advancedEvents";
 
@@ -31,6 +35,131 @@ export function isParticipant(t: ParsedTranscript, aadId: string): boolean {
   return t.messages.some(
     (m) => m.role === "user" && m.from.aadObjectId?.toLowerCase() === id
   );
+}
+
+// ── Attachment classification ────────────────────────────────────────────
+
+const CARD_CT_PREFIX = "application/vnd.microsoft.card.";
+const SKYPE_AMS_HOST = "us-api.asm.skype.com";
+
+function cardKindLabel(contentType: string): string {
+  // e.g. "application/vnd.microsoft.card.adaptive" -> "Adaptive Card"
+  const suffix = contentType.slice(CARD_CT_PREFIX.length);
+  if (!suffix) return "Card";
+  return suffix.charAt(0).toUpperCase() + suffix.slice(1) + " Card";
+}
+
+function shortTypeLabel(contentType: string): string {
+  if (contentType === "image/*") return "image";
+  if (contentType.startsWith("image/")) return contentType;
+  if (contentType === "application/pdf") return "PDF";
+  if (contentType.startsWith("application/")) return contentType.slice("application/".length);
+  return contentType;
+}
+
+interface HtmlImgInfo {
+  src?: string;
+  alt?: string;
+  width?: number;
+  height?: number;
+}
+
+function firstImgFromHtml(html: string): HtmlImgInfo | undefined {
+  // Grab the first <img ...> tag; attributes can appear in any order
+  const tagMatch = html.match(/<img\b[^>]*>/i);
+  if (!tagMatch) return undefined;
+  const tag = tagMatch[0];
+  const attr = (name: string) => {
+    const m = tag.match(new RegExp(`\\b${name}\\s*=\\s*"([^"]*)"`, "i"));
+    return m ? m[1] : undefined;
+  };
+  const w = attr("width");
+  const h = attr("height");
+  return {
+    src: attr("src"),
+    alt: attr("alt"),
+    width: w ? parseInt(w, 10) || undefined : undefined,
+    height: h ? parseInt(h, 10) || undefined : undefined,
+  };
+}
+
+/**
+ * Classify attachments on a raw activity into a summary suitable for UI chips.
+ * See AttachmentKind JSDoc for heuristic details.
+ */
+export function classifyAttachments(
+  rawAttachments: MessageAttachment[],
+): AttachmentSummary | undefined {
+  if (!rawAttachments.length) return undefined;
+
+  // Split cards from media/file references. Cards are bot-sent UI and are
+  // handled elsewhere (AdaptiveCardRenderer) — don't count them as user content.
+  const nonCards: MessageAttachment[] = [];
+  const cards: MessageAttachment[] = [];
+  let htmlBlob = "";
+  for (const a of rawAttachments) {
+    if (a.contentType?.startsWith(CARD_CT_PREFIX)) {
+      cards.push(a);
+    } else if (a.contentType === "text/html" && typeof a.content === "string") {
+      htmlBlob += a.content;
+    } else if (a.contentType === "text/html" && typeof (a.content as { toString?: () => string }) === "object") {
+      // Some clients nest the html as object — best-effort
+      htmlBlob += JSON.stringify(a.content);
+    } else {
+      nonCards.push(a);
+    }
+  }
+
+  const img = htmlBlob ? firstImgFromHtml(htmlBlob) : undefined;
+  const hasSkypeInline = img?.src?.includes(SKYPE_AMS_HOST) ?? false;
+
+  const items: AttachmentItem[] = [];
+
+  for (const a of nonCards) {
+    const ct = a.contentType;
+    const ref = typeof (a.content as { value?: unknown })?.value === "string"
+      ? ((a.content as { value: string }).value)
+      : undefined;
+
+    let kind: AttachmentKind;
+    if (ct === "image/*" || hasSkypeInline) {
+      // Wildcard mime OR we have an inline Skype-hosted <img> → paste
+      kind = "paste";
+    } else if (ct.startsWith("image/")) {
+      // Specific image mime with no inline HTML sibling → uploaded from device
+      kind = "upload";
+    } else if (ct.startsWith("application/") || ct.startsWith("text/") || ct.startsWith("video/") || ct.startsWith("audio/")) {
+      kind = "file";
+    } else {
+      kind = "unknown";
+    }
+
+    items.push({
+      kind,
+      contentType: ct,
+      label: ct.startsWith("image/") ? "image" : shortTypeLabel(ct),
+      altText: img?.alt && img.alt !== "image" ? img.alt : undefined,
+      width: img?.width,
+      height: img?.height,
+      referenceId: ref,
+    });
+  }
+
+  for (const c of cards) {
+    items.push({
+      kind: "card",
+      contentType: c.contentType,
+      label: cardKindLabel(c.contentType),
+    });
+  }
+
+  if (!items.length) return undefined;
+
+  // Aggregate kind: if all items agree, use that; otherwise "unknown"
+  const first = items[0].kind;
+  const aggregate: AttachmentKind = items.every((i) => i.kind === first) ? first : "unknown";
+
+  return { kind: aggregate, items };
 }
 
 /**
@@ -121,14 +250,19 @@ function parseActivity(raw: RawActivity): ParsedActivity {
       let text = raw.text ?? "";
       let textFormat = raw.textFormat;
 
-      const attachments: { contentType: string; content: Record<string, unknown> }[] = [];
+      const attachments: MessageAttachment[] = [];
       if (raw.attachments && Array.isArray(raw.attachments)) {
-        for (const att of raw.attachments as { contentType?: string; content?: Record<string, unknown> }[]) {
-          if (att.contentType && att.content) {
-            attachments.push({ contentType: att.contentType, content: att.content });
+        for (const att of raw.attachments as { contentType?: string; content?: unknown }[]) {
+          if (att.contentType && att.content != null) {
+            attachments.push({
+              contentType: att.contentType,
+              content: att.content as Record<string, unknown> | string,
+            });
           }
         }
       }
+
+      const attachmentSummary = classifyAttachments(attachments);
 
       if (!text && attachments.length > 0) {
         const firstAtt = attachments[0];
@@ -158,6 +292,7 @@ function parseActivity(raw: RawActivity): ParsedActivity {
         textFormat,
         replyToId: raw.replyToId,
         attachments: attachments.length > 0 ? attachments : undefined,
+        attachmentSummary,
       };
       break;
     }
@@ -492,6 +627,9 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
 
   const likeCount = reactions.filter((r) => r.reaction === "like").length;
   const dislikeCount = reactions.filter((r) => r.reaction === "dislike").length;
+  const userAttachmentCount = messages.filter(
+    (m) => m.role === "user" && m.attachmentSummary && m.attachmentSummary.kind !== "card",
+  ).length;
 
   return {
     conversationtranscriptid: record.conversationtranscriptid,
@@ -526,5 +664,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     hasFeedback: reactions.length > 0,
     likeCount,
     dislikeCount,
+    userAttachmentCount,
   };
 }

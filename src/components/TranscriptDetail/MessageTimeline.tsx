@@ -1,10 +1,27 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { ChatMessage, Reaction } from "../../types/transcript";
+import type { ChatMessage, Reaction, AttachmentItem, AttachmentKind } from "../../types/transcript";
 import { formatTimestamp } from "../../utils/parseTranscript";
 import { OrphanReactionItem } from "./OrphanReactionItem";
 import { AdaptiveCardRenderer } from "./AdaptiveCardRenderer";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
+
+const ATTACHMENT_KIND_META: Record<AttachmentKind, { icon: string; label: string }> = {
+  paste: { icon: "📋", label: "pasted inline" },
+  upload: { icon: "⬆️", label: "uploaded file" },
+  file: { icon: "📄", label: "file" },
+  card: { icon: "🎴", label: "card" },
+  unknown: { icon: "📎", label: "attachment" },
+};
+
+function attachmentItemTitle(item: AttachmentItem): string {
+  const kindLabel = ATTACHMENT_KIND_META[item.kind].label;
+  const parts: string[] = [`${kindLabel} — ${item.contentType}`];
+  if (item.width && item.height) parts.push(`${item.width}×${item.height}`);
+  if (item.altText) parts.push(`"${item.altText}"`);
+  if (item.referenceId) parts.push(`ref: ${item.referenceId}`);
+  return parts.join(" · ");
+}
 
 interface MessageTimelineProps {
   messages: ChatMessage[];
@@ -73,7 +90,10 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
           {msg.text && <Markdown remarkPlugins={[remarkGfm]}>{msg.text}</Markdown>}
           {msg.attachments.map((att, i) => (
             <div key={i}>
-              <AdaptiveCardRenderer content={att.content} contentType={att.contentType} />
+              <AdaptiveCardRenderer
+                content={typeof att.content === "string" ? {} : att.content}
+                contentType={att.contentType}
+              />
               <div className="ac-disclaimer">⚠️ Adaptive Card — rendering may not match original</div>
             </div>
           ))}
@@ -175,6 +195,28 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
               <div>
                 <div className={`msg-bubble ${msg.role} ${isActive ? "highlighted" : ""} ${isCurrentMatch ? "search-highlight" : ""}`}>
                   {renderMessageContent(msg)}
+                  {msg.attachmentSummary && msg.attachmentSummary.kind !== "card" && (
+                    <div className="msg-attachments">
+                      {msg.attachmentSummary.items.map((item, i) => {
+                        const meta = ATTACHMENT_KIND_META[item.kind];
+                        const isImage = item.contentType.startsWith("image/");
+                        const label = item.altText
+                          ? `"${item.altText}"`
+                          : item.width && item.height
+                            ? `${item.label} (${item.width}×${item.height})`
+                            : item.label;
+                        return (
+                          <span
+                            key={i}
+                            className={`attachment-chip attachment-chip-${item.kind}`}
+                            title={attachmentItemTitle(item)}
+                          >
+                            {isImage ? "🖼️" : "📄"}{item.kind === "paste" || item.kind === "upload" ? meta.icon : ""} {label}
+                          </span>
+                        );
+                      })}
+                    </div>
+                  )}
                   {reactionsByMessageId.has(msg.id) && (
                     <div className="reaction-badges">
                       {reactionsByMessageId.get(msg.id)!.map((r, i) => (

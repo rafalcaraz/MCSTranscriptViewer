@@ -350,7 +350,17 @@ export function TranscriptList({
                   {TRANSCRIPT_TYPE_LABELS[t.transcriptType].icon} {TRANSCRIPT_TYPE_LABELS[t.transcriptType].label}
                 </span>
               </td>
-              <td>{t.turnCount}</td>
+              <td>
+                {t.turnCount}
+                {t.userAttachmentCount > 0 && (
+                  <span
+                    className="turn-attachment-badge"
+                    title={`${t.userAttachmentCount} user message${t.userAttachmentCount === 1 ? "" : "s"} included an attachment (image or file)`}
+                  >
+                    📎{t.userAttachmentCount}
+                  </span>
+                )}
+              </td>
               <td>{t.totalDurationSeconds != null ? formatDuration(t.totalDurationSeconds) : "—"}</td>
               <td>
                 {t.hasFeedback ? (

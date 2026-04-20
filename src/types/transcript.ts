@@ -79,7 +79,41 @@ export interface PlanStep {
 
 export interface MessageAttachment {
   contentType: string;
-  content: Record<string, unknown>;
+  /** Can be a string (e.g. text/html) or a structured object (cards, file refs) */
+  content: Record<string, unknown> | string;
+}
+
+/**
+ * Classification of what a user or bot attached to a message.
+ * - "paste": image/file embedded inline (e.g. drag-drop into Teams composer,
+ *   paste from clipboard/webpage). Detected via sibling text/html with <img>
+ *   or a wildcard mime like "image/*".
+ * - "upload": actual file picked from the user's device. Detected via a
+ *   specific mime (image/png, application/pdf, ...) with no inline HTML.
+ * - "card": a bot-sent Adaptive/OAuth/Hero/etc. card (vnd.microsoft.card.*).
+ *   Not user content; surface differently.
+ * - "file": non-image file (PDF, DOCX, etc.).
+ * - "unknown": has attachments but we can't classify.
+ */
+export type AttachmentKind = "paste" | "upload" | "card" | "file" | "unknown";
+
+export interface AttachmentItem {
+  kind: AttachmentKind;
+  contentType: string;
+  /** e.g. "image/png", "image", "Adaptive Card" — short label for chips */
+  label: string;
+  /** Alt text or page title extracted from inline HTML, if any */
+  altText?: string;
+  width?: number;
+  height?: number;
+  /** conversationFileReference GUID, when present */
+  referenceId?: string;
+}
+
+export interface AttachmentSummary {
+  /** Aggregate kind — if all items share a kind, use it; else "unknown" */
+  kind: AttachmentKind;
+  items: AttachmentItem[];
 }
 
 export interface ChatMessage {
@@ -91,6 +125,7 @@ export interface ChatMessage {
   textFormat?: string;
   replyToId?: string;
   attachments?: MessageAttachment[];
+  attachmentSummary?: AttachmentSummary;
 }
 
 export interface DialogTrace {
@@ -248,4 +283,6 @@ export interface ParsedTranscript {
   hasFeedback: boolean;
   likeCount: number;
   dislikeCount: number;
+  /** Number of user-sent messages that contained a non-card attachment (paste/upload/file). */
+  userAttachmentCount: number;
 }

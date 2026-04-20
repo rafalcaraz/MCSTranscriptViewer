@@ -488,3 +488,120 @@ describe("isParticipant", () => {
     expect(isParticipant(t, "bot-xyz")).toBe(false);
   });
 });
+
+// ── Attachment classification ────────────────────────────────────────
+
+describe("classifyAttachments", () => {
+  it("classifies an uploaded file (specific mime, no inline html) as upload", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    const s = classifyAttachments([
+      {
+        contentType: "image/png",
+        content: { kind: "conversationFileReference", value: "ref-guid-upload" },
+      },
+    ]);
+    expect(s).toBeDefined();
+    expect(s!.kind).toBe("upload");
+    expect(s!.items[0].referenceId).toBe("ref-guid-upload");
+    expect(s!.items[0].contentType).toBe("image/png");
+  });
+
+  it("classifies an inline paste (wildcard mime + html <img> from skype) as paste", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    const s = classifyAttachments([
+      {
+        contentType: "image/*",
+        content: { kind: "conversationFileReference", value: "ref-paste" },
+      },
+      {
+        contentType: "text/html",
+        content: '<p>look</p><p><img alt="Funny cat" src="https://us-api.asm.skype.com/v1/objects/0-wus-d1-xxx/views/imgo" width="250" height="250"></p>',
+      },
+    ]);
+    expect(s).toBeDefined();
+    expect(s!.kind).toBe("paste");
+    expect(s!.items[0].altText).toBe("Funny cat");
+    expect(s!.items[0].width).toBe(250);
+    expect(s!.items[0].height).toBe(250);
+  });
+
+  it("treats specific-mime + skype inline html as paste (not upload) — HTML signal wins", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    const s = classifyAttachments([
+      {
+        contentType: "image/jpeg",
+        content: { kind: "conversationFileReference", value: "ref-x" },
+      },
+      {
+        contentType: "text/html",
+        content: '<p><img src="https://us-api.asm.skype.com/v1/objects/abc/views/imgo"></p>',
+      },
+    ]);
+    expect(s!.kind).toBe("paste");
+  });
+
+  it("ignores generic alt=\"image\"", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    const s = classifyAttachments([
+      { contentType: "image/*", content: { kind: "conversationFileReference", value: "r" } },
+      { contentType: "text/html", content: '<img alt="image" src="https://us-api.asm.skype.com/x">' },
+    ]);
+    expect(s!.items[0].altText).toBeUndefined();
+  });
+
+  it("classifies adaptive card as card", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    const s = classifyAttachments([
+      {
+        contentType: "application/vnd.microsoft.card.adaptive",
+        content: { type: "AdaptiveCard", version: "1.3" },
+      },
+    ]);
+    expect(s!.kind).toBe("card");
+    expect(s!.items[0].label).toBe("Adaptive Card");
+  });
+
+  it("classifies non-image file (PDF) as file", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    const s = classifyAttachments([
+      {
+        contentType: "application/pdf",
+        content: { kind: "conversationFileReference", value: "pdf-ref" },
+      },
+    ]);
+    expect(s!.kind).toBe("file");
+    expect(s!.items[0].label).toBe("PDF");
+  });
+
+  it("returns undefined when there are no attachments", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    expect(classifyAttachments([])).toBeUndefined();
+  });
+
+  it("ignores text/html only (no media attachment)", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    // text/html alone shouldn't generate any items
+    const s = classifyAttachments([
+      { contentType: "text/html", content: "<p>just text</p>" },
+    ]);
+    expect(s).toBeUndefined();
+  });
+
+  it("computes aggregate kind = unknown for mixed items", async () => {
+    const { classifyAttachments } = await import("../utils/parseTranscript");
+    const s = classifyAttachments([
+      { contentType: "image/png", content: { kind: "conversationFileReference", value: "a" } },
+      { contentType: "application/pdf", content: { kind: "conversationFileReference", value: "b" } },
+    ]);
+    expect(s!.kind).toBe("unknown");
+    expect(s!.items).toHaveLength(2);
+  });
+});
+
+describe("parseTranscript — userAttachmentCount", () => {
+  it("counts user messages with non-card attachments", async () => {
+    const t = parseTranscript(adaptiveCardTranscript);
+    // adaptive card attachments are on bot messages, so userAttachmentCount should be 0
+    expect(t.userAttachmentCount).toBe(0);
+  });
+});
