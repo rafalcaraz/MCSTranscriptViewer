@@ -687,10 +687,19 @@ describe("parseTranscript — multi-agent (connected agents)", () => {
     }
   });
 
+  it("captures invokedChildAgentSchemaNames (deduped)", () => {
+    const t = parseTranscript(multiAgentTranscript);
+    expect(t.invokedChildAgentSchemaNames.sort()).toEqual([
+      "msftcsa_Cybersecurity",
+      "msftcsa_HelpDeskAgent",
+    ]);
+  });
+
   it("leaves single-agent transcripts untouched (no invocations, no speakingAgent)", () => {
     const t = parseTranscript(basicMcpTranscript);
     expect(t.connectedAgentInvocations).toHaveLength(0);
     expect(t.parentAgentSchemaName).toBeUndefined();
+    expect(t.invokedChildAgentSchemaNames).toEqual([]);
     for (const m of t.messages) {
       expect(m.speakingAgent).toBeUndefined();
     }

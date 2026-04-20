@@ -847,5 +847,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     connectedAgentInvocations,
     parentAgentSchemaName,
     parentAgentDisplayName,
+    invokedChildAgentSchemaNames: [...new Set(connectedAgentInvocations.map((i) => i.childSchemaName))],
   };
 }

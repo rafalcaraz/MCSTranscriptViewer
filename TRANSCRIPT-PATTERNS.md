@@ -1118,6 +1118,21 @@ A Copilot Studio agent can be configured to call **other full agents** as connec
 - The viewer's **right panel** shows a small agent-name badge above each bot bubble (parent vs. child + accent color from a deterministic `schemaName → palette` hash); child bubbles get a left-border accent.
 - The viewer's **left panel** ("Agent Activity") shows a "Connected Agents" routing summary listing each invocation in order, with the parent → child → parent flow and the planner's `thought`.
 
+### Connected Agent Sessions (the child's own transcript)
+
+Each connected child invocation **also produces its own separate transcript record** in Dataverse, owned by the child agent. These look like normal one-off transcripts in isolation, but they're really just "the child's slice" of a larger parent conversation.
+
+**Single-file signals (heuristic, not bulletproof):**
+- `metadata.BotName` matches a known child agent
+- **Zero `ConnectedAgent*` traces** in own activities (the child never sees its own orchestration)
+- `lastSessionOutcome === "Abandoned"` + `Reason === "UserExit"` is very common (child "session" ends abruptly when control returns to parent)
+- Conversation is short, tightly scoped, often ends mid-topic
+
+**Bulletproof identification (cross-transcript):**
+A transcript is a connected agent session iff its `metadata.BotName` appears as `botSchemaName` in any `ConnectedAgentInitializeTraceData` event of *any other loaded transcript*. The viewer auto-learns this set at runtime from the loaded list.
+
+**Filtering:** the viewer ships a "Hide connected agent sessions" toggle (default ON) that drops these transcripts from the list, so by default users see only the parent-perspective conversation. A `🔗 child` badge appears next to the agent name on rows that are connected agent sessions (visible whenever the toggle is off, or when no parent in the loaded set has invoked them yet).
+
 ---
 
 ## 16. Unhandled / Future Patterns

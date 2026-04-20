@@ -150,6 +150,19 @@ export function TranscriptList({
   const clientFiltered = useMemo(() => {
     let results = transcripts;
 
+    // Hide connected-agent (child) sessions when toggle is on. We auto-learn
+    // the set of "child" schemas from any loaded transcript that invoked them
+    // — so as soon as a parent is in the list, its children get filtered out.
+    if (f.hideConnectedAgentSessions) {
+      const childSchemas = new Set<string>();
+      for (const t of transcripts) {
+        for (const s of t.invokedChildAgentSchemaNames) childSchemas.add(s);
+      }
+      if (childSchemas.size > 0) {
+        results = results.filter((t) => !childSchemas.has(t.metadata.botName));
+      }
+    }
+
     // Agent filter (by schema name from metadata)
     if (f.selectedBotIds.length > 0) {
       const selected = new Set(f.selectedBotIds);
@@ -195,7 +208,16 @@ export function TranscriptList({
     }
 
     return results;
-  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.transcriptTypeFilter, f.minTurns, f.clientSearch, f.clientSearchIn, f.participantAadId]);
+  }, [transcripts, f.selectedBotIds, f.outcomeFilter, f.feedbackFilter, f.transcriptTypeFilter, f.minTurns, f.clientSearch, f.clientSearchIn, f.participantAadId, f.hideConnectedAgentSessions]);
+
+  // Pre-compute child-agent schema set for badging purposes (independent of the hide toggle).
+  const childAgentSchemas = useMemo(() => {
+    const s = new Set<string>();
+    for (const t of transcripts) {
+      for (const cs of t.invokedChildAgentSchemaNames) s.add(cs);
+    }
+    return s;
+  }, [transcripts]);
 
   // Resolve user display names for visible transcripts
   const userAadIds = useMemo(
@@ -307,6 +329,17 @@ export function TranscriptList({
             onChange={(e) => update({ clientSearch: e.target.value })}
             style={{ flex: 1, minWidth: 150 }}
           />
+          <label
+            className="filter-toggle"
+            title="Hide transcripts that are the child-agent side of a connected-agent invocation. Auto-detected from any parent transcript currently loaded."
+          >
+            <input
+              type="checkbox"
+              checked={f.hideConnectedAgentSessions}
+              onChange={(e) => update({ hideConnectedAgentSessions: e.target.checked })}
+            />
+            <span>Hide connected agent sessions</span>
+          </label>
         </div>
         <UserSearch
           key={f.participantAadId || "empty"}
@@ -342,7 +375,17 @@ export function TranscriptList({
         <tbody>
           {clientFiltered.map((t) => (
             <tr key={t.conversationtranscriptid} onClick={() => onSelect(t.conversationtranscriptid)}>
-              <td><strong>{getDisplayName(t.metadata.botName, t.metadata.botId) || "—"}</strong></td>
+              <td>
+                <strong>{getDisplayName(t.metadata.botName, t.metadata.botId) || "—"}</strong>
+                {childAgentSchemas.has(t.metadata.botName) && (
+                  <span
+                    className="badge connected-agent-row-badge"
+                    title="Connected agent session — this transcript is the child-agent side of an invocation made by another loaded transcript."
+                  >
+                    🔗 child
+                  </span>
+                )}
+              </td>
               <td>{getUserDisplayName(t.userAadObjectId)}</td>
               <td>{new Date(t.conversationstarttime).toLocaleString()}</td>
               <td>

@@ -336,4 +336,6 @@ export interface ParsedTranscript {
   parentAgentDisplayName?: string;
   /** Raw schema name for the root/parent agent, when known. */
   parentAgentSchemaName?: string;
+  /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
+  invokedChildAgentSchemaNames: string[];
 }

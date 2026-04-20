@@ -17,6 +17,9 @@ export interface ListFilterState {
   feedbackFilter: "" | "any" | "likes" | "dislikes";
   transcriptTypeFilter: "" | "chat" | "autonomous" | "evaluation" | "design";
   minTurns: string;
+  /** When true, hides transcripts that look like the child-agent side of a connected-agent invocation
+   *  (their botName appears as a child in some other loaded transcript's connectedAgentInvocations). */
+  hideConnectedAgentSessions: boolean;
 }
 
 export const INITIAL_FILTER_STATE: ListFilterState = {
@@ -34,4 +37,5 @@ export const INITIAL_FILTER_STATE: ListFilterState = {
   feedbackFilter: "",
   transcriptTypeFilter: "",
   minTurns: "",
+  hideConnectedAgentSessions: true,
 };
