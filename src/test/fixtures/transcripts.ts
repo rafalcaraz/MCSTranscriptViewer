@@ -322,3 +322,30 @@ export const handoffTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+
+/**
+ * Transcript where PVA's Escalate system topic fired EscalationRequested +
+ * HandOff traces but escalation was NOT actually configured — the bot told
+ * the user it was unavailable and the session ended as 'Abandoned'.
+ *
+ * Regression: hasHandoff must be FALSE here even though a HandOff trace exists.
+ */
+export const fakeHandoffTraceTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-fake-handoff-001",
+  name: "test_fake_handoff",
+  createdon: "2026-04-09T04:07:46Z",
+  conversationstarttime: "2026-04-09T04:00:33Z",
+  metadata: '{"BotId":"fake-handoff","AADTenantId":"tenant-test","BotName":"msftcsa_fakehandoff","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1775707200, from: { id: "", role: 0 }, value: { lastSessionOutcome: "Abandoned", lastSessionOutcomeReason: "UserError", isDesignMode: false, locale: "en-US" } },
+      { id: "msg-user-1", type: "message", timestamp: 1775707210, from: { id: "user-1", aadObjectId: "aad-x", role: 1 }, channelId: "msteams", textFormat: "plain", text: "talk to a human", attachments: [] },
+      { valueType: "EscalationRequested", id: "esc-1", type: "trace", timestamp: 1775707215, from: { id: "bot-1", role: 0 }, value: { escalationRequestType: 1 } },
+      { id: "msg-bot-1", type: "message", timestamp: 1775707216, from: { id: "bot-1", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "Escalating to a representative is not currently configured for this conversation.", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "HandOff", id: "ho-1", type: "trace", timestamp: 1775707217, from: { id: "bot-1", role: 0 }, replyToId: "msg-user-1", value: {} },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1775707666, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-09T04:00:33Z", endTimeUtc: "2026-04-09T04:07:46Z", type: "Engaged", outcome: "Abandoned", turnCount: 26, impliedSuccess: false, outcomeReason: "UserError" } },
+    ],
+  }),
+};

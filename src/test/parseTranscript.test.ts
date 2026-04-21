@@ -14,6 +14,7 @@ import {
   newAdvancedEventsTranscript,
   multiAgentTranscript,
   handoffTranscript,
+  fakeHandoffTraceTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -749,5 +750,11 @@ describe("parseTranscript — hasHandoff flag", () => {
 
   it("is false for transcripts with no handoff signal", () => {
     expect(parseTranscript(basicMcpTranscript).hasHandoff).toBe(false);
+  });
+
+  it("is FALSE when only a stray HandOff trace exists but outcome is Abandoned (PVA Escalate-not-configured pattern)", () => {
+    const parsed = parseTranscript(fakeHandoffTraceTranscript);
+    expect(parsed.globalOutcome).toBe("Abandoned");
+    expect(parsed.hasHandoff).toBe(false);
   });
 });

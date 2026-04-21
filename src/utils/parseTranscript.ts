@@ -866,15 +866,17 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
 
   // True for any flavor of human/external handoff:
   //  - D365 LCW & native PVA: SessionInfo / ConversationInfo outcome === "HandOff"
-  //  - D365 LCW: a `HandOff` trace activity (some agents don't update outcome but emit the trace)
   //  - Custom integrations: any *Handoff event (already in `handoffs`)
+  //
+  // We deliberately DO NOT trust a lone `HandOff` trace — PVA's built-in
+  // Escalate system topic emits `EscalationRequested` + `HandOff` traces even
+  // when escalation isn't configured (the bot tells the user it's unavailable
+  // and the session ends as `Abandoned`). SessionInfo.outcome is the only
+  // reliable signal that an actual handoff occurred.
   const outcomeIsHandoff =
     (sessionInfo?.outcome ?? "").toLowerCase() === "handoff" ||
     (conversationInfo?.lastSessionOutcome ?? "").toLowerCase() === "handoff";
-  const hasHandoffTrace = rawActivities.some(
-    (a) => a.type === "trace" && a.valueType === "HandOff",
-  );
-  const hasHandoff = outcomeIsHandoff || hasHandoffTrace || handoffs.length > 0;
+  const hasHandoff = outcomeIsHandoff || handoffs.length > 0;
 
   return {
     conversationtranscriptid: record.conversationtranscriptid,
