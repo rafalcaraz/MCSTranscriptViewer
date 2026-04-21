@@ -1,8 +1,9 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { ChatMessage, Reaction, AttachmentItem, AttachmentKind } from "../../types/transcript";
+import type { ChatMessage, Reaction, AttachmentItem, AttachmentKind, HandoffEvent } from "../../types/transcript";
 import { formatTimestamp } from "../../utils/parseTranscript";
 import { OrphanReactionItem } from "./OrphanReactionItem";
 import { AdaptiveCardRenderer } from "./AdaptiveCardRenderer";
+import { HandoffCallout } from "./HandoffCallout";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -46,13 +47,27 @@ function agentAccent(schemaName: string): string {
 interface MessageTimelineProps {
   messages: ChatMessage[];
   reactions: Reaction[];
+  handoffs?: HandoffEvent[];
   activeMessageId: string | null;
   onMessageSelect: (messageId: string) => void;
   onOpenTranscript?: (transcriptId: string) => void;
 }
 
-export function MessageTimeline({ messages, reactions, activeMessageId, onMessageSelect, onOpenTranscript }: MessageTimelineProps) {
+export function MessageTimeline({ messages, reactions, handoffs = [], activeMessageId, onMessageSelect, onOpenTranscript }: MessageTimelineProps) {
   const activeRef = useRef<HTMLDivElement>(null);
+
+  // Group handoffs by the messageId they respond to so we can inject them inline.
+  const handoffsByReplyToId = useMemo(() => {
+    const map = new Map<string, HandoffEvent[]>();
+    for (const h of handoffs) {
+      const key = h.replyToId ?? "__orphan__";
+      const list = map.get(key) ?? [];
+      list.push(h);
+      map.set(key, list);
+    }
+    return map;
+  }, [handoffs]);
+  const orphanHandoffs = handoffsByReplyToId.get("__orphan__") ?? [];
 
   // Build a map of messageId → reactions for quick lookup
   const reactionsByMessageId = useMemo(() => {
@@ -201,9 +216,11 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
             }
           };
 
+          const messageHandoffs = handoffsByReplyToId.get(msg.id) ?? [];
+
           return (
+            <div key={msg.id} className="message-row-group">
             <div
-              key={msg.id}
               ref={(el) => {
                 if (isActive && activeRef) (activeRef as React.MutableRefObject<HTMLDivElement | null>).current = el;
                 if (matchesSearch && el) matchRefs.current.set(msgIdx, el);
@@ -269,8 +286,15 @@ export function MessageTimeline({ messages, reactions, activeMessageId, onMessag
                 <div className="msg-timestamp">{formatTimestamp(msg.timestamp)}</div>
               </div>
             </div>
+            {messageHandoffs.map((h, i) => (
+              <HandoffCallout key={`handoff-${msg.id}-${i}`} handoff={h} />
+            ))}
+            </div>
           );
         })}
+        {orphanHandoffs.map((h, i) => (
+          <HandoffCallout key={`orphan-handoff-${i}`} handoff={h} />
+        ))}
         {orphanReactions.length > 0 && (
           <div className="orphan-reactions">
             <div className="orphan-reactions-title">💬 Reactions to prior sessions</div>

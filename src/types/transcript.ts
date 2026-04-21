@@ -230,6 +230,40 @@ export interface KnowledgeTraceInfo {
   failedKnowledgeSourcesTypes: string[];
 }
 
+/**
+ * A bot-emitted handoff event signaling that the conversation context
+ * is being passed to an external system (Genesys, Salesforce, ServiceNow,
+ * a live agent platform, etc.).
+ *
+ * Detected on any activity with type="event", from.role=0, and a name
+ * ending in "Handoff" / "HandOff" (case-insensitive). The provider name
+ * is parsed out of the prefix (e.g. "GenesysHandoff" → provider "Genesys").
+ *
+ * The `value` payload is provider-specific — commonly a text summary, but
+ * may also be a JSON object, number, boolean, etc. We preserve it as-is
+ * and let the UI render polymorphically.
+ */
+export interface HandoffEvent {
+  /** Original event id, when present */
+  id?: string;
+  /** Full event name, e.g. "GenesysHandoff", "LiveAgentHandoff" */
+  eventName: string;
+  /** Provider portion derived from the event name (e.g. "Genesys"), or "Unknown" */
+  provider: string;
+  /** Activity timestamp (epoch seconds) */
+  timestamp: number;
+  /** ms-precision timestamp when present */
+  timestampMs?: number;
+  /** id of the user/bot message this event responds to, when present */
+  replyToId?: string;
+  /** Raw payload — string | number | boolean | object | array | null */
+  value: unknown;
+  /** Convenience: true if value is a non-empty string */
+  isValueString: boolean;
+  /** Convenience: true if value is an object/array */
+  isValueStructured: boolean;
+}
+
 // ── Unified activity union ────────────────────────────────────────────
 
 export type ParsedActivityType =
@@ -336,6 +370,8 @@ export interface ParsedTranscript {
   parentAgentDisplayName?: string;
   /** Raw schema name for the root/parent agent, when known. */
   parentAgentSchemaName?: string;
+  /** All bot-emitted Handoff events (e.g. GenesysHandoff, SalesforceHandoff). */
+  handoffs: HandoffEvent[];
   /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
   invokedChildAgentSchemaNames: string[];
 }

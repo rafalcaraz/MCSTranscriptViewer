@@ -1872,3 +1872,76 @@ button, input, select, textarea {
   opacity: 1;
   background: color-mix(in srgb, currentColor 10%, transparent);
 }
+
+/* ── Handoff callout ─────────────────────────────────────────────── */
+.message-row-group { display: contents; }
+
+.handoff-callout {
+  margin: 8px 0 12px;
+  padding: 0;
+  border: 1px dashed var(--accent-color, #94a3b8);
+  border-radius: 8px;
+  background: var(--surface-2, #f8fafc);
+  color: var(--text-color, inherit);
+  overflow: hidden;
+  max-width: 92%;
+  align-self: stretch;
+}
+
+.handoff-callout-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 8px 12px;
+  background: var(--surface-3, #eef2f7);
+  border: none;
+  border-bottom: 1px dashed var(--accent-color, #94a3b8);
+  font-size: 0.9em;
+  font-weight: 500;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.handoff-callout-header:hover { filter: brightness(0.97); }
+
+.handoff-callout-icon { font-size: 1.1em; }
+.handoff-callout-title strong { color: var(--accent-color, #4f46e5); }
+.handoff-callout-event {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.78em;
+  padding: 2px 6px;
+  border-radius: 4px;
+  background: rgba(148, 163, 184, 0.18);
+}
+.handoff-callout-time {
+  margin-left: auto;
+  font-size: 0.78em;
+  opacity: 0.7;
+}
+.handoff-callout-chevron { opacity: 0.6; font-size: 0.8em; }
+
+.handoff-callout-body { padding: 10px 14px; font-size: 0.92em; }
+.handoff-callout-text > :first-child { margin-top: 0; }
+.handoff-callout-text > :last-child { margin-bottom: 0; }
+.handoff-callout-empty { font-style: italic; opacity: 0.7; }
+.handoff-callout-json {
+  margin: 0;
+  padding: 10px;
+  background: var(--surface-3, #0f172a0a);
+  border-radius: 6px;
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 0.82em;
+  white-space: pre-wrap;
+  word-break: break-word;
+  max-height: 360px;
+  overflow: auto;
+}
+
+@media (prefers-color-scheme: dark) {
+  .handoff-callout { background: rgba(255, 255, 255, 0.03); }
+  .handoff-callout-header { background: rgba(255, 255, 255, 0.05); }
+  .handoff-callout-event { background: rgba(255, 255, 255, 0.08); }
+  .handoff-callout-json { background: rgba(0, 0, 0, 0.35); }
+}

@@ -302,3 +302,23 @@ export const multiAgentTranscript: DataverseTranscriptRecord = {
   }),
 };
 
+
+/** Transcript with provider handoffs (Genesys text + Salesforce JSON) */
+export const handoffTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-handoff-001",
+  name: "test_handoff",
+  createdon: "2026-04-22T10:00:00Z",
+  conversationstarttime: "2026-04-22T09:55:00Z",
+  metadata: '{"BotId":"handoff-bot","AADTenantId":"tenant-test","BotName":"msftcsa_handoffbot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776800000, from: { id: "user-1", aadObjectId: "aad-user-h", role: 1 }, channelId: "pva-studio", textFormat: "plain", text: "I need a human agent please", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776800010, from: { id: "bot-1", role: 0 }, channelId: "pva-studio", textFormat: "markdown", text: "Connecting you to an agent now.", attachments: [], replyToId: "msg-user-1" },
+      { id: "evt-handoff-1", type: "event", timestamp: 1776800011, from: { id: "bot-1", role: 0 }, name: "GenesysHandoff", channelId: "pva-studio", attachments: [], replyToId: "msg-bot-1", value: "The user requested human assistance. Summary: billing issue on account #4823." },
+      { id: "evt-handoff-2", type: "event", timestamp: 1776800012, from: { id: "bot-1", role: 0 }, name: "SalesforceHandoff", channelId: "pva-studio", attachments: [], replyToId: "msg-bot-1", value: { caseNumber: "CASE-001", priority: "High", tags: ["billing", "vip"] } },
+      { id: "evt-not-handoff", type: "event", timestamp: 1776800013, from: { id: "bot-1", role: 0 }, name: "DialogTracing", channelId: "pva-studio", attachments: [], value: {} },
+    ],
+  }),
+};

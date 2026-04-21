@@ -178,6 +178,7 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
         <MessageTimeline
           messages={transcript.messages}
           reactions={transcript.reactions}
+          handoffs={transcript.handoffs}
           activeMessageId={activeMessageId}
           onMessageSelect={handleMessageSelect}
           onOpenTranscript={onOpenTranscript}

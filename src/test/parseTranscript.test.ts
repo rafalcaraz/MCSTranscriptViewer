@@ -13,6 +13,7 @@ import {
   chatTranscript,
   newAdvancedEventsTranscript,
   multiAgentTranscript,
+  handoffTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -706,3 +707,37 @@ describe("parseTranscript — multi-agent (connected agents)", () => {
   });
 });
 
+
+describe("parseTranscript — handoff events", () => {
+  const parsed = parseTranscript(handoffTranscript);
+
+  it("extracts both *Handoff events and ignores non-handoff events", () => {
+    expect(parsed.handoffs).toHaveLength(2);
+    expect(parsed.handoffs.map(h => h.eventName).sort()).toEqual(["GenesysHandoff", "SalesforceHandoff"]);
+  });
+
+  it("derives provider name by stripping 'Handoff' suffix", () => {
+    const providers = parsed.handoffs.map(h => h.provider).sort();
+    expect(providers).toEqual(["Genesys", "Salesforce"]);
+  });
+
+  it("flags string vs structured payloads correctly", () => {
+    const genesys = parsed.handoffs.find(h => h.provider === "Genesys")!;
+    expect(genesys.isValueString).toBe(true);
+    expect(genesys.isValueStructured).toBe(false);
+    expect(typeof genesys.value).toBe("string");
+
+    const sf = parsed.handoffs.find(h => h.provider === "Salesforce")!;
+    expect(sf.isValueString).toBe(false);
+    expect(sf.isValueStructured).toBe(true);
+    expect((sf.value as { caseNumber: string }).caseNumber).toBe("CASE-001");
+  });
+
+  it("preserves replyToId so callouts can be threaded inline", () => {
+    expect(parsed.handoffs[0].replyToId).toBe("msg-bot-1");
+  });
+
+  it("does not produce handoffs for unrelated transcripts", () => {
+    expect(parseTranscript(basicMcpTranscript).handoffs).toEqual([]);
+  });
+});

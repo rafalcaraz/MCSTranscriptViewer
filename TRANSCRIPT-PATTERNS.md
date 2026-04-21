@@ -102,6 +102,8 @@ None of the above?
 13. [Plan Orchestration](#13-plan-orchestration)
 14. [Error Patterns](#14-error-patterns)
 15. [Connector & Auth Events](#15-connector--auth-events)
+    - [15.5 Multi-Agent (Connected Agents)](#155-multi-agent-connected-agents-pattern)
+    - [15.6 Provider Handoff Events](#156-provider-handoff-events-genesys-salesforce-etc)
 16. [Unhandled / Future Patterns](#16-unhandled--future-patterns)
 
 ---
@@ -1138,6 +1140,69 @@ A transcript is a connected agent session iff its `metadata.BotName` appears as 
 - **From a child-side detail view:** a banner at the top reads "🔗 This is a connected agent session — Open parent conversation ↑" linking back to the parent.
 
 Matching is heuristic (no Dataverse FK exists): same `userAadObjectId` + child's `metadata.botName` matches the invocation's `childSchemaName` + start timestamps within ±10 minutes. Closest timestamp wins. Links only appear when a confident match is found in the currently-loaded set.
+
+---
+
+## 15.6 Provider Handoff Events (Genesys, Salesforce, etc.)
+
+When a Copilot Studio agent escalates a conversation to an external system (a
+contact-center platform, CRM live agent queue, ticketing tool, …) it does so by
+emitting a bot-side `event` activity whose `name` ends in `Handoff`. The
+external integration listens for that event and takes over.
+
+**Detection rule (provider-agnostic):**
+
+```
+type === "event" && from.role === 0 && /handoff$/i.test(name)
+```
+
+The provider is whatever precedes `Handoff` in the event name:
+
+| Event name              | Provider     |
+|-------------------------|--------------|
+| `GenesysHandoff`        | Genesys      |
+| `SalesforceHandoff`     | Salesforce   |
+| `LiveAgentHandoff`      | LiveAgent    |
+| `ServiceNowHandoff`     | ServiceNow   |
+| `<Anything>Handoff`     | `<Anything>` |
+
+**Example payload** (real `GenesysHandoff` from a Providence transcript):
+
+```json
+{
+  "id": "...",
+  "type": "event",
+  "timestamp": 1776799565,
+  "from": { "id": "<botId>", "role": 0 },
+  "name": "GenesysHandoff",
+  "channelId": "pva-studio",
+  "replyToId": "<id of triggering message>",
+  "value": "The user initially asked for help with..."
+}
+```
+
+**`value` is polymorphic.** Different providers (and different topic authors)
+serialize their handoff context in different shapes. We've seen — and our
+renderer handles — all of these:
+
+- **String** (markdown summary text) — Genesys text handoff
+- **Structured object / array** (case fields, routing hints, tags) — typical
+  for CRM-style integrations
+- **Primitive** (`number`, `boolean`) — rare but valid
+- **Empty / null / missing** — the handoff still fires; we render
+  `(no context payload)` so reviewers can still see that escalation occurred
+
+**How we render it:** an inline collapsible callout box (🚪) injected into the
+Message Timeline directly after the message it `replyToId`-references. The
+callout shows provider, full event name, timestamp, and a polymorphic body
+(markdown for strings, pretty-printed JSON for objects, inline text for
+primitives). Visually distinct from message bubbles via a dashed border so it
+reads as a system event, not a chat turn.
+
+**Often paired with** a `DialogTracing` trace for an `Escalate` topic (e.g.
+`crc5e_agentkrDG73.topic.Escalate`) firing immediately before/after the
+handoff. The dialog trace identifies *which* topic decided to escalate; the
+handoff event carries the payload sent to the external system.
 
 ---
 

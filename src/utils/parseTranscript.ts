@@ -18,6 +18,7 @@ import type {
   MessageAttachment,
   ChatMessage,
   ConnectedAgentInvocation,
+  HandoffEvent,
 } from "../types/transcript";
 import { extractAdvancedEvents } from "./advancedEvents";
 
@@ -226,6 +227,38 @@ interface RawConnectedCompleted {
 interface RawPlanStepTriggered {
   stepId?: string;
   thought?: string;
+}
+
+/**
+ * Detect bot-emitted handoff events (any activity with type="event",
+ * from.role=0, and a name ending in "Handoff" / "HandOff").
+ *
+ * Provider-agnostic: matches GenesysHandoff, SalesforceHandoff,
+ * LiveAgentHandoff, ServiceNowHandoff, etc. without a hard-coded list.
+ */
+function extractHandoffEvents(rawActivities: RawActivity[]): HandoffEvent[] {
+  const handoffs: HandoffEvent[] = [];
+  for (const a of rawActivities) {
+    if (a.type !== "event") continue;
+    if (a.from?.role !== 0) continue;
+    const name = a.name ?? "";
+    if (!/handoff$/i.test(name)) continue;
+
+    const provider = name.replace(/handoff$/i, "").trim() || "Unknown";
+    const value = a.value;
+    handoffs.push({
+      id: a.id,
+      eventName: name,
+      provider,
+      timestamp: a.timestamp,
+      replyToId: a.replyToId,
+      value,
+      isValueString: typeof value === "string" && value.length > 0,
+      isValueStructured: typeof value === "object" && value !== null,
+    });
+  }
+  handoffs.sort((a, b) => a.timestamp - b.timestamp);
+  return handoffs;
 }
 
 /**
@@ -829,6 +862,8 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     ? prettyAgentName(parentAgentSchemaName)
     : undefined;
 
+  const handoffs = extractHandoffEvents(rawActivities);
+
   return {
     conversationtranscriptid: record.conversationtranscriptid,
     name: record.name ?? "",
@@ -867,5 +902,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     parentAgentSchemaName,
     parentAgentDisplayName,
     invokedChildAgentSchemaNames: [...new Set(connectedAgentInvocations.map((i) => i.childSchemaName))],
+    handoffs,
   };
 }
