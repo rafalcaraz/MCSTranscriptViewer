@@ -6,6 +6,7 @@ import { DebugPanel } from "./DebugPanel";
 import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTranscript";
 import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
 import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
+import { buildRecordWebApiUrl } from "../../utils/dataverseEnvUrl";
 
 const TYPE_BADGE: Record<TranscriptType, { icon: string; label: string }> = {
   chat: { icon: "💬", label: "Chat" },
@@ -25,6 +26,20 @@ interface TranscriptDetailProps {
 
 export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoadedTranscripts = [] }: TranscriptDetailProps) {
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  const transcriptId = transcript.conversationtranscriptid;
+  const webApiUrl = buildRecordWebApiUrl("conversationtranscripts", transcriptId);
+
+  const handleCopyId = async () => {
+    try {
+      await navigator.clipboard.writeText(transcriptId);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // clipboard may be blocked in some hosting contexts
+    }
+  };
 
   // Resolve display names for export
   const { getDisplayName: getBotName } = useBotLookup();
@@ -73,7 +88,30 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
         <span className={`type-badge ${transcript.transcriptType}`}>
           {TYPE_BADGE[transcript.transcriptType].icon} {TYPE_BADGE[transcript.transcriptType].label}
         </span>
-        <span className="conversation-id">{transcript.conversationtranscriptid}</span>
+        <span className="conversation-id">
+          {webApiUrl ? (
+            <a
+              href={webApiUrl}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="conversation-id-link"
+              title={`Open in Dataverse Web API: ${webApiUrl}`}
+            >
+              {transcriptId}
+            </a>
+          ) : (
+            <span title="Open any transcript once to enable the Web API link">{transcriptId}</span>
+          )}
+          <button
+            type="button"
+            className="copy-id-btn"
+            onClick={handleCopyId}
+            title="Copy transcript ID to clipboard"
+            aria-label="Copy transcript ID"
+          >
+            {copied ? "✓" : "📋"}
+          </button>
+        </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
           <button
             className="export-btn"

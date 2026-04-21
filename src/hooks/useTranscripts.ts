@@ -3,6 +3,7 @@ import { parseTranscript, type DataverseTranscriptRecord } from "../utils/parseT
 import type { ParsedTranscript } from "../types/transcript";
 import { ConversationtranscriptsService } from "../generated/services/ConversationtranscriptsService";
 import type { Conversationtranscripts } from "../generated/models/ConversationtranscriptsModel";
+import { captureOrgUrlFromRecord } from "../utils/dataverseEnvUrl";
 
 export interface TranscriptFilters {
   dateFrom?: string;
@@ -193,6 +194,7 @@ export function useTranscript(id: string | undefined) {
         });
 
         if (!cancelled && result.data) {
+          captureOrgUrlFromRecord(result.data);
           setTranscript(parseTranscript(toRecord(result.data)));
         }
       } catch (err) {

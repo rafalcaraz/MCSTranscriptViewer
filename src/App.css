@@ -1836,3 +1836,39 @@ button, input, select, textarea {
 .connected-agent-child-link:hover {
   background: color-mix(in srgb, var(--agent-accent, #4f8cff) 12%, transparent);
 }
+
+/* ---- Conversation ID copy + link ---- */
+
+.conversation-id {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.conversation-id-link {
+  color: var(--accent-primary, #4f8cff);
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--accent-primary, #4f8cff) 50%, transparent);
+}
+
+.conversation-id-link:hover {
+  text-decoration: none;
+  border-bottom-color: var(--accent-primary, #4f8cff);
+  filter: brightness(1.1);
+}
+
+.copy-id-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 2px 4px;
+  font-size: 12px;
+  border-radius: 3px;
+  opacity: 0.7;
+  line-height: 1;
+}
+
+.copy-id-btn:hover {
+  opacity: 1;
+  background: color-mix(in srgb, currentColor 10%, transparent);
+}
