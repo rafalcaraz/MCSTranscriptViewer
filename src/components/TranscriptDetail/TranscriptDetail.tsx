@@ -7,6 +7,7 @@ import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTra
 import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
 import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
 import { buildRecordWebApiUrl } from "../../utils/dataverseEnvUrl";
+import { buildShareUrl } from "../../utils/shareUrl";
 
 const TYPE_BADGE: Record<TranscriptType, { icon: string; label: string }> = {
   chat: { icon: "💬", label: "Chat" },
@@ -31,9 +32,7 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
 
   const transcriptId = transcript.conversationtranscriptid;
   const webApiUrl = buildRecordWebApiUrl("conversationtranscripts", transcriptId);
-  const shareUrl = typeof window !== "undefined"
-    ? `${window.location.origin}${window.location.pathname}${window.location.search}#t=${transcriptId}`
-    : "";
+  const shareUrl = buildShareUrl(transcriptId);
 
   const handleCopyId = async () => {
     try {

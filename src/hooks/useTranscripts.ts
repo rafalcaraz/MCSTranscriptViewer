@@ -178,6 +178,14 @@ export function useTranscript(id: string | undefined) {
     let cancelled = false;
     setLoading(true);
 
+    const timeoutId = window.setTimeout(() => {
+      if (!cancelled) {
+        console.error("[Transcript] Fetch timed out after 20s — Power Apps SDK may not be initialized (are you opening a localhost URL outside the Power Apps wrapper?)");
+        setLoading(false);
+        cancelled = true;
+      }
+    }, 20000);
+
     (async () => {
       try {
         const result = await ConversationtranscriptsService.get(id, {
@@ -200,11 +208,12 @@ export function useTranscript(id: string | undefined) {
       } catch (err) {
         console.error("[Transcript] Fetch error:", err instanceof Error ? err.message : "Unknown error");
       } finally {
+        window.clearTimeout(timeoutId);
         if (!cancelled) setLoading(false);
       }
     })();
 
-    return () => { cancelled = true; };
+    return () => { cancelled = true; window.clearTimeout(timeoutId); };
   }, [id]);
 
   return { transcript, loading };
