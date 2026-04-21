@@ -13,7 +13,11 @@ const DEFAULT_PAGE_SIZE = 25;
 
 function App() {
   const [view, setView] = useState<View>("list");
-  const [selectedId, setSelectedId] = useState<string | undefined>();
+  const [selectedId, setSelectedId] = useState<string | undefined>(() => {
+    if (typeof window === "undefined") return undefined;
+    const m = window.location.hash.match(/[#&]t=([0-9a-f-]{36})/i);
+    return m ? m[1] : undefined;
+  });
   const [listFilters, setListFilters] = useState<ListFilterState>(INITIAL_FILTER_STATE);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -29,6 +33,24 @@ function App() {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
+  // Sync view with initial deep-link selectedId (set above) and react to back/forward navigation.
+  useEffect(() => {
+    if (selectedId) setView("detail");
+    const onHash = () => {
+      const m = window.location.hash.match(/[#&]t=([0-9a-f-]{36})/i);
+      if (m) {
+        setSelectedId(m[1]);
+        setView("detail");
+      } else {
+        setSelectedId(undefined);
+        setView((v) => (v === "detail" ? "list" : v));
+      }
+    };
+    window.addEventListener("hashchange", onHash);
+    return () => window.removeEventListener("hashchange", onHash);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   const { accessibleBots, ready: botsReady } = useBotLookup();
 
   const [filters, setFilters] = useState<TranscriptFilters>({
@@ -41,11 +63,20 @@ function App() {
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setView("detail");
+    if (typeof window !== "undefined") {
+      const newHash = `#t=${id}`;
+      if (window.location.hash !== newHash) {
+        window.history.pushState(null, "", newHash);
+      }
+    }
   };
 
   const handleBack = () => {
     setView("list");
     setSelectedId(undefined);
+    if (typeof window !== "undefined" && window.location.hash) {
+      window.history.pushState(null, "", window.location.pathname + window.location.search);
+    }
   };
 
   const handleFiltersChange = useCallback((newFilters: { dateFrom?: string; dateTo?: string; contentSearch?: string; participantAadId?: string }) => {
