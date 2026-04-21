@@ -7,7 +7,6 @@ import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTra
 import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
 import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
 import { buildRecordWebApiUrl } from "../../utils/dataverseEnvUrl";
-import { buildShareUrl } from "../../utils/shareUrl";
 
 const TYPE_BADGE: Record<TranscriptType, { icon: string; label: string }> = {
   chat: { icon: "💬", label: "Chat" },
@@ -28,11 +27,9 @@ interface TranscriptDetailProps {
 export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoadedTranscripts = [] }: TranscriptDetailProps) {
   const [activeMessageId, setActiveMessageId] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  const [shareCopied, setShareCopied] = useState(false);
 
   const transcriptId = transcript.conversationtranscriptid;
   const webApiUrl = buildRecordWebApiUrl("conversationtranscripts", transcriptId);
-  const shareUrl = buildShareUrl(transcriptId);
 
   const handleCopyId = async () => {
     try {
@@ -41,16 +38,6 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
       setTimeout(() => setCopied(false), 1500);
     } catch {
       // clipboard may be blocked in some hosting contexts
-    }
-  };
-
-  const handleCopyShareLink = async () => {
-    try {
-      await navigator.clipboard.writeText(shareUrl);
-      setShareCopied(true);
-      setTimeout(() => setShareCopied(false), 1500);
-    } catch {
-      // clipboard may be blocked
     }
   };
 
@@ -123,15 +110,6 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
             aria-label="Copy transcript ID"
           >
             {copied ? "✓" : "📋"}
-          </button>
-          <button
-            type="button"
-            className="copy-id-btn"
-            onClick={handleCopyShareLink}
-            title={`Copy shareable link: ${shareUrl}`}
-            aria-label="Copy shareable link to this transcript"
-          >
-            {shareCopied ? "✓" : "🔗"}
           </button>
         </span>
         <div style={{ marginLeft: "auto", display: "flex", gap: 8, alignItems: "center" }}>
