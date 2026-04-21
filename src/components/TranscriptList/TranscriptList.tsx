@@ -169,8 +169,12 @@ export function TranscriptList({
       results = results.filter((t) => selected.has(t.metadata.botName));
     }
 
-    // Outcome filter
-    if (f.outcomeFilter) {
+    // Outcome filter — special-case "Handoff" to match our derived hasHandoff
+    // flag, so it catches D365 LCW (outcome=HandOff), trace-only handoffs, and
+    // custom *Handoff events (Genesys, Salesforce, etc.).
+    if (f.outcomeFilter === "Handoff") {
+      results = results.filter((t) => t.hasHandoff);
+    } else if (f.outcomeFilter) {
       results = results.filter((t) => t.globalOutcome === f.outcomeFilter);
     }
 
@@ -292,6 +296,7 @@ export function TranscriptList({
             onChange={(e) => update({ outcomeFilter: e.target.value })}
           >
             <option value="">All Outcomes</option>
+            <option value="Handoff">🚪 Handed off</option>
             <option value="Abandoned">Abandoned</option>
             <option value="Resolved">Resolved</option>
             <option value="Escalated">Escalated</option>
@@ -417,6 +422,19 @@ export function TranscriptList({
                 <span className={`badge ${outcomeBadgeClass[t.globalOutcome ?? ""] ?? "badge-info"}`}>
                   {t.globalOutcome ?? "Unknown"}
                 </span>
+                {t.hasHandoff && (
+                  <span
+                    className="handoff-row-icon"
+                    title={
+                      t.handoffs.length > 0
+                        ? `Handed off (${[...new Set(t.handoffs.map(h => h.provider))].join(", ")})`
+                        : "Handed off to human/external agent"
+                    }
+                    aria-label="Handed off"
+                  >
+                    {" 🚪"}
+                  </span>
+                )}
               </td>
             </tr>
           ))}

@@ -94,7 +94,8 @@ export function ActiveFilters({ f, agents, onRemove, onClearAll }: ActiveFilters
   }
 
   if (f.outcomeFilter) {
-    chips.push({ key: "outcomeFilter", label: `🎯 ${f.outcomeFilter}` });
+    const label = f.outcomeFilter === "Handoff" ? "🚪 Handed off" : `🎯 ${f.outcomeFilter}`;
+    chips.push({ key: "outcomeFilter", label });
   }
 
   if (f.feedbackFilter) {

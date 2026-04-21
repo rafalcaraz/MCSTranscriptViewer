@@ -372,6 +372,13 @@ export interface ParsedTranscript {
   parentAgentSchemaName?: string;
   /** All bot-emitted Handoff events (e.g. GenesysHandoff, SalesforceHandoff). */
   handoffs: HandoffEvent[];
+  /**
+   * True when this transcript involved any handoff to a human/external system.
+   * Catches both:
+   *  - SessionInfo / ConversationInfo outcome === "HandOff" (D365 LCW, native escalations)
+   *  - Any custom *Handoff event (Genesys, Salesforce, LiveAgent, etc.)
+   */
+  hasHandoff: boolean;
   /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
   invokedChildAgentSchemaNames: string[];
 }

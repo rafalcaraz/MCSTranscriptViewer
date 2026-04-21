@@ -1945,3 +1945,11 @@ button, input, select, textarea {
   .handoff-callout-event { background: rgba(255, 255, 255, 0.08); }
   .handoff-callout-json { background: rgba(0, 0, 0, 0.35); }
 }
+
+.handoff-row-icon {
+  display: inline-block;
+  margin-left: 4px;
+  font-size: 0.95em;
+  cursor: help;
+  vertical-align: middle;
+}

@@ -741,3 +741,13 @@ describe("parseTranscript — handoff events", () => {
     expect(parseTranscript(basicMcpTranscript).handoffs).toEqual([]);
   });
 });
+
+describe("parseTranscript — hasHandoff flag", () => {
+  it("is true when a *Handoff event is present", () => {
+    expect(parseTranscript(handoffTranscript).hasHandoff).toBe(true);
+  });
+
+  it("is false for transcripts with no handoff signal", () => {
+    expect(parseTranscript(basicMcpTranscript).hasHandoff).toBe(false);
+  });
+});

@@ -864,6 +864,18 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
 
   const handoffs = extractHandoffEvents(rawActivities);
 
+  // True for any flavor of human/external handoff:
+  //  - D365 LCW & native PVA: SessionInfo / ConversationInfo outcome === "HandOff"
+  //  - D365 LCW: a `HandOff` trace activity (some agents don't update outcome but emit the trace)
+  //  - Custom integrations: any *Handoff event (already in `handoffs`)
+  const outcomeIsHandoff =
+    (sessionInfo?.outcome ?? "").toLowerCase() === "handoff" ||
+    (conversationInfo?.lastSessionOutcome ?? "").toLowerCase() === "handoff";
+  const hasHandoffTrace = rawActivities.some(
+    (a) => a.type === "trace" && a.valueType === "HandOff",
+  );
+  const hasHandoff = outcomeIsHandoff || hasHandoffTrace || handoffs.length > 0;
+
   return {
     conversationtranscriptid: record.conversationtranscriptid,
     name: record.name ?? "",
@@ -903,5 +915,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     parentAgentDisplayName,
     invokedChildAgentSchemaNames: [...new Set(connectedAgentInvocations.map((i) => i.childSchemaName))],
     handoffs,
+    hasHandoff,
   };
 }
