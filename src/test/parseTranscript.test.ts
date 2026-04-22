@@ -20,6 +20,7 @@ import {
   handoffNonLcwTranscript,
   voiceFirstClassHandoffTranscript,
   studioAuthorHandoffTranscript,
+  voiceSessionTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -846,6 +847,37 @@ describe("parseTranscript — first-class handoff activity (type=handoff)", () =
     const parsed = parseTranscript(fakeHandoffTraceTranscript);
     expect(parsed.hasHandoff).toBe(false);
     expect(parsed.handoffs).toHaveLength(0);
+  });
+});
+
+describe("parseTranscript — D365 Voice context (pvaSetContext)", () => {
+  const parsed = parseTranscript(voiceSessionTranscript);
+
+  it("extracts phone numbers, ids, and locale from pvaSetContext value", () => {
+    const v = parsed.voiceContext!;
+    expect(v).toBeDefined();
+    expect(v.organizationPhone).toBe("+18334895405");
+    expect(v.customerPhone).toBe("+13204346038");
+    expect(v.liveWorkItemId).toBe("3b867b92-aaaa-bbbb-cccc-ddddeeeeffff");
+    expect(v.sessionId).toBe("91d91471-aaaa-bbbb-cccc-ddddeeeeffff");
+    expect(v.locale).toBe("en-US");
+  });
+
+  it("extracts IVR + voice config + Nuance session from channelData", () => {
+    const v = parsed.voiceContext!;
+    expect(v.channelSpecifier).toBe("IVR");
+    expect(v.voices?.["en-US"]?.voiceName).toBe("de-DE-Seraphina:DragonHDLatestNeural");
+    expect(v.nuanceSessionId).toBe("ceea9a40-1234-1234-1234-abcabcabcabc");
+  });
+
+  it("preserves the bot message's speak SSML on ChatMessage.speak", () => {
+    const botMsg = parsed.messages.find((m) => m.id === "msg-bot-1");
+    expect(botMsg?.speak).toContain("<speak");
+    expect(botMsg?.speak).toContain("Seraphina");
+  });
+
+  it("returns voiceContext=undefined for transcripts without pvaSetContext", () => {
+    expect(parseTranscript(basicMcpTranscript).voiceContext).toBeUndefined();
   });
 });
 

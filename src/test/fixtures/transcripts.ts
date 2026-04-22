@@ -497,6 +497,67 @@ export const voiceFirstClassHandoffTranscript: DataverseTranscriptRecord = {
 };
 
 /**
+ * D365 Voice session with full pvaSetContext + an SSML-bearing bot message.
+ * Used to validate VoiceContext extraction (phone numbers, locale, voice
+ * config, Nuance session) and ChatMessage.speak preservation.
+ */
+export const voiceSessionTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-session-001",
+  name: "test_voice_session",
+  createdon: "2026-04-22T12:00:00Z",
+  conversationstarttime: "2026-04-22T11:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voicebot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      {
+        id: "evt-pva-ctx-1",
+        type: "event",
+        name: "pvaSetContext",
+        timestamp: 1776820000,
+        from: { id: "visitor-1", role: 1 },
+        channelId: "conversationconductor",
+        channelData: {
+          ChannelSpecifier: "IVR",
+          ivrResultContextOnHangup: false,
+          "vnd.microsoft.msdyn.oc.data": {
+            voices: {
+              "en-US": {
+                voiceName: "de-DE-Seraphina:DragonHDLatestNeural",
+                speakingSpeed: 0,
+                voiceStyle: null,
+                pitch: 0,
+              },
+            },
+          },
+          nuanceCreateGrpcState: { SessionId: "ceea9a40-1234-1234-1234-abcabcabcabc" },
+        },
+        value: {
+          msdyn_sessionid: "91d91471-aaaa-bbbb-cccc-ddddeeeeffff",
+          msdyn_ocliveworkitemid: "3b867b92-aaaa-bbbb-cccc-ddddeeeeffff",
+          msdyn_ConversationId: "3b867b92-aaaa-bbbb-cccc-ddddeeeeffff",
+          msdyn_OrganizationPhone: "+18334895405",
+          msdyn_CustomerPhone: "+13204346038",
+          msdyn_Locale: "en-US",
+        },
+      },
+      {
+        id: "msg-bot-1",
+        type: "message",
+        timestamp: 1776820005,
+        from: { id: "bot-1", role: 0 },
+        channelId: "conversationconductor",
+        textFormat: "plain",
+        text: "Hello and thank you for calling.",
+        speak: "<speak version=\"1.0\" xml:lang=\"en-US\"><voice name=\"de-DE-Seraphina:DragonHDLatestNeural\"><prosody rate=\"0%\" pitch=\"0%\">Hello and thank you for calling.</prosody></voice></speak>",
+      },
+      { id: "msg-user-1", type: "message", timestamp: 1776820010, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "Hi", attachments: [] },
+    ],
+  }),
+};
+
+/**
  * Copilot Studio author-configured handoff (AgentTransferConfiguredByAuthor):
  * the author wired a transfer node into a topic, and at runtime the platform
  * emits both the first-class `handoff` activity AND a HandOff trace. The LCW

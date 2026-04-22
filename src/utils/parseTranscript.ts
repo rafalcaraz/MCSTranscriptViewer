@@ -10,6 +10,7 @@ import { extractAdvancedEvents } from "./advancedEvents";
 import { parseActivity, mergePlanSteps, classifyTranscriptType } from "./parseTranscript/activity";
 import { extractHandoffEvents, extractFirstClassHandoffActivities, synthesizeD365LcwHandoff } from "./parseTranscript/handoffs";
 import { extractOmnichannelContext } from "./parseTranscript/omnichannel";
+import { extractVoiceContext } from "./parseTranscript/voice";
 import {
   prettyAgentName,
   extractConnectedAgentInvocations,
@@ -246,6 +247,7 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
 
   const { context: omnichannelContext, visitor: authenticatedVisitor } =
     extractOmnichannelContext(rawActivities);
+  const voiceContext = extractVoiceContext(rawActivities);
 
   return {
     conversationtranscriptid: record.conversationtranscriptid,
@@ -289,5 +291,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     hasHandoff,
     omnichannelContext,
     authenticatedVisitor,
+    voiceContext,
   };
 }

@@ -144,6 +144,8 @@ export interface ChatMessage {
   attachmentSummary?: AttachmentSummary;
   /** For bot messages in multi-agent transcripts, identifies the speaking agent. */
   speakingAgent?: SpeakingAgent;
+  /** SSML markup that was synthesized for TTS playback (D365 Voice Channel only). */
+  speak?: string;
 }
 
 export interface DialogTrace {
@@ -321,6 +323,42 @@ export interface AuthenticatedVisitor {
   raw: Record<string, unknown>;
 }
 
+/**
+ * D365 Voice Channel context attached to `conversationconductor` sessions.
+ * Extracted from the `pvaSetContext` event payload (the voice equivalent of
+ * the LCW `startConversation` event). Carries IVR + telephony state including
+ * caller and organization phone numbers, the Nuance speech session, and the
+ * neural TTS voice configuration. All fields are optional.
+ *
+ * Note: `customerPhone` is PII and should be treated with care.
+ */
+export interface VoiceContext {
+  /** Voice work item GUID. Note the lowercase `oc` prefix vs LCW's `liveworkitemid`. */
+  liveWorkItemId?: string;
+  /** Conversation GUID, usually equal to liveWorkItemId. */
+  conversationId?: string;
+  /** Session GUID. */
+  sessionId?: string;
+  /** Org/agent inbound phone number (E.164). */
+  organizationPhone?: string;
+  /** Caller phone number (E.164). PII. */
+  customerPhone?: string;
+  /** Locale, e.g. "en-US". */
+  locale?: string;
+  /** Channel specifier, e.g. "IVR". */
+  channelSpecifier?: string;
+  /** TTS voice config — neural voice name, speed, pitch — keyed by locale. */
+  voices?: Record<string, { voiceName?: string; speakingSpeed?: number; pitch?: number; voiceStyle?: string | null }>;
+  /** Reason the call ended, when present (e.g. "CallerHangup"). */
+  endConversationReason?: string;
+  /** Nuance speech recognition session id, when present. */
+  nuanceSessionId?: string;
+  /** Raw msdyn_* payload preserved for advanced inspection. */
+  raw: Record<string, unknown>;
+  /** Raw channelData snapshot from the pvaSetContext event. */
+  rawChannelData: Record<string, unknown>;
+}
+
 // ── Unified activity union ────────────────────────────────────────────
 
 export type ParsedActivityType =
@@ -444,6 +482,8 @@ export interface ParsedTranscript {
   omnichannelContext?: OmnichannelContext;
   /** OIDC claims for an authenticated visitor, when present in the LCW session. */
   authenticatedVisitor?: AuthenticatedVisitor;
+  /** D365 Voice Channel context (phone numbers, IVR state, TTS voice), when present. */
+  voiceContext?: VoiceContext;
   /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
   invokedChildAgentSchemaNames: string[];
 }

@@ -143,6 +143,7 @@ export function parseActivity(raw: RawActivity): ParsedActivity {
         replyToId: raw.replyToId,
         attachments: attachments.length > 0 ? attachments : undefined,
         attachmentSummary,
+        speak: typeof raw.speak === "string" && raw.speak.length > 0 ? raw.speak : undefined,
       };
       break;
     }
