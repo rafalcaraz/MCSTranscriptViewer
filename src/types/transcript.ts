@@ -419,6 +419,38 @@ export interface TranscriptMetadata {
   aadTenantId: string;
 }
 
+/**
+ * Lightweight signal that an `endOfConversation` activity was emitted.
+ * We surface this only when the activity is actually present in the source
+ * — never inferred from absence (Bot Framework treats it as optional and
+ * many channels skip it). The optional `reason` comes from `channelData
+ * .EndConversationReason`, e.g. "CCAAS_TRANSFER", "CallerHangup".
+ */
+export interface EndOfConversationSignal {
+  /** Activity timestamp (epoch seconds). */
+  timestamp: number;
+  /** "user" if from.role===1, "bot" if from.role===0. */
+  byRole: "user" | "bot";
+  /** Free-form reason from channelData when present. */
+  reason?: string;
+}
+
+/**
+ * Marker that a Post-Resolution Rating (PRR) survey was requested. Voice
+ * channel equivalent of CSAT — the IVR plays a "press 1 to 5" prompt after
+ * a successful resolution. Payload is intentionally tiny ({ type: "PRR" });
+ * absence of a corresponding `PRRSurveyResponse` means the caller hung up
+ * before answering.
+ */
+export interface SurveySignal {
+  /** Activity timestamp (epoch seconds). */
+  timestamp: number;
+  /** Survey kind, e.g. "PRR" — comes from value.type. */
+  type?: string;
+  /** True if a corresponding PRRSurveyResponse was also seen (rating provided). */
+  responded: boolean;
+}
+
 export interface ParsedTranscript {
   // From Dataverse record fields
   conversationtranscriptid: string;
@@ -484,6 +516,16 @@ export interface ParsedTranscript {
   authenticatedVisitor?: AuthenticatedVisitor;
   /** D365 Voice Channel context (phone numbers, IVR state, TTS voice), when present. */
   voiceContext?: VoiceContext;
+  /**
+   * `endOfConversation` activity, when emitted. Never inferred from absence —
+   * many channels never emit it. Use this only as a positive signal.
+   */
+  endOfConversation?: EndOfConversationSignal;
+  /**
+   * Post-Resolution Rating (PRR) survey signal — voice channel CSAT equivalent.
+   * Set only when a `PRRSurveyRequest` trace is present in the source.
+   */
+  prrSurvey?: SurveySignal;
   /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
   invokedChildAgentSchemaNames: string[];
 }

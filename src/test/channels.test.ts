@@ -11,7 +11,8 @@ describe("getChannelInfo", () => {
     expect(lcw.label).toBe("LCW");
 
     const auto = getChannelInfo("pva-autonomous")!;
-    expect(auto.label).toBe("Autonomous");
+    expect(auto.label).toBe("Platform");
+    expect(auto.emoji).toBe("🏛️");
   });
 
   it("returns a fallback ChannelInfo for unknown channels (so they still render)", () => {

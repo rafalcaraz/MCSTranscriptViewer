@@ -593,3 +593,91 @@ export const studioAuthorHandoffTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+
+/**
+ * LCW transcript where a Copilot Studio author wired a Transfer node into a
+ * topic. Platform sets `outcome: HandOff` + `outcomeReason:
+ * AgentTransferConfiguredByAuthor` on SessionInfo but does NOT emit a
+ * first-class handoff activity (older runtime). Tier-3 expectation: the LCW
+ * synthesizer fires (4th allowed reason) -> exactly 1 handoff event.
+ */
+export const lcwConfiguredByAuthorTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-lcw-author-handoff-001",
+  name: "test_lcw_author_handoff",
+  createdon: "2026-04-22T13:00:00Z",
+  conversationstarttime: "2026-04-22T12:55:00Z",
+  metadata: '{"BotId":"lcw-bot","AADTenantId":"tenant-test","BotName":"msftcsa_lcwbot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776823000, from: { id: "user-1", role: 1 }, channelId: "lcw", textFormat: "plain", text: "I need a human", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776823005, from: { id: "bot-1", role: 0 }, channelId: "lcw", textFormat: "markdown", text: "Connecting you to an agent.", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "HandOff", id: "ho-trace-1", type: "trace", timestamp: 1776823006, from: { id: "bot-1", role: 0 }, replyToId: "msg-bot-1", value: {} },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776823300, from: { id: "", role: 0 }, channelId: "lcw", value: { startTimeUtc: "2026-04-22T12:55:00Z", endTimeUtc: "2026-04-22T13:00:00Z", type: "Engaged", outcome: "HandOff", turnCount: 2, impliedSuccess: true, outcomeReason: "AgentTransferConfiguredByAuthor" } },
+    ],
+  }),
+};
+
+/**
+ * Voice transcript that ends with both an `endOfConversation` activity
+ * (channelData.EndConversationReason: "CCAAS_TRANSFER") and a
+ * PRRSurveyRequest trace - but NO PRRSurveyResponse (caller hung up
+ * before answering). Used to validate `prrSurvey.responded === false`.
+ */
+export const voiceEndAndPrrTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-eoc-prr-001",
+  name: "test_voice_eoc_prr",
+  createdon: "2026-04-22T14:00:00Z",
+  conversationstarttime: "2026-04-22T13:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voicebot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776830000, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "Talk to a person", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776830005, from: { id: "bot-1", role: 0 }, channelId: "conversationconductor", textFormat: "plain", text: "One moment.", attachments: [], replyToId: "msg-user-1" },
+      {
+        id: "eoc-1",
+        type: "endOfConversation",
+        timestamp: 1776830010,
+        from: { id: "bot-1", role: 0 },
+        channelId: "conversationconductor",
+        text: "",
+        attachments: [],
+        channelData: { ChannelSpecifier: "", EndConversationReason: "CCAAS_TRANSFER" },
+      },
+      {
+        valueType: "PRRSurveyRequest",
+        id: "prr-1",
+        type: "trace",
+        timestamp: 1776830011,
+        from: { id: "bot-1", role: 0 },
+        value: { type: "PRR" },
+      },
+    ],
+  }),
+};
+
+/**
+ * Voice transcript with both PRRSurveyRequest AND a corresponding
+ * PRRSurveyResponse (caller pressed a key). Used to validate
+ * `prrSurvey.responded === true`.
+ */
+export const voicePrrAnsweredTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-prr-answered-001",
+  name: "test_voice_prr_answered",
+  createdon: "2026-04-22T15:00:00Z",
+  conversationstarttime: "2026-04-22T14:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voicebot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776840000, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "yes", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776840005, from: { id: "bot-1", role: 0 }, channelId: "conversationconductor", textFormat: "plain", text: "Thanks!", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "PRRSurveyRequest", id: "prr-req-1", type: "trace", timestamp: 1776840006, from: { id: "bot-1", role: 0 }, value: { type: "PRR" } },
+      { valueType: "PRRSurveyResponse", id: "prr-res-1", type: "trace", timestamp: 1776840020, from: { id: "user-1", role: 1 }, value: { rating: 5 } },
+    ],
+  }),
+};

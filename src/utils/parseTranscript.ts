@@ -11,6 +11,7 @@ import { parseActivity, mergePlanSteps, classifyTranscriptType } from "./parseTr
 import { extractHandoffEvents, extractFirstClassHandoffActivities, synthesizeD365LcwHandoff } from "./parseTranscript/handoffs";
 import { extractOmnichannelContext } from "./parseTranscript/omnichannel";
 import { extractVoiceContext } from "./parseTranscript/voice";
+import { extractEndOfConversation, extractPrrSurvey } from "./parseTranscript/lifecycle";
 import {
   prettyAgentName,
   extractConnectedAgentInvocations,
@@ -248,6 +249,8 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
   const { context: omnichannelContext, visitor: authenticatedVisitor } =
     extractOmnichannelContext(rawActivities);
   const voiceContext = extractVoiceContext(rawActivities);
+  const endOfConversation = extractEndOfConversation(rawActivities);
+  const prrSurvey = extractPrrSurvey(rawActivities);
 
   return {
     conversationtranscriptid: record.conversationtranscriptid,
@@ -292,5 +295,7 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     omnichannelContext,
     authenticatedVisitor,
     voiceContext,
+    endOfConversation,
+    prrSurvey,
   };
 }

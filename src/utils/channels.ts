@@ -40,9 +40,9 @@ const CHANNEL_INFO: Record<string, ChannelInfo> = {
   },
   "pva-autonomous": {
     id: "pva-autonomous",
-    emoji: "🤖",
-    label: "Autonomous",
-    description: "Copilot Studio autonomous agent — first-party D365 agent invoked without a user UI.",
+    emoji: "🏛️",
+    label: "Platform",
+    description: "Microsoft 1P D365 platform agent — autonomous run on the pva-autonomous channel.",
   },
   msteams: {
     id: "msteams",

@@ -1571,6 +1571,35 @@ tr[role="button"] {
   background: var(--color-primary-light);
   color: var(--color-primary);
 }
+
+/* ── Lifecycle signals (endOfConversation, PRR survey) ─── */
+.lifecycle-signals {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+}
+.lifecycle-chip {
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  font-weight: 500;
+  background: var(--bg-surface);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-light);
+}
+.lifecycle-eoc {
+  background: var(--info-bg, var(--bg-surface));
+  color: var(--info-text, var(--text-secondary));
+}
+.lifecycle-prr-answered {
+  background: var(--success-bg);
+  color: var(--success-text);
+}
+.lifecycle-prr-unanswered {
+  background: var(--warning-bg);
+  color: var(--warning-text);
+}
 /* ── Search Results in Knowledge ─────────── */
 .search-result-item {
   padding: 6px 0;

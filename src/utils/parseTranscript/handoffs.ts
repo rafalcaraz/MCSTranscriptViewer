@@ -42,8 +42,10 @@ export function extractHandoffEvents(rawActivities: RawActivity[]): HandoffEvent
  *
  * We treat it as a real handoff only when ALL three signals align:
  *   1. SessionInfo / ConversationInfo `outcome === "HandOff"`
- *   2. `outcomeReason` starts with "AgentTransferRequestedBy" (explicit ask,
- *      not a system bailout like AgentTransferFromQuestionMaxAttempts)
+ *   2. `outcomeReason` is one of:
+ *        - starts with "AgentTransferRequestedBy"   (user/bot explicitly asked)
+ *        - "AgentTransferConfiguredByAuthor"        (transfer node ran in topic flow)
+ *      We exclude system bailouts like AgentTransferFromQuestionMaxAttempts.
  *   3. `channelId === "lcw"` (channel actually wired to a human queue)
  *
  * Returns at most ONE event (uses the first HandOff trace; D365 typically
@@ -57,9 +59,13 @@ export function synthesizeD365LcwHandoff(
   outcomeReason: string | undefined,
   channelId: string | undefined,
 ): HandoffEvent | null {
+  const reason = outcomeReason ?? "";
+  const reasonOk =
+    reason.startsWith("AgentTransferRequestedBy") ||
+    reason === "AgentTransferConfiguredByAuthor";
   const isReal =
     (outcome ?? "").toLowerCase() === "handoff" &&
-    (outcomeReason ?? "").startsWith("AgentTransferRequestedBy") &&
+    reasonOk &&
     channelId === "lcw";
   if (!isReal) return null;
 

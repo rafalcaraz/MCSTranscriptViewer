@@ -21,6 +21,9 @@ import {
   voiceFirstClassHandoffTranscript,
   studioAuthorHandoffTranscript,
   voiceSessionTranscript,
+  lcwConfiguredByAuthorTranscript,
+  voiceEndAndPrrTranscript,
+  voicePrrAnsweredTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -911,5 +914,57 @@ describe("parseTranscript — Omnichannel context + authenticated visitor", () =
     const parsed = parseTranscript(basicMcpTranscript);
     expect(parsed.omnichannelContext).toBeUndefined();
     expect(parsed.authenticatedVisitor).toBeUndefined();
+  });
+});
+
+
+// ── Tier 3: lifecycle signals & ConfiguredByAuthor synthesis ─────────
+
+describe("parseTranscript — LCW author-configured handoff (synth path)", () => {
+  it("synthesizes handoff for AgentTransferConfiguredByAuthor on LCW (4th allowed reason)", () => {
+    const parsed = parseTranscript(lcwConfiguredByAuthorTranscript);
+    expect(parsed.channelId).toBe("lcw");
+    expect(parsed.globalOutcomeReason).toBe("AgentTransferConfiguredByAuthor");
+    expect(parsed.hasHandoff).toBe(true);
+    expect(parsed.handoffs.length).toBe(1);
+    const ev = parsed.handoffs[0];
+    expect(ev.eventName).toBe("D365OmnichannelHandoff");
+    expect(ev.provider).toBe("D365 Omnichannel");
+  });
+});
+
+describe("parseTranscript — endOfConversation signal", () => {
+  it("extracts endOfConversation activity with channelData reason", () => {
+    const parsed = parseTranscript(voiceEndAndPrrTranscript);
+    expect(parsed.endOfConversation).toBeDefined();
+    expect(parsed.endOfConversation?.reason).toBe("CCAAS_TRANSFER");
+    expect(parsed.endOfConversation?.byRole).toBe("bot");
+    expect(parsed.endOfConversation?.timestamp).toBe(1776830010);
+  });
+
+  it("is undefined when no endOfConversation activity present (never inferred)", () => {
+    const parsed = parseTranscript(voiceSessionTranscript);
+    expect(parsed.endOfConversation).toBeUndefined();
+  });
+});
+
+describe("parseTranscript — PRR survey signal", () => {
+  it("marks responded=false when only PRRSurveyRequest present", () => {
+    const parsed = parseTranscript(voiceEndAndPrrTranscript);
+    expect(parsed.prrSurvey).toBeDefined();
+    expect(parsed.prrSurvey?.type).toBe("PRR");
+    expect(parsed.prrSurvey?.responded).toBe(false);
+    expect(parsed.prrSurvey?.timestamp).toBe(1776830011);
+  });
+
+  it("marks responded=true when PRRSurveyResponse also present", () => {
+    const parsed = parseTranscript(voicePrrAnsweredTranscript);
+    expect(parsed.prrSurvey).toBeDefined();
+    expect(parsed.prrSurvey?.responded).toBe(true);
+  });
+
+  it("is undefined when no PRRSurveyRequest present", () => {
+    const parsed = parseTranscript(voiceSessionTranscript);
+    expect(parsed.prrSurvey).toBeUndefined();
   });
 });
