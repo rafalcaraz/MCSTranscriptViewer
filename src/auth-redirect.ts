@@ -1,13 +1,46 @@
-// Dedicated MSAL popup redirect page. The MSAL App Registration's redirect URI must
-// point to <origin>/auth-redirect.html (NOT the main app URL).
+// Dedicated MSAL popup redirect page.
 //
-// IMPORTANT: For popup flow, this page should DO NOTHING. The parent window's
-// loginPopup() polls popup.location.href waiting to see the redirect URI. Once it
-// does, it reads the hash, parses the auth response, and closes the popup itself.
+// Why we need this (and why it must call handleRedirectPromise):
+// - login.microsoftonline.com sets Cross-Origin-Opener-Policy: same-origin
+// - That severs the parent window's JS reference to the popup after cross-origin nav
+// - So parent's loginPopup() polling on popup.location.href fails forever
+// - MSAL.js v3+ falls back to BroadcastChannel — popup must actively broadcast result
+// - handleRedirectPromise() is what triggers that broadcast
 //
-// We must NOT call handleRedirectPromise() here — that consumes and clears the URL
-// hash before the parent has a chance to read it, leaving loginPopup hanging.
-//
-// We just need this page to exist and be reachable so AAD has somewhere to redirect.
-console.log("[auth-redirect] popup landed at", window.location.href);
-console.log("[auth-redirect] waiting for parent to read response and close us...");
+// Both this page and the parent app must instantiate PCA with the SAME clientId so
+// the BroadcastChannel name matches. clientId is read from localStorage (set by parent).
+import { PublicClientApplication } from "@azure/msal-browser";
+
+async function complete() {
+  console.log("[auth-redirect] popup landed at", window.location.href);
+  const clientId = localStorage.getItem("multiEnv.clientId") ?? "";
+  const tenantId = localStorage.getItem("multiEnv.tenantId") || "organizations";
+  if (!clientId) {
+    console.warn("[auth-redirect] no clientId in localStorage; nothing to do");
+    return;
+  }
+  try {
+    const pca = new PublicClientApplication({
+      auth: {
+        clientId,
+        authority: `https://login.microsoftonline.com/${tenantId}`,
+        // Redirect URI must match exactly what was sent in /authorize.
+        redirectUri: window.location.origin + "/auth-redirect.html",
+      },
+      cache: { cacheLocation: "localStorage" },
+    });
+    await pca.initialize();
+    // This parses the URL hash, posts the response on a BroadcastChannel keyed to
+    // clientId, and (when MSAL detects this is a popup) closes the window.
+    const result = await pca.handleRedirectPromise();
+    console.log("[auth-redirect] handleRedirectPromise resolved", result);
+  } catch (e) {
+    console.error("[auth-redirect] handleRedirectPromise failed", e);
+  }
+  // Fallback: if MSAL didn't close the window after a brief delay, close it ourselves.
+  setTimeout(() => {
+    try { window.close(); } catch { /* ignore */ }
+  }, 2000);
+}
+
+void complete();
