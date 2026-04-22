@@ -106,6 +106,9 @@ None of the above?
     - [15.6 Provider Handoff Events](#156-provider-handoff-events-genesys-salesforce-etc)
     - [15.7 D365 Omnichannel (LCW) Handoff Pattern](#157-d365-omnichannel-lcw-handoff-pattern)
     - [15.8 D365 Omnichannel Session Context (msdyn_*)](#158-d365-omnichannel-session-context-msdyn_)
+    - [15.9 First-Class `handoff` Activity (Bot Framework Spec)](#159-first-class-handoff-activity-bot-framework-spec)
+    - [15.10 D365 Voice Channel (`conversationconductor`)](#1510-d365-voice-channel-conversationconductor)
+    - [15.11 D365 Autonomous Agents (`pva-autonomous`)](#1511-d365-autonomous-agents-pva-autonomous)
 16. [Unhandled / Future Patterns](#16-unhandled--future-patterns)
 
 ---
@@ -289,9 +292,27 @@ The `content` field is a JSON string:
 | `message` | Actual conversation messages (user + bot) | ~3-17% |
 | `invoke` | OAuth token exchange, feedback submission | Rare (~0.06%) |
 | `invokeResponse` | Response to invoke | Rare |
-| `endOfConversation` | Signals conversation end | Rare (autonomous runs) |
+| `handoff` | **Bot Framework first-class transfer signal** (see §15.9) | Rare (voice + author-configured transfers) |
+| `endOfConversation` | Signals conversation end | Rare (autonomous + voice runs) |
 | `conversationUpdate` | Session lifecycle update | Rare |
 | `installationUpdate` | Installation state change | Rare |
+
+### handoff snippet (Bot Framework first-class transfer)
+```json
+{
+  "type": "handoff",
+  "channelId": "conversationconductor",
+  "from": { "id": "bot-id", "role": 0 },
+  "value": {
+    "type": "transferToAgent",
+    "message": "Side Effects",
+    "context": { "va_BotName": "crd9b_agent", ... }
+  }
+}
+```
+**Parser:** ⚠️ **Not yet detected** — see §15.9. Currently falls into the catch-all
+in `advancedEvents.ts`. Should become Rule #1 in `handoffs.ts` since it's the
+cleanest cross-provider transfer signal we've seen.
 
 ### endOfConversation snippet
 ```json
@@ -783,7 +804,9 @@ The `content` field is a JSON string:
 | Channel ID | Type | Description |
 |-----------|------|-------------|
 | `pva-studio` | Design/Eval | Copilot Studio test pane |
-| `pva-autonomous` | Autonomous | Flow-triggered agent execution |
+| `pva-autonomous` | Autonomous | Flow-triggered / 1P agent execution (see §15.11) |
+| `conversationconductor` | Voice | **D365 Voice Channel (IVR + Nuance speech)** (see §15.10) |
+| `lcw` | Production | **D365 Omnichannel Live Chat Widget** (see §15.7-15.8) |
 | `msteams` | Production | Microsoft Teams channel |
 | `webchat` | Production | Web chat widget |
 | `directline` | Production | Direct Line API |
@@ -1327,6 +1350,299 @@ Recognized OIDC keys: `sub`, `preferred_username`, `email`, `given_name`,
 `family_name`, `phone_number`. We treat `sub` as the marker for "this
 session is authenticated" and surface the rest as the **🔐 Authenticated
 visitor** card with a PII reveal toggle.
+
+---
+
+## 15.9 First-Class `handoff` Activity (Bot Framework Spec)
+
+The Bot Framework activity protocol defines a first-class `type: "handoff"`
+activity for transferring conversations to a human or another agent. We've
+observed it on **two channels** so far:
+
+- `pva-studio` — when a Studio test session triggers a topic that calls
+  "Transfer conversation"
+- `conversationconductor` — D365 Voice Channel author-configured transfers
+
+Real example from a Voice transcript (kimccas, agent transferring to Salesforce):
+
+```json
+{
+  "type": "handoff",
+  "channelId": "conversationconductor",
+  "from": { "id": "bot-id", "role": 0 },
+  "replyToId": "<bot-message-id>",
+  "value": {
+    "type": "transferToAgent",
+    "message": "Side Effects",
+    "context": {
+      "IsLoggedIn": false,
+      "SkillTest": "Side Effects",
+      "va_BotId": "7554f3fb-4006-b62f-37c6-a243c77c3e8d",
+      "va_BotName": "crd9b_agent",
+      "va_ConversationId": "5a0358e6-...",
+      "va_Language": "en-US",
+      "va_Scope": "bot",
+      "Var1": {
+        "$kind": "OptionDataValue",
+        "type": {
+          "$kind": "EmbeddedOptionSet",
+          "dialogSchemaName": "crd9b_agent.topic.ConversationStart",
+          "triggerId": "main",
+          "actionId": "question_CKHObc"
+        },
+        "value": "Side Effects"
+      }
+    },
+    "customHeaders": {}
+  }
+}
+```
+
+**Why this matters:** This is the **cleanest cross-provider transfer signal**
+in the entire transcript surface — it's standardized by the Bot Framework, has
+a structured payload (`value.type === "transferToAgent"`), and unlike the
+LCW pattern in §15.7 it does NOT depend on outcome heuristics or channel-id
+allowlists.
+
+**Common `value.type` values** observed:
+- `transferToAgent` — transfer to a human agent (queue / live agent)
+- *(Not yet observed but reserved by spec: `transferToBot`)*
+
+**`value.context` fields** (when `transferToAgent`):
+- `va_BotName` / `va_BotId` — the originating bot (the one initiating transfer)
+- `va_ConversationId` — bot conversation id (NOT the Dataverse transcript id)
+- `va_Language`, `va_Scope` — locale + scope of context
+- `IsLoggedIn` — whether the visitor was authenticated
+- Topic-specific custom variables (e.g. `Var1`, `SkillTest`) — whatever the
+  topic packaged with the transfer
+- `OCLiveWorkItemId` — D365 work item id (when present)
+
+**Parser status:** ⚠️ **NOT YET DETECTED.** Today our `handoffs.ts` only looks
+at:
+1. Bot events whose `name` ends in `Handoff` (§15.6)
+2. The 3-rule LCW outcome heuristic (§15.7)
+
+Adding `type === "handoff"` as Rule #1 would catch:
+- All Voice-channel transfers (kimccas/marcelod365)
+- Author-configured transfers with `outcomeReason = AgentTransferConfiguredByAuthor`
+  (which the §15.7 rule rejects)
+- pva-studio test runs that exercise transfer topics
+
+The provider name should be derived from `value.context.va_BotName` or by
+inspecting the next-channel signal (e.g. event name `*Handoff` in the same
+session pointing at Salesforce/Genesys/etc).
+
+---
+
+## 15.10 D365 Voice Channel (`conversationconductor`)
+
+**`channelId === "conversationconductor"`** identifies D365 Voice Channel
+sessions — phone calls handled by a Copilot Studio agent through Microsoft's
+IVR + speech stack (powered by **Nuance**, acquired by Microsoft in 2022).
+
+### Detection signals (any one is sufficient)
+- `channelId === "conversationconductor"` on any activity, OR
+- A `pvaSetContext` event with `channelData.ChannelSpecifier === "IVR"`, OR
+- `channelData.nuanceCreateGrpcState` present on any activity
+
+### `pvaSetContext` event (voice equivalent of `startConversation`)
+
+Fires once at session start with the full IVR + telephony context. Comes
+from the visitor side (`from.role === 1`):
+
+```json
+{
+  "type": "event",
+  "name": "pvaSetContext",
+  "from": { "role": 1 },
+  "channelId": "conversationconductor",
+  "value": {
+    "msdyn_sessionid": "91d91471-...",
+    "msdyn_ocliveworkitemid": "3b867b92-...",
+    "msdyn_ConversationId": "3b867b92-...",
+    "msdyn_OrganizationPhone": "+18334895405",
+    "msdyn_CustomerPhone":     "+13204346038",
+    "OrganizationPhoneNumber": "+18334895405",
+    "CustomerPhoneNumber":     "+13204346038",
+    "resultContext": "",
+    "amdContext": "",
+    "sipHeaders": "{ }"
+  },
+  "channelData": {
+    "ChannelSpecifier": "IVR",
+    "ivrResultContextOnHangup": false,
+    "vnd.microsoft.msdyn.oc.data": {
+      "voices": {
+        "en-US": {
+          "voiceName": "de-DE-Seraphina:DragonHDLatestNeural",
+          "speakingSpeed": 0,
+          "voiceStyle": null,
+          "pitch": 0
+        }
+      }
+    },
+    "SystemActivityFromName":      "+13204346038",
+    "SystemActivityRecipientName": "+18334895405",
+    "nuanceCreateGrpcState": {
+      "SessionId": "ceea9a40-...",
+      "SessionIdleTimeoutSeconds": 900,
+      "SessionMaxTimestamp": 1775242713,
+      "BotType": "Mcs",
+      "CallingChannelId": null,
+      "CallingUserId": null,
+      "CallingConversationType": null
+    }
+  }
+}
+```
+
+### Voice-specific fields
+
+| Field (where) | Meaning |
+|---|---|
+| `msdyn_OrganizationPhone` (value) | Org/agent inbound phone number (E.164) |
+| `msdyn_CustomerPhone` (value) | Caller phone number (PII!) |
+| `msdyn_ocliveworkitemid` (value) | Voice work item id (note **lowercase `oc`** prefix vs LCW's `liveworkitemid`) |
+| `amdContext` (value) | Answering machine detection context |
+| `sipHeaders` (value) | Raw SIP headers (JSON-encoded string) |
+| `ChannelSpecifier: "IVR"` (channelData) | IVR vs other voice modes |
+| `ivrResultContextOnHangup` (channelData) | Whether to deliver the IVR result context on hangup |
+| `EndConversationReason` (channelData) | Why the call ended (e.g. caller hangup) |
+| `nuanceCreateGrpcState` / `nuanceUpdateGrpcState` (channelData) | Speech recognition session state |
+| `vnd.microsoft.msdyn.oc.data.voices` (channelData) | TTS voice config — neural voice name, speed, pitch, style |
+| `SystemActivityFromName` / `SystemActivityRecipientName` (channelData) | Phone numbers as call participants |
+
+### Bot messages carry `speak` SSML
+
+Bot text on voice has both rendered text AND a full **SSML** block for TTS:
+
+```json
+{
+  "type": "message",
+  "channelId": "conversationconductor",
+  "text": "Hello, I'm KimSalesforce2. ",
+  "speak": "<speak version=\"1.0\" xml:lang=\"en-US\" xmlns:mstts=\"http://www.w3.org/2001/mstts\" xmlns=\"http://www.w3.org/2001/10/synthesis\"><voice name=\"de-DE-Seraphina:DragonHDLatestNeural\" xmlns=\"\"><prosody rate=\"0%\" pitch=\"0%\">Hello and thank you for calling KimSalesforce2. Please note that some responses are generated by AI...</prosody></voice></speak>"
+}
+```
+
+The `speak` field is what was actually heard by the caller (the `text` is
+what would have been displayed on a screen).
+
+### Voice-specific surveys & traces
+
+- **`PRRSurveyRequest`** valueType — Post-Resolution Rating, the voice
+  equivalent of CSAT. Fires after a successful resolution.
+- Voice transcripts also use the standard `HandOff` valueType + the §15.9
+  `type: "handoff"` activity for transfers (see kimccas — 6 handoffs over
+  conversationconductor).
+
+### Parser status
+
+- Voice messages render fine (we already render `text`)
+- ❌ The `speak` SSML is silently dropped — no TTS preview in the UI
+- ❌ Phone numbers / IVR state are not surfaced in any panel — would benefit
+  from a **☎️ D365 Voice** card analogous to the 🌐 D365 Omnichannel card
+  (see §15.8)
+- ❌ Voice handoffs are missed entirely until §15.9 detection lands
+
+---
+
+## 15.11 D365 Autonomous Agents (`pva-autonomous`)
+
+**`channelId === "pva-autonomous"`** identifies autonomous agents — typically
+**D365 1P agents** (`msdyn_*Agent` schema names) executing without an
+interactive user. They run on a schedule or in response to a system event,
+churn through a multi-step DynamicPlan, and end with `endOfConversation`.
+
+### Real example bot
+
+`msdyn_PurchCopilotFollowupTaskAgent` — a D365 Finance & Operations agent
+that follows up on overdue purchase orders. From `d3651pagents.txt` (75
+autonomous transcripts in a single batch):
+
+```
+channelId           pva-autonomous (827 of 834 activities)
+Outcome (61/75)     Resolved / Resolved
+Outcome (5/75)      Abandoned / UserExit
+Activity types      event (550), trace (292), message (136), endOfConversation (148)
+```
+
+### DynamicPlan event family (rich!)
+
+Autonomous transcripts are **dominated by DynamicPlan events**. The full
+sequence for one task looks like:
+
+| Event | Carries |
+|---|---|
+| `DynamicPlanReceived` | `value.steps[]` — list of taskDialogIds the plan will execute |
+| `DynamicPlanReceivedDebug` | Same, with extra LLM reasoning info |
+| `DynamicPlanStepTriggered` | `value.taskDialogId`, `value.stepId`, `value.thought` |
+| `DynamicPlanStepBindUpdate` | `value.arguments` — variable bindings for the step |
+| `DynamicPlanAIPluginStepFinished` | **Full payload** — `arguments`, `observation`, `state`, `hasRecommendations` |
+| `DynamicPlanStepFinished` | Generic step-finished (non-plugin) |
+| `DynamicPlanFinished` | Plan terminator |
+
+`DynamicPlanAIPluginStepFinished` is the **best signal for "what did this
+autonomous agent actually do"** — its `value.arguments` shows what it
+called the plugin with, and `value.observation` shows what came back. Real
+example:
+
+```json
+{
+  "name": "DynamicPlanAIPluginStepFinished",
+  "channelId": "pva-autonomous",
+  "value": {
+    "taskDialogId": "msdyn_PurchCopilotFollowupTaskAgent.topic.StoreEmailTopic",
+    "stepId": "21472e8b-...",
+    "planIdentifier": "95c0dc68-...",
+    "state": "completed",
+    "hasRecommendations": false,
+    "arguments": {
+      "msdyn_PurchCopilotFollowupTaskSaveEmail_emailBody": "Dear Fabrikam Supplier,\n\nI am writing to follow up on the status of purchase order 00000131...",
+      "msdyn_PurchCopilotFollowupTaskSaveEmail_dataArea": "USMF",
+      "msdyn_PurchCopilotFollowupTaskSaveEmail_mailId": 5637144638,
+      "msdyn_PurchCopilotFollowupTaskSaveEmail_emailSubject": "Follow-up on delayed purchase order 00000131"
+    },
+    "observation": { "Response": null }
+  }
+}
+```
+
+### Outcome distribution (autonomous-specific)
+
+In the d3651pagents batch:
+- 63/75 `Resolved` / `Resolved` — happy path
+- 5/75 `Abandoned` / `UserExit` — early termination (rare in autonomous)
+- 7/75 `None` / `NoError`
+- 2/75 `Abandoned` / `UserError` — input validation failure
+
+`Resolved` (with `outcomeReason: "Resolved"`) is the dominant pattern — vs
+chat where `None / NoError` is common.
+
+### `endOfConversation` activity
+
+Autonomous runs typically terminate with an explicit `endOfConversation`
+activity (148 of these in the batch — about 2 per transcript on average,
+likely one per session boundary):
+
+```json
+{
+  "type": "endOfConversation",
+  "channelId": "pva-autonomous",
+  "from": { "role": 0 },
+  "replyToId": "<last-meaningful-activity-id>"
+}
+```
+
+Often has no `value` payload at all.
+
+### Parser status
+
+- Channel detection ✅ (we already classify by `channelId === "pva-autonomous"`)
+- DynamicPlan* events ✅ (parsed for the DebugPanel step grouping)
+- `DynamicPlanAIPluginStepFinished` — parsed as a generic step; the rich
+  `arguments`/`observation` payload renders in DebugPanel
+- `endOfConversation` — caught by the catch-all advancedEvents handler
 
 ---
 
