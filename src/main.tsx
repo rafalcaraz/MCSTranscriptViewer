@@ -2,23 +2,24 @@ import { StrictMode } from 'react'
 import { createRoot } from 'react-dom/client'
 import './index.css'
 
-// MSAL popup detection: if this window was opened by another (window.opener exists) AND
-// the URL contains an OAuth response (code/state in hash or query), we are the MSAL popup.
-// In that case, do NOT render the app — instead initialize MSAL and let it process the
-// redirect response so it can postMessage back to the opener.
+// MSAL popup detection: if the URL contains an OAuth response (code/state in hash or
+// query), treat this window as the MSAL popup. We DON'T check window.opener because
+// modern browsers (COOP/COEP) often nullify it after a cross-origin navigation back
+// from login.microsoftonline.com. The presence of an OAuth code in the URL is a
+// strong-enough signal — the regular app never has those in its URL.
 function isMsalPopup(): boolean {
   if (typeof window === 'undefined') return false;
-  if (!window.opener || window.opener === window) return false;
   const hash = window.location.hash || '';
   const search = window.location.search || '';
   return /[#&?](code|error|state|id_token|access_token)=/i.test(hash + search);
 }
 
 async function handlePopupResponse() {
+  console.log('[MSAL popup] handler starting, url=', window.location.href);
   const clientId = localStorage.getItem('multiEnv.clientId') ?? '';
   const tenantId = localStorage.getItem('multiEnv.tenantId') || 'organizations';
   if (!clientId) {
-    // Nothing we can do without a client ID. Close ourselves.
+    console.warn('[MSAL popup] no clientId in localStorage; closing window');
     try { window.close(); } catch { /* ignore */ }
     return;
   }
@@ -33,9 +34,8 @@ async function handlePopupResponse() {
       cache: { cacheLocation: 'localStorage' },
     });
     await pca.initialize();
-    // This parses the URL, posts the response to opener via BroadcastChannel/postMessage,
-    // and (when run in a popup) MSAL itself will close this window.
-    await pca.handleRedirectPromise();
+    const result = await pca.handleRedirectPromise();
+    console.log('[MSAL popup] handleRedirectPromise resolved', result);
   } catch (e) {
     console.error('[MSAL popup] handleRedirectPromise failed', e);
   } finally {
