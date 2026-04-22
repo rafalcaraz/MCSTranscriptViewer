@@ -16,7 +16,7 @@ interface VoiceContextPanelProps {
  * tooltip so they aren't picked up by accidental selection of surrounding text.
  */
 export function VoiceContextPanel({ context }: VoiceContextPanelProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [showRaw, setShowRaw] = useState(false);
 
   const summary = [

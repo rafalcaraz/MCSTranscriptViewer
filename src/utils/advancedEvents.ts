@@ -192,6 +192,7 @@ export function extractAdvancedEvents(rawActivities: RawActivity[]): AdvancedEve
       "DialogTracing", "DynamicServerInitialize", "DynamicServerToolsList",
       "DynamicPlanReceived", "DynamicPlanReceivedDebug", "DynamicPlanStepTriggered",
       "DynamicPlanStepBindUpdate", "DynamicPlanStepFinished", "DynamicPlanFinished",
+      "DynamicPlanAIPluginStepFinished",
       "UniversalSearchToolTraceData", "ResponseGeneratorSupportData",
       "GenerativeAnswersSupportData", "DynamicServerError", "DynamicPlanStepBlocked",
       "startConversation", "DynamicServerInitializeConfirmation",

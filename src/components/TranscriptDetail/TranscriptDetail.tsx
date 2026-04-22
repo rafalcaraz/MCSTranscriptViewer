@@ -6,7 +6,6 @@ import { DebugPanel } from "./DebugPanel";
 import { OmnichannelContextPanel } from "./OmnichannelContextPanel";
 import { AuthenticatedVisitorPanel } from "./AuthenticatedVisitorPanel";
 import { VoiceContextPanel } from "./VoiceContextPanel";
-import { PlanExecutionPanel } from "./PlanExecutionPanel";
 import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTranscript";
 import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
 import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
@@ -177,10 +176,6 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
         </div>
       )}
 
-      {transcript.planExecutions && transcript.planExecutions.length > 0 && (
-        <PlanExecutionPanel plans={transcript.planExecutions} />
-      )}
-
       <div className="detail-panels">
         <DebugPanel
           planSteps={transcript.planSteps}
@@ -190,6 +185,7 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
           knowledgeResponses={transcript.knowledgeResponses}
           knowledgeTrace={transcript.knowledgeTrace}
           advancedEvents={transcript.advancedEvents}
+          planExecutions={transcript.planExecutions}
           connectedAgentInvocations={transcript.connectedAgentInvocations}
           parentAgentDisplayName={transcript.parentAgentDisplayName}
           activeMessageId={activeMessageId}
