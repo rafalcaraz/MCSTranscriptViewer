@@ -1,0 +1,182 @@
+.multi-env-panel {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.me-header h2 {
+  margin: 0 0 6px 0;
+}
+
+.me-sub {
+  margin: 0;
+  color: var(--color-text-secondary, #666);
+  font-size: 14px;
+}
+
+.me-card {
+  background: var(--color-card-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 8px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.me-card.error {
+  background: var(--color-error-bg, #fde8e8);
+  border-color: var(--color-error-border, #f5a8a8);
+  color: var(--color-error-text, #c0392b);
+}
+
+.me-card h3 {
+  margin: 0;
+  font-size: 14px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: var(--color-text-secondary, #666);
+}
+
+.me-field {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.me-field label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--color-text-secondary, #666);
+}
+
+.me-field input {
+  padding: 8px 10px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 4px;
+  font-family: ui-monospace, monospace;
+  font-size: 13px;
+  background: var(--color-input-bg, #fff);
+  color: var(--color-text, #000);
+}
+
+.me-field input[readonly] {
+  background: var(--color-input-readonly-bg, #f5f5f5);
+  color: var(--color-text-secondary, #666);
+}
+
+.me-hint {
+  font-size: 12px;
+  color: var(--color-text-secondary, #666);
+}
+
+.me-hint code {
+  background: var(--color-code-bg, #f0f0f0);
+  padding: 1px 5px;
+  border-radius: 3px;
+  font-size: 12px;
+}
+
+.me-btn {
+  padding: 8px 14px;
+  border: 1px solid var(--color-border, #ccc);
+  border-radius: 4px;
+  background: var(--color-button-bg, #f5f5f5);
+  color: var(--color-text, #000);
+  cursor: pointer;
+  font-size: 14px;
+}
+
+.me-btn:hover:not(:disabled) {
+  background: var(--color-button-hover, #e8e8e8);
+}
+
+.me-btn.primary {
+  background: var(--color-primary, #0078d4);
+  color: white;
+  border-color: var(--color-primary, #0078d4);
+}
+
+.me-btn.primary:hover:not(:disabled) {
+  background: var(--color-primary-hover, #106ebe);
+}
+
+.me-btn.ghost {
+  background: transparent;
+}
+
+.me-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.me-account {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.me-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.me-env-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.me-env-item {
+  text-align: left;
+  background: var(--color-card-bg, #fff);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 6px;
+  padding: 10px 12px;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  color: var(--color-text, #000);
+}
+
+.me-env-item:hover {
+  border-color: var(--color-primary, #0078d4);
+}
+
+.me-env-item.selected {
+  border-color: var(--color-primary, #0078d4);
+  background: var(--color-primary-bg, #f0f7ff);
+}
+
+.me-env-name {
+  font-weight: 600;
+  font-size: 14px;
+}
+
+.me-env-meta {
+  display: flex;
+  gap: 12px;
+  font-size: 12px;
+  color: var(--color-text-secondary, #666);
+}
+
+.me-env-region {
+  background: var(--color-tag-bg, #eee);
+  padding: 1px 6px;
+  border-radius: 3px;
+}
+
+.me-env-url {
+  font-family: ui-monospace, monospace;
+}
+
+.me-summary {
+  font-size: 13px;
+  color: var(--color-text-secondary, #666);
+}

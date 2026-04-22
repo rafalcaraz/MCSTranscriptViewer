@@ -14,6 +14,9 @@ const TranscriptDetail = lazy(() =>
 const AnalyticsSummary = lazy(() =>
   import("./components/Analytics/AnalyticsSummary").then((m) => ({ default: m.AnalyticsSummary })),
 );
+const MultiEnvPanel = lazy(() =>
+  import("./components/MultiEnv/MultiEnvPanel").then((m) => ({ default: m.MultiEnvPanel })),
+);
 
 const LazyFallback = ({ label }: { label: string }) => (
   <div className="app-root" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -21,7 +24,7 @@ const LazyFallback = ({ label }: { label: string }) => (
   </div>
 );
 
-type View = "list" | "detail" | "analytics";
+type View = "list" | "detail" | "analytics" | "multienv";
 
 const DEFAULT_PAGE_SIZE = 25;
 
@@ -133,6 +136,13 @@ function App() {
         >
           Analytics
         </button>
+        <button
+          className={`tab-btn ${view === "multienv" ? "active" : ""}`}
+          onClick={() => setView("multienv")}
+          title="Cross-environment Dataverse access (preview)"
+        >
+          Multi-Env
+        </button>
         <span className="app-version" title={`Built: ${__BUILD_TIME__}`}>v1.0.5 · {new Date(__BUILD_TIME__).toLocaleString()}</span>
         <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
           {darkMode ? "☀️" : "🌙"}
@@ -157,6 +167,11 @@ function App() {
         {view === "analytics" && (
           <Suspense fallback={<LazyFallback label="Loading analytics..." />}>
             <AnalyticsSummary transcripts={transcripts} />
+          </Suspense>
+        )}
+        {view === "multienv" && (
+          <Suspense fallback={<LazyFallback label="Loading Multi-Env..." />}>
+            <MultiEnvPanel />
           </Suspense>
         )}
       </div>
