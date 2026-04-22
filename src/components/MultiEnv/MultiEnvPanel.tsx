@@ -43,7 +43,9 @@ export function MultiEnvPanel() {
 
   const redirectUri = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return window.location.origin + window.location.pathname;
+    // Dedicated redirect page (NOT the main app URL) so the popup doesn't load the
+    // full React app. Must be registered as the redirect URI in the App Registration.
+    return window.location.origin + "/auth-redirect.html";
   }, []);
 
   useEffect(() => {
