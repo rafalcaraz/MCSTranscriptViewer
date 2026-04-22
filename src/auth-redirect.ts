@@ -21,6 +21,7 @@
 //   Phase C (hash has #error=...): broadcast error, close window.
 
 import { generateCodeChallenge, generateCodeVerifier, generateRandomString } from "./utils/pkce";
+import { friendlyAuthError } from "./utils/authErrors";
 
 const SS_KEY = "multiEnv.auth.pending";
 
@@ -45,7 +46,7 @@ type AuthMessage =
       tenantId: string;
       clientId: string;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; message: string; code?: string };
 
 function broadcast(channelId: string, msg: AuthMessage): void {
   // Send the token over EVERY plausible channel because Chrome's storage
@@ -135,10 +136,10 @@ async function callbackPhase(hashParams: URLSearchParams): Promise<void> {
   const error = hashParams.get("error");
   if (error) {
     const desc = hashParams.get("error_description") || "";
-    const msg = `${error}: ${desc}`;
-    console.error("[auth-redirect] AAD returned error", msg);
-    broadcast(pending.channelId, { type: "error", message: msg });
-    document.body.textContent = `Sign-in error: ${msg}`;
+    const friendly = friendlyAuthError(error, desc);
+    console.error("[auth-redirect] AAD returned error", { error, desc });
+    broadcast(pending.channelId, { type: "error", message: friendly, code: error });
+    document.body.textContent = `Sign-in error: ${friendly}`;
     closeSelfSoon(1500);
     return;
   }
@@ -181,10 +182,10 @@ async function callbackPhase(hashParams: URLSearchParams): Promise<void> {
       error_description?: string;
     };
     if (!resp.ok || !json.access_token) {
-      const msg = json.error_description || json.error || `Token endpoint returned ${resp.status}`;
-      console.error("[auth-redirect] token exchange failed", msg, json);
-      broadcast(pending.channelId, { type: "error", message: msg });
-      document.body.textContent = `Token exchange failed: ${msg}`;
+      const friendly = friendlyAuthError(json.error ?? null, json.error_description ?? null);
+      console.error("[auth-redirect] token exchange failed", friendly, json);
+      broadcast(pending.channelId, { type: "error", message: friendly, code: json.error });
+      document.body.textContent = `Token exchange failed: ${friendly}`;
       closeSelfSoon(1500);
       return;
     }

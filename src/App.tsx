@@ -127,8 +127,9 @@ function App() {
         <button
           className={`tab-btn ${view === "list" ? "active" : ""}`}
           onClick={() => setView("list")}
+          title="Transcripts in the environment where this app is installed"
         >
-          Transcripts
+          This Environment
         </button>
         <button
           className={`tab-btn ${view === "analytics" ? "active" : ""}`}
@@ -139,9 +140,9 @@ function App() {
         <button
           className={`tab-btn ${view === "multienv" ? "active" : ""}`}
           onClick={() => setView("multienv")}
-          title="Cross-environment Dataverse access (preview)"
+          title="Sign in with your own credentials to browse Dataverse environments cross-tenant (preview)"
         >
-          Multi-Env
+          Browse Environments
         </button>
         <span className="app-version" title={`Built: ${__BUILD_TIME__}`}>v1.0.5 · {new Date(__BUILD_TIME__).toLocaleString()}</span>
         <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
@@ -170,7 +171,7 @@ function App() {
           </Suspense>
         )}
         {view === "multienv" && (
-          <Suspense fallback={<LazyFallback label="Loading Multi-Env..." />}>
+          <Suspense fallback={<LazyFallback label="Loading Browse Environments..." />}>
             <MultiEnvPanel />
           </Suspense>
         )}

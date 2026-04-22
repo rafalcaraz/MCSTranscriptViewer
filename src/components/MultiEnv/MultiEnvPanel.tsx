@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { MultiEnvWorkspace, type EnvOption } from "./MultiEnvWorkspace";
+import { friendlyAuthError } from "../../utils/authErrors";
 import "./MultiEnvPanel.css";
 
 const LS_CLIENT_ID = "multiEnv.clientId";
@@ -196,7 +197,10 @@ export function MultiEnvPanel() {
     }
   };
 
-  const signOut = () => {
+  /** Reset to pre-signed-in state. Used both internally on auth-expired and when
+   *  the user signs in again with a different account. Keeps the saved Client ID /
+   *  Tenant ID so the user doesn't have to re-paste their app reg config. */
+  const resetSession = useCallback((statusMessage?: string) => {
     setAccessToken("");
     refreshTokenRef.current = "";
     envTokenCache.current.clear();
@@ -205,11 +209,13 @@ export function MultiEnvPanel() {
     setEnvs([]);
     setSelectedEnvUrl("");
     localStorage.removeItem(LS_SELECTED_ENV);
-    setStatus({ kind: "idle" });
-  };
+    setStatus(statusMessage ? { kind: "error", message: statusMessage } : { kind: "idle" });
+  }, []);
 
   // Returns an env-scoped access token, refreshing via the captured refresh_token
   // when needed. Cached per env so successive Web API calls don't re-hit /token.
+  // If the refresh token is rejected (expired, revoked, consent withdrawn), the
+  // session is automatically reset and the user is prompted to sign in again.
   const getEnvToken = useCallback(async (envApiUrl: string): Promise<string> => {
     const cached = envTokenCache.current.get(envApiUrl);
     // Refresh 60s before expiry to avoid races.
@@ -217,7 +223,9 @@ export function MultiEnvPanel() {
 
     const refreshToken = refreshTokenRef.current;
     if (!refreshToken || !authedTenantId || !authedClientId) {
-      throw new Error("Not signed in (no refresh token captured). Sign out and back in.");
+      const msg = "Your session expired. Click Sign in to continue.";
+      resetSession(msg);
+      throw new Error(msg);
     }
 
     const scope = `${envApiUrl.replace(/\/$/, "")}/.default`;
@@ -240,14 +248,29 @@ export function MultiEnvPanel() {
       error_description?: string;
     };
     if (!resp.ok || !json.access_token) {
-      const msg = json.error_description || json.error || `Token endpoint returned ${resp.status}`;
-      throw new Error(`Token refresh failed: ${msg}`);
+      const friendly = friendlyAuthError(json.error, json.error_description);
+      // Only reset the whole session if the refresh token itself is unrecoverable
+      // (revoked, expired, consent withdrawn). Other failures — e.g., a specific
+      // env's scope is denied in a different tenant, network blips, transient AAD
+      // errors — must NOT log the user out, because their session for other envs
+      // is still valid. Those bubble up as inline errors at the call site.
+      const unrecoverableCodes = new Set([
+        "invalid_grant",        // refresh token rejected / expired / revoked
+        "interaction_required", // user must re-authenticate
+        "consent_required",     // consent withdrawn or new scope requires consent
+        "login_required",       // session terminated server-side
+      ]);
+      const errCode = (json.error || "").trim();
+      if (unrecoverableCodes.has(errCode)) {
+        resetSession(`Your session expired. Sign in again to continue. (${friendly})`);
+      }
+      throw new Error(`Token refresh failed: ${friendly}`);
     }
     if (json.refresh_token) refreshTokenRef.current = json.refresh_token;
     const expiresAt = Date.now() + (json.expires_in ?? 3600) * 1000;
     envTokenCache.current.set(envApiUrl, { token: json.access_token, expiresAt });
     return json.access_token;
-  }, [authedTenantId, authedClientId]);
+  }, [authedTenantId, authedClientId, resetSession]);
 
   const envOptions: EnvOption[] = useMemo(
     () => envs.map((e) => ({
@@ -269,9 +292,12 @@ export function MultiEnvPanel() {
   return (
     <div className="multi-env-panel">
       <header className="me-header">
-        <h2>Multi-Env (preview)</h2>
+        <h2>Browse Environments (preview)</h2>
         <p className="me-sub">
-          Sign in with an Entra App Registration to discover Dataverse environments you have access to. Pick one, then explore its agents and transcripts. Read-only — your normal Transcripts tab is unaffected.
+          Sign in with an Entra App Registration to discover Dataverse environments you have access to — including across tenants. Pick one, then explore its agents and transcripts. Read-only — your normal &quot;This Environment&quot; tab is unaffected.
+        </p>
+        <p className="me-sub" style={{ marginTop: 4 }}>
+          First time? See <a href="https://github.com/rafalcaraz/MCSTranscriptViewer/blob/main/my-app/docs/MULTI-ENV-SETUP.md" target="_blank" rel="noreferrer">docs/MULTI-ENV-SETUP.md</a> for the app-registration steps.
         </p>
       </header>
 
@@ -326,12 +352,12 @@ export function MultiEnvPanel() {
           </button>
         ) : (
           <div className="me-account">
-            <div>Signed in.{status.kind === "loading-envs" && " Loading environments…"}</div>
-            <div className="me-actions">
-              <button className="me-btn" onClick={() => void loadEnvs(accessToken)} disabled={status.kind === "loading-envs"}>
-                {status.kind === "loading-envs" ? "Loading…" : "Refresh environments"}
-              </button>
-              <button className="me-btn ghost" onClick={signOut}>Sign out</button>
+            <div>
+              Signed in to tenant <code>{authedTenantId}</code>.
+              {status.kind === "loading-envs" && " Loading environments…"}
+            </div>
+            <div className="me-sub" style={{ marginTop: 4 }}>
+              To switch accounts or refresh your session, just close and reopen the app — your refresh token is held in memory only.
             </div>
           </div>
         )}
