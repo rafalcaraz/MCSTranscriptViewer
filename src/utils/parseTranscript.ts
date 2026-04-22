@@ -8,7 +8,7 @@ import type {
 } from "../types/transcript";
 import { extractAdvancedEvents } from "./advancedEvents";
 import { parseActivity, mergePlanSteps, classifyTranscriptType } from "./parseTranscript/activity";
-import { extractHandoffEvents, synthesizeD365LcwHandoff } from "./parseTranscript/handoffs";
+import { extractHandoffEvents, extractFirstClassHandoffActivities, synthesizeD365LcwHandoff } from "./parseTranscript/handoffs";
 import { extractOmnichannelContext } from "./parseTranscript/omnichannel";
 import {
   prettyAgentName,
@@ -195,6 +195,7 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     : undefined;
 
   const eventHandoffs = extractHandoffEvents(rawActivities);
+  const firstClassHandoffs = extractFirstClassHandoffActivities(rawActivities, channelId);
 
   // True for any flavor of human/external handoff. Two independent sources
   // feed the unified `handoffs` array:
@@ -230,8 +231,16 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     outcomeReasonForRule,
     channelId,
   );
-  const handoffs: HandoffEvent[] = [...eventHandoffs];
-  if (d365Handoff) handoffs.push(d365Handoff);
+  const handoffs: HandoffEvent[] = [...eventHandoffs, ...firstClassHandoffs];
+  if (d365Handoff) {
+    // Dedupe: prefer the first-class `handoff` activity over the synthesized
+    // LCW event when both fire within ~2s (some Voice/LCW transcripts have
+    // both signals). The first-class activity carries richer context.
+    const dup = firstClassHandoffs.some(
+      (h) => Math.abs(h.timestamp - d365Handoff.timestamp) <= 2,
+    );
+    if (!dup) handoffs.push(d365Handoff);
+  }
   handoffs.sort((a, b) => a.timestamp - b.timestamp);
   const hasHandoff = handoffs.length > 0;
 

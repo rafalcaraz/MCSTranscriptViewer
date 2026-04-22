@@ -13,7 +13,7 @@ export interface ActivityFrom {
 
 export interface RawActivity {
   id?: string;
-  type: "trace" | "event" | "message" | "invoke" | "invokeResponse" | "endOfConversation" | "conversationUpdate" | "installationUpdate";
+  type: "trace" | "event" | "message" | "invoke" | "invokeResponse" | "endOfConversation" | "conversationUpdate" | "installationUpdate" | "handoff";
   timestamp: number;
   from: ActivityFrom;
   name?: string;

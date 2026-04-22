@@ -462,3 +462,73 @@ export const handoffNonLcwTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+
+/**
+ * D365 Voice Channel handoff: Bot Framework first-class `type:"handoff"`
+ * activity with value.type="transferToAgent". Channel is conversationconductor
+ * (D365 Voice / IVR). No *Handoff event, no LCW signaling — would have been
+ * missed by both prior detection paths.
+ *
+ * Regression: hasHandoff must be TRUE; provider derived from value.context.va_BotName.
+ */
+export const voiceFirstClassHandoffTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-handoff-001",
+  name: "test_voice_handoff",
+  createdon: "2026-04-22T10:00:00Z",
+  conversationstarttime: "2026-04-22T09:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voiceagent","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776812000, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "Connect me with sales", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776812005, from: { id: "bot-1", role: 0 }, channelId: "conversationconductor", textFormat: "plain", text: "Transferring you now.", attachments: [], replyToId: "msg-user-1" },
+      {
+        id: "ho-act-1",
+        type: "handoff",
+        timestamp: 1776812006,
+        from: { id: "bot-1", role: 0 },
+        channelId: "conversationconductor",
+        replyToId: "msg-bot-1",
+        value: { type: "transferToAgent", context: { va_BotName: "Salesforce", queueId: "q-sales-01" } },
+      },
+    ],
+  }),
+};
+
+/**
+ * Copilot Studio author-configured handoff (AgentTransferConfiguredByAuthor):
+ * the author wired a transfer node into a topic, and at runtime the platform
+ * emits both the first-class `handoff` activity AND a HandOff trace. The LCW
+ * synthesizer would skip this (reason isn't AgentTransferRequestedBy*), but
+ * the activity captures it.
+ *
+ * Regression: hasHandoff must be TRUE; exactly 1 handoff in the array
+ * (no double-counting between the activity and any synthesized event).
+ */
+export const studioAuthorHandoffTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-studio-author-handoff-001",
+  name: "test_studio_author_handoff",
+  createdon: "2026-04-22T11:00:00Z",
+  conversationstarttime: "2026-04-22T10:55:00Z",
+  metadata: '{"BotId":"studio-bot","AADTenantId":"tenant-test","BotName":"msftcsa_studiobot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776815000, from: { id: "user-1", role: 1 }, channelId: "pva-studio", textFormat: "plain", text: "I want to buy something", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776815005, from: { id: "bot-1", role: 0 }, channelId: "pva-studio", textFormat: "markdown", text: "Routing you to our sales specialist.", attachments: [], replyToId: "msg-user-1" },
+      {
+        id: "ho-act-1",
+        type: "handoff",
+        timestamp: 1776815006,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-studio",
+        replyToId: "msg-bot-1",
+        value: { type: "transferToAgent" },
+      },
+      { valueType: "HandOff", id: "ho-trace-1", type: "trace", timestamp: 1776815007, from: { id: "bot-1", role: 0 }, replyToId: "msg-bot-1", value: {} },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776815300, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-22T10:55:00Z", endTimeUtc: "2026-04-22T11:00:00Z", type: "Engaged", outcome: "HandOff", turnCount: 2, impliedSuccess: true, outcomeReason: "AgentTransferConfiguredByAuthor" } },
+    ],
+  }),
+};

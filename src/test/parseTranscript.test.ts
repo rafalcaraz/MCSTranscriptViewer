@@ -18,6 +18,8 @@ import {
   d365LcwHandoffTranscript,
   fakeHandoffOutcomeTranscript,
   handoffNonLcwTranscript,
+  voiceFirstClassHandoffTranscript,
+  studioAuthorHandoffTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -816,6 +818,33 @@ describe("parseTranscript — D365 Omnichannel handoff synthesis", () => {
 
   it("does NOT synthesize when channel is not lcw (channel gate)", () => {
     const parsed = parseTranscript(handoffNonLcwTranscript);
+    expect(parsed.handoffs).toHaveLength(0);
+  });
+});
+
+describe("parseTranscript — first-class handoff activity (type=handoff)", () => {
+  it("detects D365 Voice handoff (conversationconductor + transferToAgent) → 1 event", () => {
+    const parsed = parseTranscript(voiceFirstClassHandoffTranscript);
+    expect(parsed.channelId).toBe("conversationconductor");
+    expect(parsed.hasHandoff).toBe(true);
+    expect(parsed.handoffs).toHaveLength(1);
+    const h = parsed.handoffs[0];
+    expect(h.eventName).toBe("handoff");
+    expect(h.provider).toBe("Salesforce");
+    expect(h.isValueStructured).toBe(true);
+  });
+
+  it("detects Studio author-configured handoff and does NOT double-count with LCW synthesis or trace", () => {
+    const parsed = parseTranscript(studioAuthorHandoffTranscript);
+    expect(parsed.hasHandoff).toBe(true);
+    expect(parsed.handoffs).toHaveLength(1);
+    expect(parsed.handoffs[0].eventName).toBe("handoff");
+    expect(parsed.handoffs[0].provider).toBe("Copilot Studio");
+  });
+
+  it("does NOT fire on the OOB Escalate fake-out (HandOff trace only, no handoff activity)", () => {
+    const parsed = parseTranscript(fakeHandoffTraceTranscript);
+    expect(parsed.hasHandoff).toBe(false);
     expect(parsed.handoffs).toHaveLength(0);
   });
 });

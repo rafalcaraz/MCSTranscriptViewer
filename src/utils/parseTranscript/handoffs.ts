@@ -101,3 +101,69 @@ export function synthesizeD365LcwHandoff(
     isValueStructured: true,
   };
 }
+
+/**
+ * Detect first-class Bot Framework `handoff` activities — the cleanest
+ * cross-provider transfer signal. Emitted by Copilot Studio (pva-studio,
+ * pva-autonomous) and D365 Voice (conversationconductor) when an author-
+ * configured agent transfer fires; carries `value.type === "transferToAgent"`.
+ *
+ * This activity is NOT emitted by the OOB PVA Escalate system topic — that
+ * one only emits the `HandOff` *trace*, which is the false-positive trap
+ * the LCW synthesizer guards against. So matching the activity itself is
+ * self-validating: if it's there, the transfer is real.
+ *
+ * Provider naming preference:
+ *   1. value.context.va_BotName / value.context.botName (if present)
+ *   2. Channel-derived label ("D365 Voice Channel" / "Copilot Studio")
+ *   3. "Live agent" fallback
+ */
+export function extractFirstClassHandoffActivities(
+  rawActivities: RawActivity[],
+  channelId?: string,
+): HandoffEvent[] {
+  const handoffs: HandoffEvent[] = [];
+  for (const a of rawActivities) {
+    if (a.type !== "handoff") continue;
+    if (a.from?.role !== 0) continue;
+
+    const value = a.value;
+    const valueObj =
+      typeof value === "object" && value !== null ? (value as Record<string, unknown>) : null;
+    if (valueObj && typeof valueObj.type === "string" && valueObj.type !== "transferToAgent") {
+      continue;
+    }
+
+    const context =
+      valueObj && typeof valueObj.context === "object" && valueObj.context !== null
+        ? (valueObj.context as Record<string, unknown>)
+        : null;
+    const ctxBotName =
+      (context?.va_BotName as string | undefined) ??
+      (context?.botName as string | undefined);
+
+    let provider: string;
+    if (ctxBotName && ctxBotName.trim()) {
+      provider = ctxBotName.trim();
+    } else if (channelId === "conversationconductor") {
+      provider = "D365 Voice Channel";
+    } else if (channelId === "pva-studio" || channelId === "pva-autonomous") {
+      provider = "Copilot Studio";
+    } else {
+      provider = "Live agent";
+    }
+
+    handoffs.push({
+      id: a.id,
+      eventName: "handoff",
+      provider,
+      timestamp: a.timestamp,
+      replyToId: a.replyToId,
+      value,
+      isValueString: typeof value === "string" && value.length > 0,
+      isValueStructured: typeof value === "object" && value !== null,
+    });
+  }
+  handoffs.sort((a, b) => a.timestamp - b.timestamp);
+  return handoffs;
+}
