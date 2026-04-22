@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseTranscript, formatTimestamp, formatDuration, shortToolName, prettyAgentName } from "../utils/parseTranscript";
+import type { DataverseTranscriptRecord } from "../utils/parseTranscript";
 import {
   basicMcpTranscript,
   pvaStudioReactionsTranscript,
@@ -24,6 +25,7 @@ import {
   lcwConfiguredByAuthorTranscript,
   voiceEndAndPrrTranscript,
   voicePrrAnsweredTranscript,
+  autonomousPlanExecutionTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -966,5 +968,51 @@ describe("parseTranscript — PRR survey signal", () => {
   it("is undefined when no PRRSurveyRequest present", () => {
     const parsed = parseTranscript(voiceSessionTranscript);
     expect(parsed.prrSurvey).toBeUndefined();
+  });
+});
+
+describe("parseTranscript — autonomous plan execution (DynamicPlan family)", () => {
+  it("groups DynamicPlanAIPluginStepFinished into PlanExecution per planIdentifier", () => {
+    const parsed = parseTranscript(autonomousPlanExecutionTranscript);
+    expect(parsed.planExecutions).toBeDefined();
+    expect(parsed.planExecutions!.length).toBe(2);
+    const [p1, p2] = parsed.planExecutions!;
+    expect(p1.planIdentifier).toBe("plan-aaa");
+    expect(p1.isFinalPlan).toBe(false);
+    expect(p1.declaredSteps).toEqual(["msdyn_PurchCopilotFollowupTaskAgent.topic.StoreEmailTopic"]);
+    expect(p1.steps.length).toBe(1);
+    expect(p1.steps[0].state).toBe("completed");
+    expect(p1.steps[0].arguments).toMatchObject({ msdyn_PurchCopilotFollowupTaskSaveEmail_dataArea: "USMF" });
+    expect(p1.debug?.ask).toBe('{"emailInfo":"..."}');
+    expect(p2.planIdentifier).toBe("plan-bbb");
+    expect(p2.isFinalPlan).toBe(true);
+    expect(p2.steps[0].observation).toEqual({ Response: { messageId: "msg-abc-123" } });
+  });
+
+  it("returns undefined when no DynamicPlan events are present (non-autonomous transcripts)", () => {
+    const parsed = parseTranscript(voiceSessionTranscript);
+    expect(parsed.planExecutions).toBeUndefined();
+  });
+
+  it("orphan DynamicPlanAIPluginStepFinished without matching Received plan is dropped", () => {
+    const orphan: DataverseTranscriptRecord = {
+      ...autonomousPlanExecutionTranscript,
+      conversationtranscriptid: "test-orphan-step",
+      content: JSON.stringify({
+        activities: [
+          {
+            valueType: "DynamicPlanAIPluginStepFinished",
+            id: "stf-x",
+            type: "event",
+            timestamp: 1776860000,
+            from: { id: "bot-1", role: 0 },
+            channelId: "pva-autonomous",
+            value: { taskDialogId: "topic.X", stepId: "x", planIdentifier: "missing", state: "completed" },
+          },
+        ],
+      }),
+    };
+    const parsed = parseTranscript(orphan);
+    expect(parsed.planExecutions).toBeUndefined();
   });
 });

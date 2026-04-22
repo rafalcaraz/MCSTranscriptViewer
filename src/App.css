@@ -2206,3 +2206,151 @@ tr[role="button"] {
   .omni-panel-raw-toggle:hover,
   .auth-visitor-reveal:hover { background: rgba(255, 255, 255, 0.06); }
 }
+
+
+/* ── Plan execution panel (D365 1P autonomous) ────────────── */
+.plan-execution-panel {
+  margin: 16px 0;
+  padding: 14px 16px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border-light);
+  border-radius: 8px;
+}
+.plan-execution-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+.plan-execution-subtle {
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+.plan-execution-body {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.plan-card {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  background: var(--bg-base);
+}
+.plan-card-header {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 8px 12px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.plan-card-icon { font-size: 14px; }
+.plan-card-title { font-weight: 600; flex-shrink: 0; }
+.plan-final-tag {
+  margin-left: 6px;
+  padding: 1px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  background: var(--success-bg);
+  color: var(--success-text);
+  border-radius: 4px;
+}
+.plan-card-summary { color: var(--text-secondary); font-size: 12px; flex: 1; }
+.plan-card-chevron { color: var(--text-secondary); font-size: 12px; }
+.plan-card-body { padding: 0 12px 12px 12px; }
+.plan-declared {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  margin: 0 0 10px 0;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  font-size: 12px;
+}
+.plan-declared-label { color: var(--text-secondary); margin-right: 4px; }
+.plan-declared-step {
+  padding: 2px 6px;
+  background: var(--bg-base);
+  border: 1px solid var(--border-light);
+  border-radius: 3px;
+  font-size: 11px;
+}
+.plan-step-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.plan-step {
+  border: 1px solid var(--border-light);
+  border-radius: 4px;
+}
+.plan-step-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  padding: 6px 10px;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  text-align: left;
+  font: inherit;
+  color: inherit;
+}
+.plan-step-num { color: var(--text-secondary); font-variant-numeric: tabular-nums; min-width: 20px; }
+.plan-step-state {
+  padding: 1px 6px;
+  font-size: 10px;
+  text-transform: uppercase;
+  border-radius: 3px;
+  font-weight: 600;
+}
+.plan-step-state-ok { background: var(--success-bg); color: var(--success-text); }
+.plan-step-state-fail { background: var(--danger-bg, var(--warning-bg)); color: var(--danger-text, var(--warning-text)); }
+.plan-step-state-skip { background: var(--bg-surface); color: var(--text-secondary); }
+.plan-step-state-other { background: var(--bg-surface); color: var(--text-secondary); }
+.plan-step-name {
+  flex: 1;
+  font-family: ui-monospace, "Cascadia Code", "Consolas", monospace;
+  font-size: 12px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.plan-step-meta {
+  display: flex;
+  gap: 8px;
+  font-size: 11px;
+  color: var(--text-secondary);
+}
+.plan-step-chevron { color: var(--text-secondary); font-size: 12px; }
+.plan-step-body { padding: 8px 12px 10px 12px; border-top: 1px solid var(--border-light); }
+.plan-step-fact { display: flex; gap: 8px; align-items: baseline; font-size: 12px; margin-bottom: 4px; }
+.plan-step-fact-label { color: var(--text-secondary); min-width: 90px; }
+.plan-step-section { margin-top: 8px; }
+.plan-step-section > summary { cursor: pointer; font-size: 12px; color: var(--color-primary); font-weight: 600; }
+.plan-step-json {
+  margin-top: 6px;
+  padding: 10px;
+  background: var(--bg-surface);
+  border-radius: 4px;
+  font-size: 11px;
+  line-height: 1.4;
+  max-height: 320px;
+  overflow: auto;
+  white-space: pre;
+}
+.plan-empty { color: var(--text-secondary); font-size: 12px; padding: 6px 0; }
+.plan-debug-block { font-size: 12px; padding: 6px 0; }
+.plan-debug-ask { margin-top: 6px; }
+.plan-debug-ask > summary { cursor: pointer; font-size: 11px; color: var(--text-secondary); }

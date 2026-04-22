@@ -451,6 +451,48 @@ export interface SurveySignal {
   responded: boolean;
 }
 
+/**
+ * Single step actually executed by a D365 1P platform agent on the
+ * `pva-autonomous` channel — extracted from the
+ * `DynamicPlanAIPluginStepFinished` event. Each step represents one
+ * topic/tool the LLM-driven runtime decided to invoke, with the args
+ * it picked and the observation it received back.
+ */
+export interface PlanExecutionStep {
+  stepId: string;
+  taskDialogId: string;
+  /** Activity timestamp (epoch seconds). */
+  timestamp: number;
+  /** Step state, typically "completed" — also "failed" / "skipped" in the wild. */
+  state?: string;
+  /** Inputs the LLM chose for the step (key/value, values can be any JSON). */
+  arguments?: Record<string, unknown>;
+  /** Whatever the step returned. Often `{ Response: null }`, sometimes structured. */
+  observation?: unknown;
+  /** Whether the step produced downstream recommendations for the planner. */
+  hasRecommendations?: boolean;
+}
+
+/**
+ * One LLM-issued plan in an autonomous D365 1P agent run. A transcript can
+ * carry several of these — the planner often re-issues a fresh plan
+ * (`isFinalPlan: false`) as it gathers more context, then a final plan
+ * (`isFinalPlan: true`).
+ */
+export interface PlanExecution {
+  planIdentifier: string;
+  /** Timestamp of the DynamicPlanReceived event that introduced this plan. */
+  receivedAt: number;
+  /** True when the planner declared this its final plan. */
+  isFinalPlan?: boolean;
+  /** taskDialogIds the plan declared up-front (may differ from `steps` actually run). */
+  declaredSteps: string[];
+  /** Steps actually executed (DynamicPlanAIPluginStepFinished), in time order. */
+  steps: PlanExecutionStep[];
+  /** Optional LLM reasoning payload from DynamicPlanReceivedDebug. */
+  debug?: { summary?: string; ask?: string };
+}
+
 export interface ParsedTranscript {
   // From Dataverse record fields
   conversationtranscriptid: string;
@@ -526,6 +568,13 @@ export interface ParsedTranscript {
    * Set only when a `PRRSurveyRequest` trace is present in the source.
    */
   prrSurvey?: SurveySignal;
+  /**
+   * Plans executed by an autonomous D365 1P platform agent on the
+   * `pva-autonomous` channel. Empty / undefined for every other channel.
+   * Built from `DynamicPlanReceived` + `DynamicPlanAIPluginStepFinished`
+   * events. Ordered by receivedAt.
+   */
+  planExecutions?: PlanExecution[];
   /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
   invokedChildAgentSchemaNames: string[];
 }

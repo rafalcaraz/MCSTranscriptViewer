@@ -681,3 +681,94 @@ export const voicePrrAnsweredTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+/**
+ * D365 1P platform autonomous agent (msdyn_*Agent on pva-autonomous channel).
+ * Two plans: an interim plan (StoreEmailTopic) followed by a final plan
+ * (SendEmailTopic). One DynamicPlanAIPluginStepFinished per plan, with
+ * realistic args/observation shapes. Used to validate the planExecutions
+ * extractor + UI panel.
+ */
+export const autonomousPlanExecutionTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-autonomous-plan-001",
+  name: "test_autonomous_plan",
+  createdon: "2026-04-22T16:00:00Z",
+  conversationstarttime: "2026-04-22T15:55:00Z",
+  metadata: '{"BotId":"d365-bot","AADTenantId":"tenant-test","BotName":"msdyn_PurchCopilotFollowupTaskAgent","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      {
+        valueType: "DynamicPlanReceived",
+        id: "dpr-1",
+        type: "event",
+        timestamp: 1776850000,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          steps: ["msdyn_PurchCopilotFollowupTaskAgent.topic.StoreEmailTopic"],
+          isFinalPlan: false,
+          planIdentifier: "plan-aaa",
+        },
+      },
+      {
+        valueType: "DynamicPlanReceivedDebug",
+        id: "dprd-1",
+        type: "event",
+        timestamp: 1776850000,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: { summary: "", ask: "{\"emailInfo\":\"...\"}" },
+      },
+      {
+        valueType: "DynamicPlanAIPluginStepFinished",
+        id: "stf-1",
+        type: "event",
+        timestamp: 1776850002,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          taskDialogId: "msdyn_PurchCopilotFollowupTaskAgent.topic.StoreEmailTopic",
+          stepId: "step-1",
+          observation: { Response: null },
+          arguments: {
+            msdyn_PurchCopilotFollowupTaskSaveEmail_emailBody: "Dear Fabrikam Supplier...",
+            msdyn_PurchCopilotFollowupTaskSaveEmail_dataArea: "USMF",
+          },
+          planIdentifier: "plan-aaa",
+          state: "completed",
+          hasRecommendations: false,
+        },
+      },
+      {
+        valueType: "DynamicPlanReceived",
+        id: "dpr-2",
+        type: "event",
+        timestamp: 1776850010,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          steps: ["msdyn_PurchCopilotFollowupTaskAgent.topic.SendEmailTopic"],
+          isFinalPlan: true,
+          planIdentifier: "plan-bbb",
+        },
+      },
+      {
+        valueType: "DynamicPlanAIPluginStepFinished",
+        id: "stf-2",
+        type: "event",
+        timestamp: 1776850012,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          taskDialogId: "msdyn_PurchCopilotFollowupTaskAgent.topic.SendEmailTopic",
+          stepId: "step-2",
+          observation: { Response: { messageId: "msg-abc-123" } },
+          arguments: { to: "supplier@example.com", subject: "Follow-up" },
+          planIdentifier: "plan-bbb",
+          state: "completed",
+        },
+      },
+    ],
+  }),
+};

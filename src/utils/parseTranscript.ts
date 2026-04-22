@@ -12,6 +12,7 @@ import { extractHandoffEvents, extractFirstClassHandoffActivities, synthesizeD36
 import { extractOmnichannelContext } from "./parseTranscript/omnichannel";
 import { extractVoiceContext } from "./parseTranscript/voice";
 import { extractEndOfConversation, extractPrrSurvey } from "./parseTranscript/lifecycle";
+import { extractPlanExecutions } from "./parseTranscript/planExecution";
 import {
   prettyAgentName,
   extractConnectedAgentInvocations,
@@ -251,6 +252,7 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
   const voiceContext = extractVoiceContext(rawActivities);
   const endOfConversation = extractEndOfConversation(rawActivities);
   const prrSurvey = extractPrrSurvey(rawActivities);
+  const planExecutions = extractPlanExecutions(rawActivities);
 
   return {
     conversationtranscriptid: record.conversationtranscriptid,
@@ -297,5 +299,6 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     voiceContext,
     endOfConversation,
     prrSurvey,
+    planExecutions,
   };
 }

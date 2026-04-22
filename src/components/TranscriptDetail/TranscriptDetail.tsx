@@ -6,6 +6,7 @@ import { DebugPanel } from "./DebugPanel";
 import { OmnichannelContextPanel } from "./OmnichannelContextPanel";
 import { AuthenticatedVisitorPanel } from "./AuthenticatedVisitorPanel";
 import { VoiceContextPanel } from "./VoiceContextPanel";
+import { PlanExecutionPanel } from "./PlanExecutionPanel";
 import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTranscript";
 import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
 import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
@@ -174,6 +175,10 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
             <AuthenticatedVisitorPanel visitor={transcript.authenticatedVisitor} />
           )}
         </div>
+      )}
+
+      {transcript.planExecutions && transcript.planExecutions.length > 0 && (
+        <PlanExecutionPanel plans={transcript.planExecutions} />
       )}
 
       <div className="detail-panels">
