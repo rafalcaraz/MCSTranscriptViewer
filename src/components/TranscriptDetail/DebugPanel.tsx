@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef, useMemo } from "react";
-import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo, AdvancedEvent, ConnectedAgentInvocation, ParsedTranscript } from "../../types/transcript";
+import type { PlanStep, ToolDefinition, McpServerInfo, KnowledgeSearchTrace, KnowledgeResponse, KnowledgeTraceInfo, AdvancedEvent, ConnectedAgentInvocation, ParsedTranscript, PlanExecution } from "../../types/transcript";
 import { shortToolName, formatTimestamp } from "../../utils/parseTranscript";
+import { PlanExecutionPanel } from "./PlanExecutionPanel";
 
 interface DebugPanelProps {
   planSteps: PlanStep[];
@@ -10,6 +11,7 @@ interface DebugPanelProps {
   knowledgeResponses: KnowledgeResponse[];
   knowledgeTrace?: KnowledgeTraceInfo;
   advancedEvents: AdvancedEvent[];
+  planExecutions?: PlanExecution[];
   connectedAgentInvocations?: ConnectedAgentInvocation[];
   parentAgentDisplayName?: string;
   activeMessageId: string | null;
@@ -44,7 +46,7 @@ interface TimelineItem {
   advancedEvent?: AdvancedEvent;
 }
 
-export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, advancedEvents, connectedAgentInvocations, parentAgentDisplayName, activeMessageId, onStepSelect, childTranscriptLookup, onOpenTranscript }: DebugPanelProps) {
+export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledgeSearches, knowledgeResponses, knowledgeTrace, advancedEvents, planExecutions, connectedAgentInvocations, parentAgentDisplayName, activeMessageId, onStepSelect, childTranscriptLookup, onOpenTranscript }: DebugPanelProps) {
   const [selectedTool, setSelectedTool] = useState<string | null>(null);
   const [openSteps, setOpenSteps] = useState<Set<string>>(new Set());
   const [advancedMode, setAdvancedMode] = useState(false);
@@ -256,6 +258,11 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
             <strong>{mcpServerInit.name}</strong>
             <span className="version"> v{mcpServerInit.version}</span>
           </div>
+        )}
+
+        {/* Plan execution (D365 1P autonomous) — only shown in advanced view */}
+        {advancedMode && planExecutions && planExecutions.length > 0 && (
+          <PlanExecutionPanel plans={planExecutions} />
         )}
 
         {/* Available Tools */}
