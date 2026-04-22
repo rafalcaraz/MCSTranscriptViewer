@@ -29,7 +29,7 @@ export function OrphanReactionItem({ reaction: r, onOpenTranscript }: OrphanReac
           "conversationstarttime",
           "content",
         ],
-        filter: `contains(content,'${r.replyToId.replace(/[^a-zA-Z0-9\-]/g, "")}')`,
+        filter: `contains(content,'${r.replyToId.replace(/[^a-zA-Z0-9-]/g, "")}')`,
         maxPageSize: 1,
       });
 

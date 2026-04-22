@@ -26,5 +26,5 @@ export function escapeOData(value: string): string {
 
 /** Sanitize a GUID — strip anything that isn't hex or hyphens */
 export function sanitizeGuid(value: string): string {
-  return value.replace(/[^a-fA-F0-9\-]/g, "");
+  return value.replace(/[^a-fA-F0-9-]/g, "");
 }

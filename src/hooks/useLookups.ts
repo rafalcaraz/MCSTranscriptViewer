@@ -74,7 +74,7 @@ export function useAadUserSearch() {
 
 // Cache of AAD Object ID → display name (persists across components)
 const _userDisplayCache = new Map<string, string>();
-let _pendingUserLookups = new Set<string>();
+const _pendingUserLookups = new Set<string>();
 let _userLookupPromise: Promise<void> | null = null;
 
 /**
@@ -244,5 +244,5 @@ function escapeOData(value: string): string {
 
 /** Sanitize a GUID — strip anything that isn't hex or hyphens */
 function sanitizeGuid(value: string): string {
-  return value.replace(/[^a-fA-F0-9\-]/g, "");
+  return value.replace(/[^a-fA-F0-9-]/g, "");
 }

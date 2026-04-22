@@ -233,7 +233,7 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
             placeholder="Search agent activity..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => { if (e.key === "Enter") { e.shiftKey ? debugGoPrev() : debugGoNext(); } }}
+            onKeyDown={(e) => { if (e.key === "Enter") { if (e.shiftKey) { debugGoPrev(); } else { debugGoNext(); } } }}
           />
           {searchQuery && debugMatchingIndices.length > 0 && (
             <div className="search-nav">
