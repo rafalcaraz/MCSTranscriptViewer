@@ -19,6 +19,8 @@ import type {
   ChatMessage,
   ConnectedAgentInvocation,
   HandoffEvent,
+  OmnichannelContext,
+  AuthenticatedVisitor,
 } from "../types/transcript";
 import { extractAdvancedEvents } from "./advancedEvents";
 
@@ -259,6 +261,176 @@ function extractHandoffEvents(rawActivities: RawActivity[]): HandoffEvent[] {
   }
   handoffs.sort((a, b) => a.timestamp - b.timestamp);
   return handoffs;
+}
+
+/**
+ * Synthesize a HandoffEvent from D365 Omnichannel trace+outcome signaling.
+ *
+ * D365 LCW doesn't emit a *Handoff *event* — instead it emits a `HandOff`
+ * *trace* (often duplicated), and the SessionInfo records `outcome="HandOff"`.
+ * The platform's built-in PVA Escalate topic emits the same `HandOff` trace
+ * even when escalation isn't configured, so the trace alone is unreliable.
+ *
+ * We treat it as a real handoff only when ALL three signals align:
+ *   1. SessionInfo / ConversationInfo `outcome === "HandOff"`
+ *   2. `outcomeReason` starts with "AgentTransferRequestedBy" (explicit ask,
+ *      not a system bailout like AgentTransferFromQuestionMaxAttempts)
+ *   3. `channelId === "lcw"` (channel actually wired to a human queue)
+ *
+ * Returns at most ONE event (uses the first HandOff trace; D365 typically
+ * emits 2 in immediate succession). The event's `value` is the bot's
+ * preceding message text when found, otherwise an object summarizing the
+ * outcome reason.
+ */
+function synthesizeD365LcwHandoff(
+  rawActivities: RawActivity[],
+  outcome: string | undefined,
+  outcomeReason: string | undefined,
+  channelId: string | undefined,
+): HandoffEvent | null {
+  const isReal =
+    (outcome ?? "").toLowerCase() === "handoff" &&
+    (outcomeReason ?? "").startsWith("AgentTransferRequestedBy") &&
+    channelId === "lcw";
+  if (!isReal) return null;
+
+  const handoffTrace = rawActivities.find(
+    (a) => a.type === "trace" && (a.valueType === "HandOff" || a.valueType === "Handoff"),
+  );
+  if (!handoffTrace) return null;
+
+  // Find the bot message immediately preceding the HandOff trace (the
+  // "I am transferring you to a representative…" message). We attach the
+  // synthesized event to that message so it renders inline in the timeline.
+  const idx = rawActivities.indexOf(handoffTrace);
+  let botMessage: string | undefined;
+  let botMessageId: string | undefined;
+  for (let i = idx - 1; i >= 0; i--) {
+    const a = rawActivities[i];
+    if (a.type === "message" && a.from?.role === 0 && typeof a.text === "string" && a.text.trim()) {
+      botMessage = a.text;
+      botMessageId = a.id;
+      break;
+    }
+  }
+
+  const value: Record<string, unknown> = {
+    outcome: "HandOff",
+    outcomeReason: outcomeReason!,
+    channel: "lcw",
+  };
+  if (botMessage) value.transferMessage = botMessage;
+
+  return {
+    id: handoffTrace.id,
+    eventName: "D365OmnichannelHandoff",
+    provider: "D365 Omnichannel",
+    timestamp: handoffTrace.timestamp,
+    replyToId: botMessageId ?? handoffTrace.replyToId,
+    value,
+    isValueString: false,
+    isValueStructured: true,
+  };
+}
+
+/**
+ * Recognized OIDC claim keys on the LCW startConversation event payload.
+ * Anything matching one of these is considered PII.
+ */
+const OIDC_CLAIM_KEYS = new Set([
+  "sub",
+  "preferred_username",
+  "email",
+  "given_name",
+  "family_name",
+  "phone_number",
+]);
+
+/**
+ * Parse D365 Omnichannel context (browser/device/work item ids) and any
+ * authenticated-visitor OIDC claims from the LCW `startConversation` event.
+ *
+ * The event is emitted by the visitor side (from.role=1) with channelData
+ * tags including "OmnichannelContextMessage". Its `value` carries `msdyn_*`
+ * fields and, when the LCW is configured for auth, OIDC claims.
+ *
+ * Returns the id of the source activity so the timeline can suppress its
+ * usually-blank message rendering.
+ */
+function extractOmnichannelContext(rawActivities: RawActivity[]): {
+  context?: OmnichannelContext;
+  visitor?: AuthenticatedVisitor;
+  sourceActivityId?: string;
+} {
+  const event = rawActivities.find((a) => a.type === "event" && a.name === "startConversation");
+  if (!event || typeof event.value !== "object" || event.value === null) return {};
+
+  const v = event.value as Record<string, unknown>;
+  // We only treat it as an Omnichannel context message when the marker is
+  // present — guards against unrelated startConversation usage in the future.
+  const tags = (event.channelData?.tags as string | undefined) ?? "";
+  const isOmnichannel =
+    tags.includes("OmnichannelContextMessage") ||
+    typeof v["msdyn_liveworkitemid"] === "string" ||
+    typeof v["msdyn_ConversationId"] === "string";
+  if (!isOmnichannel) return {};
+
+  const str = (k: string): string | undefined => {
+    const x = v[k];
+    return typeof x === "string" && x.length > 0 ? x : undefined;
+  };
+
+  // Linked record array (matched contact / customer record).
+  let linkedRecord: { recordId: string; primaryDisplayValue: string } | undefined;
+  for (const key of Object.keys(v)) {
+    if (!key.startsWith("msdyn_") || !Array.isArray(v[key])) continue;
+    const arr = v[key] as Array<{ RecordId?: string; PrimaryDisplayValue?: string }>;
+    const first = arr[0];
+    if (first && typeof first.RecordId === "string" && typeof first.PrimaryDisplayValue === "string") {
+      linkedRecord = { recordId: first.RecordId, primaryDisplayValue: first.PrimaryDisplayValue };
+      break;
+    }
+  }
+
+  const rawMsdyn: Record<string, unknown> = {};
+  for (const [k, val] of Object.entries(v)) {
+    if (k.startsWith("msdyn_")) rawMsdyn[k] = val;
+  }
+
+  const context: OmnichannelContext = {
+    liveWorkItemId: str("msdyn_liveworkitemid"),
+    conversationId: str("msdyn_ConversationId"),
+    sessionId: str("msdyn_sessionid"),
+    workstreamId: str("msdyn_WorkstreamId"),
+    channelInstanceId: str("msdyn_ChannelInstanceId"),
+    locale: str("msdyn_Locale") ?? str("msdyn_localecode"),
+    browser: str("msdyn_browser"),
+    device: str("msdyn_device"),
+    os: str("msdyn_os"),
+    linkedRecord,
+    raw: rawMsdyn,
+  };
+
+  // OIDC claims (only when at least `sub` is present — that's the minimum
+  // contract for "authenticated visitor").
+  let visitor: AuthenticatedVisitor | undefined;
+  if (typeof v["sub"] === "string") {
+    const rawClaims: Record<string, unknown> = {};
+    for (const [k, val] of Object.entries(v)) {
+      if (OIDC_CLAIM_KEYS.has(k)) rawClaims[k] = val;
+    }
+    visitor = {
+      sub: str("sub"),
+      preferredUsername: str("preferred_username"),
+      email: str("email"),
+      givenName: str("given_name"),
+      familyName: str("family_name"),
+      phoneNumber: str("phone_number"),
+      raw: rawClaims,
+    };
+  }
+
+  return { context, visitor, sourceActivityId: event.id };
 }
 
 /**
@@ -862,21 +1034,49 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     ? prettyAgentName(parentAgentSchemaName)
     : undefined;
 
-  const handoffs = extractHandoffEvents(rawActivities);
+  const eventHandoffs = extractHandoffEvents(rawActivities);
 
-  // True for any flavor of human/external handoff:
-  //  - D365 LCW & native PVA: SessionInfo / ConversationInfo outcome === "HandOff"
-  //  - Custom integrations: any *Handoff event (already in `handoffs`)
+  // True for any flavor of human/external handoff. Two independent sources
+  // feed the unified `handoffs` array:
   //
-  // We deliberately DO NOT trust a lone `HandOff` trace — PVA's built-in
-  // Escalate system topic emits `EscalationRequested` + `HandOff` traces even
-  // when escalation isn't configured (the bot tells the user it's unavailable
-  // and the session ends as `Abandoned`). SessionInfo.outcome is the only
-  // reliable signal that an actual handoff occurred.
-  const outcomeIsHandoff =
-    (sessionInfo?.outcome ?? "").toLowerCase() === "handoff" ||
-    (conversationInfo?.lastSessionOutcome ?? "").toLowerCase() === "handoff";
-  const hasHandoff = outcomeIsHandoff || handoffs.length > 0;
+  //  1. Custom integrations (Genesys, Salesforce, …): bot-emitted
+  //     `*Handoff` events. Intentional, explicit, never false-positive.
+  //
+  //  2. D365 Omnichannel (Live Chat Widget): synthesized from the
+  //     trace+outcome+channel signal. Gated by ALL of:
+  //       - SessionInfo / ConversationInfo `outcome === "HandOff"`
+  //       - `outcomeReason` starts with "AgentTransferRequestedBy"
+  //         (explicit ask, not a system bailout like
+  //         AgentTransferFromQuestionMaxAttempts)
+  //       - `channelId === "lcw"` (channel actually wired to a human queue)
+  //
+  // We deliberately DO NOT trust:
+  //   - A lone `HandOff` trace — PVA's built-in Escalate system topic emits
+  //     `EscalationRequested` + `HandOff` traces even when escalation isn't
+  //     configured (the bot tells the user it's unavailable).
+  //   - outcome=HandOff alone — the same fake-out can also produce
+  //     outcome="HandOff" reason="AgentTransferFromQuestionMaxAttempts".
+  //   - outcome=HandOff + RequestedBy* on non-lcw channels — the LCW gate
+  //     ensures the channel actually has a human queue to route to.
+  //
+  // If we ever see legitimate non-LCW handoffs in the wild (other Omnichannel
+  // channels, custom DirectLine integrations, …), revisit the channel gate.
+  const outcomeForRule = conversationInfo?.lastSessionOutcome ?? sessionInfo?.outcome;
+  const outcomeReasonForRule =
+    conversationInfo?.lastSessionOutcomeReason ?? sessionInfo?.outcomeReason;
+  const d365Handoff = synthesizeD365LcwHandoff(
+    rawActivities,
+    outcomeForRule,
+    outcomeReasonForRule,
+    channelId,
+  );
+  const handoffs: HandoffEvent[] = [...eventHandoffs];
+  if (d365Handoff) handoffs.push(d365Handoff);
+  handoffs.sort((a, b) => a.timestamp - b.timestamp);
+  const hasHandoff = handoffs.length > 0;
+
+  const { context: omnichannelContext, visitor: authenticatedVisitor } =
+    extractOmnichannelContext(rawActivities);
 
   return {
     conversationtranscriptid: record.conversationtranscriptid,
@@ -918,5 +1118,7 @@ export function parseTranscript(record: DataverseTranscriptRecord): ParsedTransc
     invokedChildAgentSchemaNames: [...new Set(connectedAgentInvocations.map((i) => i.childSchemaName))],
     handoffs,
     hasHandoff,
+    omnichannelContext,
+    authenticatedVisitor,
   };
 }

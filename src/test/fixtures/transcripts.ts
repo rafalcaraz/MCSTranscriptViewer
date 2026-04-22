@@ -349,3 +349,116 @@ export const fakeHandoffTraceTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+
+/**
+ * Real D365 Omnichannel (Live Chat Widget) handoff. User explicitly asked to
+ * be transferred; the platform routed the conversation to a human queue.
+ *
+ *   outcome === "HandOff"
+ *   outcomeReason === "AgentTransferRequestedByUser"
+ *   channelId === "lcw"
+ *
+ * Includes a full Omnichannel context startConversation event with OIDC
+ * claims so the OmnichannelContextPanel + AuthenticatedVisitorPanel render.
+ *
+ * All three handoff signals must align — see hasHandoff derivation in parseTranscript.ts.
+ */
+export const d365LcwHandoffTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-d365-lcw-handoff-001",
+  name: "test_d365_lcw_handoff",
+  createdon: "2026-04-15T12:00:00Z",
+  conversationstarttime: "2026-04-15T11:55:00Z",
+  metadata: '{"BotId":"d365-bot","AADTenantId":"tenant-test","BotName":"msftcsa_d365bot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { valueType: "ConversationInfo", type: "trace", timestamp: 1776556499, from: { id: "", role: 0 }, value: { lastSessionOutcome: "HandOff", lastSessionOutcomeReason: "AgentTransferRequestedByUser", isDesignMode: false, locale: "en-US" } },
+      {
+        id: "evt-startconv-1",
+        type: "event",
+        name: "startConversation",
+        timestamp: 1776556499,
+        from: { id: "visitor-1", role: 1 },
+        channelId: "lcw",
+        channelData: { tags: "ChannelId-lcw,OmnichannelContextMessage,Hidden", sourceChannelId: "omnichannel" },
+        value: {
+          msdyn_liveworkitemid: "1970b59e-f5a1-4f02-8dd1-c36261ad0e8c",
+          msdyn_ConversationId: "1970b59e-f5a1-4f02-8dd1-c36261ad0e8c",
+          msdyn_sessionid: "0274bfd2-6242-42c2-b78e-fc9652e63752",
+          msdyn_WorkstreamId: "3f956ca3-0ec9-db3f-b012-7c0ee5261aed",
+          msdyn_ChannelInstanceId: "a7a1d904-b331-f111-88b4-000d3a59de25",
+          msdyn_Locale: "en-US",
+          msdyn_localecode: "en-US",
+          msdyn_browser: "Edge",
+          msdyn_device: "Desktop",
+          msdyn_os: "Windows",
+          msdyn_msdyn_ocliveworkitem_msdyn_livechatengagementctx_liveworkitemid: [
+            { RecordId: "a4d38d7f-e903-4d55-a1fe-ababbb70ad8b", PrimaryDisplayValue: "john.doe@hls-mock.com" },
+          ],
+          sub: "user-001",
+          preferred_username: "john.doe@hls-mock.com",
+          email: "john.doe@hls-mock.com",
+          given_name: "John",
+          family_name: "Doe",
+          phone_number: "555-100-0001",
+        },
+      },
+      { id: "msg-user-1", type: "message", timestamp: 1776556500, from: { id: "user-1", role: 1 }, channelId: "lcw", textFormat: "plain", text: "I need a human agent", attachments: [] },
+      { valueType: "EscalationRequested", id: "esc-1", type: "trace", timestamp: 1776556505, from: { id: "bot-1", role: 0 }, value: { escalationRequestType: 1 } },
+      { id: "msg-bot-transfer", type: "message", timestamp: 1776556506, from: { id: "bot-1", role: 0 }, channelId: "lcw", textFormat: "markdown", text: "I am transferring you to a representative. Please hold...", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "HandOff", id: "ho-1", type: "trace", timestamp: 1776556507, from: { id: "bot-1", role: 0 }, replyToId: "1776556506", value: {} },
+      { valueType: "HandOff", id: "ho-2", type: "trace", timestamp: 1776556508, from: { id: "bot-1", role: 0 }, replyToId: "1776556506", value: {} },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776556700, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-15T11:55:00Z", endTimeUtc: "2026-04-15T11:58:20Z", type: "Engaged", outcome: "HandOff", turnCount: 4, impliedSuccess: true, outcomeReason: "AgentTransferRequestedByUser" } },
+    ],
+  }),
+};
+
+/**
+ * PVA Escalate-not-configured fake-out, second variant: this one ends with
+ * outcome="HandOff" but outcomeReason="AgentTransferFromQuestionMaxAttempts"
+ * (the system gave up, not a user-requested transfer). Same false-positive
+ * source as fakeHandoffTraceTranscript, just a different reason code.
+ *
+ * Regression: hasHandoff must be FALSE.
+ */
+export const fakeHandoffOutcomeTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-fake-handoff-002",
+  name: "test_fake_handoff_outcome",
+  createdon: "2026-04-10T05:00:00Z",
+  conversationstarttime: "2026-04-10T04:55:00Z",
+  metadata: '{"BotId":"fake-handoff-2","AADTenantId":"tenant-test","BotName":"msftcsa_fakehandoff2","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1775793300, from: { id: "user-1", role: 1 }, channelId: "msteams", textFormat: "plain", text: "huh?", attachments: [] },
+      { valueType: "EscalationRequested", id: "esc-1", type: "trace", timestamp: 1775793305, from: { id: "bot-1", role: 0 }, value: { escalationRequestType: 1 } },
+      { id: "msg-bot-1", type: "message", timestamp: 1775793306, from: { id: "bot-1", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "Escalating to a representative is not currently configured for this agent.", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "HandOff", id: "ho-1", type: "trace", timestamp: 1775793307, from: { id: "bot-1", role: 0 }, replyToId: "msg-user-1", value: {} },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1775793500, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-10T04:55:00Z", endTimeUtc: "2026-04-10T04:58:20Z", type: "Engaged", outcome: "HandOff", turnCount: 6, impliedSuccess: false, outcomeReason: "AgentTransferFromQuestionMaxAttempts" } },
+    ],
+  }),
+};
+
+/**
+ * Edge case: outcome=HandOff with a RequestedBy* reason, but on a non-lcw
+ * channel. We don't trust this without the LCW gate (no human queue
+ * guaranteed to exist on this channel). Regression: hasHandoff must be FALSE.
+ */
+export const handoffNonLcwTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-handoff-non-lcw-001",
+  name: "test_handoff_non_lcw",
+  createdon: "2026-04-12T08:00:00Z",
+  conversationstarttime: "2026-04-12T07:55:00Z",
+  metadata: '{"BotId":"non-lcw","AADTenantId":"tenant-test","BotName":"msftcsa_nonlcw","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776008100, from: { id: "user-1", role: 1 }, channelId: "msteams", textFormat: "plain", text: "agent please", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776008101, from: { id: "bot-1", role: 0 }, channelId: "msteams", textFormat: "markdown", text: "Connecting you...", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776008300, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-12T07:55:00Z", endTimeUtc: "2026-04-12T07:58:20Z", type: "Engaged", outcome: "HandOff", turnCount: 2, impliedSuccess: true, outcomeReason: "AgentTransferRequestedByUser" } },
+    ],
+  }),
+};

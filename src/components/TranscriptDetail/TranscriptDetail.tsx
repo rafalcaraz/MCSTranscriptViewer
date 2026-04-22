@@ -3,6 +3,8 @@ import type { ParsedTranscript, TranscriptType } from "../../types/transcript";
 import { GeneralInfo } from "./GeneralInfo";
 import { MessageTimeline } from "./MessageTimeline";
 import { DebugPanel } from "./DebugPanel";
+import { OmnichannelContextPanel } from "./OmnichannelContextPanel";
+import { AuthenticatedVisitorPanel } from "./AuthenticatedVisitorPanel";
 import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTranscript";
 import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
 import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
@@ -158,6 +160,17 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
       )}
 
       <GeneralInfo transcript={transcript} />
+
+      {(transcript.omnichannelContext || transcript.authenticatedVisitor) && (
+        <div className="omni-row">
+          {transcript.omnichannelContext && (
+            <OmnichannelContextPanel context={transcript.omnichannelContext} />
+          )}
+          {transcript.authenticatedVisitor && (
+            <AuthenticatedVisitorPanel visitor={transcript.authenticatedVisitor} />
+          )}
+        </div>
+      )}
 
       <div className="detail-panels">
         <DebugPanel

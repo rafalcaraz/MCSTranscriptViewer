@@ -15,6 +15,9 @@ import {
   multiAgentTranscript,
   handoffTranscript,
   fakeHandoffTraceTranscript,
+  d365LcwHandoffTranscript,
+  fakeHandoffOutcomeTranscript,
+  handoffNonLcwTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -756,5 +759,96 @@ describe("parseTranscript — hasHandoff flag", () => {
     const parsed = parseTranscript(fakeHandoffTraceTranscript);
     expect(parsed.globalOutcome).toBe("Abandoned");
     expect(parsed.hasHandoff).toBe(false);
+  });
+
+  it("is TRUE for a real D365 LCW handoff (outcome=HandOff + RequestedBy* + channelId=lcw)", () => {
+    const parsed = parseTranscript(d365LcwHandoffTranscript);
+    expect(parsed.globalOutcome).toBe("HandOff");
+    expect(parsed.globalOutcomeReason).toBe("AgentTransferRequestedByUser");
+    expect(parsed.channelId).toBe("lcw");
+    expect(parsed.hasHandoff).toBe(true);
+  });
+
+  it("is FALSE when outcome=HandOff but reason is AgentTransferFromQuestionMaxAttempts (PVA fake-out)", () => {
+    const parsed = parseTranscript(fakeHandoffOutcomeTranscript);
+    expect(parsed.globalOutcome).toBe("HandOff");
+    expect(parsed.globalOutcomeReason).toBe("AgentTransferFromQuestionMaxAttempts");
+    expect(parsed.hasHandoff).toBe(false);
+  });
+
+  it("is FALSE when outcome=HandOff + RequestedBy* but channel is not lcw (no human queue gated)", () => {
+    const parsed = parseTranscript(handoffNonLcwTranscript);
+    expect(parsed.globalOutcome).toBe("HandOff");
+    expect(parsed.globalOutcomeReason).toBe("AgentTransferRequestedByUser");
+    expect(parsed.channelId).not.toBe("lcw");
+    expect(parsed.hasHandoff).toBe(false);
+  });
+});
+
+describe("parseTranscript — D365 Omnichannel handoff synthesis", () => {
+  it("synthesizes a single HandoffEvent with provider 'D365 Omnichannel' for a real LCW handoff", () => {
+    const parsed = parseTranscript(d365LcwHandoffTranscript);
+    expect(parsed.handoffs).toHaveLength(1);
+    const h = parsed.handoffs[0];
+    expect(h.provider).toBe("D365 Omnichannel");
+    expect(h.eventName).toBe("D365OmnichannelHandoff");
+    expect(h.isValueStructured).toBe(true);
+  });
+
+  it("dedupes duplicate HandOff traces (D365 emits 2x — only one synthesized event)", () => {
+    const parsed = parseTranscript(d365LcwHandoffTranscript);
+    // Source has 2 HandOff traces; we collapse to a single synthesized event.
+    expect(parsed.handoffs.filter((h) => h.provider === "D365 Omnichannel")).toHaveLength(1);
+  });
+
+  it("attaches the synthesized event to the bot transfer message id (so it renders inline)", () => {
+    const parsed = parseTranscript(d365LcwHandoffTranscript);
+    const h = parsed.handoffs[0];
+    expect(h.replyToId).toBe("msg-bot-transfer");
+    const v = h.value as Record<string, unknown>;
+    expect(v.transferMessage).toMatch(/transferring you to a representative/i);
+  });
+
+  it("does NOT synthesize a D365 handoff for the fake-out (RequestedBy* check fails)", () => {
+    const parsed = parseTranscript(fakeHandoffOutcomeTranscript);
+    expect(parsed.handoffs).toHaveLength(0);
+  });
+
+  it("does NOT synthesize when channel is not lcw (channel gate)", () => {
+    const parsed = parseTranscript(handoffNonLcwTranscript);
+    expect(parsed.handoffs).toHaveLength(0);
+  });
+});
+
+describe("parseTranscript — Omnichannel context + authenticated visitor", () => {
+  it("extracts msdyn_* context from startConversation event", () => {
+    const parsed = parseTranscript(d365LcwHandoffTranscript);
+    expect(parsed.omnichannelContext).toBeDefined();
+    const ctx = parsed.omnichannelContext!;
+    expect(ctx.liveWorkItemId).toBe("1970b59e-f5a1-4f02-8dd1-c36261ad0e8c");
+    expect(ctx.sessionId).toBe("0274bfd2-6242-42c2-b78e-fc9652e63752");
+    expect(ctx.workstreamId).toBe("3f956ca3-0ec9-db3f-b012-7c0ee5261aed");
+    expect(ctx.browser).toBe("Edge");
+    expect(ctx.device).toBe("Desktop");
+    expect(ctx.os).toBe("Windows");
+    expect(ctx.locale).toBe("en-US");
+    expect(ctx.linkedRecord?.primaryDisplayValue).toBe("john.doe@hls-mock.com");
+  });
+
+  it("extracts OIDC claims as authenticatedVisitor when sub is present", () => {
+    const parsed = parseTranscript(d365LcwHandoffTranscript);
+    expect(parsed.authenticatedVisitor).toBeDefined();
+    const v = parsed.authenticatedVisitor!;
+    expect(v.sub).toBe("user-001");
+    expect(v.email).toBe("john.doe@hls-mock.com");
+    expect(v.givenName).toBe("John");
+    expect(v.familyName).toBe("Doe");
+    expect(v.phoneNumber).toBe("555-100-0001");
+  });
+
+  it("does not surface omnichannelContext for non-LCW transcripts", () => {
+    const parsed = parseTranscript(basicMcpTranscript);
+    expect(parsed.omnichannelContext).toBeUndefined();
+    expect(parsed.authenticatedVisitor).toBeUndefined();
   });
 });

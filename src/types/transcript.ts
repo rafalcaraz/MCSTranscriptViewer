@@ -264,6 +264,63 @@ export interface HandoffEvent {
   isValueStructured: boolean;
 }
 
+/**
+ * D365 Omnichannel context attached to LCW (Live Chat Widget) sessions.
+ * Extracted from the `startConversation` event payload (msdyn_* fields).
+ *
+ * All fields are optional — older or differently-configured sessions may
+ * include only a subset.
+ */
+export interface OmnichannelContext {
+  /** D365 work item GUID — primary identifier in Omnichannel for Customer Service. */
+  liveWorkItemId?: string;
+  /** Conversation GUID, usually equal to liveWorkItemId. */
+  conversationId?: string;
+  /** Session GUID (one work item can have multiple sessions). */
+  sessionId?: string;
+  /** Workstream GUID (queue / routing config). */
+  workstreamId?: string;
+  /** Channel instance GUID. */
+  channelInstanceId?: string;
+  /** Locale, e.g. "en-US". */
+  locale?: string;
+  /** Visitor browser, e.g. "Edge", "Chrome". */
+  browser?: string;
+  /** Device type, e.g. "Desktop", "Mobile". */
+  device?: string;
+  /** OS, e.g. "Windows", "macOS". */
+  os?: string;
+  /** Linked record info (e.g. matched contact display value) when present. */
+  linkedRecord?: { recordId: string; primaryDisplayValue: string };
+  /** Raw msdyn_* payload preserved for advanced inspection. */
+  raw: Record<string, unknown>;
+}
+
+/**
+ * OIDC claims about an authenticated visitor, when the LCW session is
+ * configured for authentication. Extracted from the same `startConversation`
+ * event payload as OmnichannelContext.
+ *
+ * All fields are optional — depends on which scopes/claims the relying
+ * party requested. Treat the entire object as PII.
+ */
+export interface AuthenticatedVisitor {
+  /** OIDC subject identifier (stable user id). */
+  sub?: string;
+  /** OIDC preferred_username (often UPN/email). */
+  preferredUsername?: string;
+  /** OIDC email claim. */
+  email?: string;
+  /** OIDC given_name (first name). */
+  givenName?: string;
+  /** OIDC family_name (last name). */
+  familyName?: string;
+  /** OIDC phone_number. */
+  phoneNumber?: string;
+  /** Raw payload of recognized OIDC claims, preserved for advanced inspection. */
+  raw: Record<string, unknown>;
+}
+
 // ── Unified activity union ────────────────────────────────────────────
 
 export type ParsedActivityType =
@@ -370,15 +427,23 @@ export interface ParsedTranscript {
   parentAgentDisplayName?: string;
   /** Raw schema name for the root/parent agent, when known. */
   parentAgentSchemaName?: string;
-  /** All bot-emitted Handoff events (e.g. GenesysHandoff, SalesforceHandoff). */
+  /**
+   * All recognized handoff events for this transcript, in chronological order.
+   * Includes both:
+   *   - Bot-emitted custom *Handoff events (e.g. GenesysHandoff, SalesforceHandoff)
+   *   - Synthesized D365 Omnichannel handoffs (provider="D365 Omnichannel")
+   *     when the trace+outcome+channel rule confirms a real LCW handoff.
+   */
   handoffs: HandoffEvent[];
   /**
    * True when this transcript involved any handoff to a human/external system.
-   * Catches both:
-   *  - SessionInfo / ConversationInfo outcome === "HandOff" (D365 LCW, native escalations)
-   *  - Any custom *Handoff event (Genesys, Salesforce, LiveAgent, etc.)
+   * Equivalent to `handoffs.length > 0` — handoffs is the single source of truth.
    */
   hasHandoff: boolean;
+  /** D365 Omnichannel session context, when the LCW startConversation event is present. */
+  omnichannelContext?: OmnichannelContext;
+  /** OIDC claims for an authenticated visitor, when present in the LCW session. */
+  authenticatedVisitor?: AuthenticatedVisitor;
   /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
   invokedChildAgentSchemaNames: string[];
 }

@@ -131,7 +131,7 @@ describe("DebugPanel", () => {
   it("renders the panel title", async () => {
     const transcript = parseTranscript(basicMcpTranscript);
     await renderDebug(transcript);
-    expect(screen.getByText("Debug")).toBeDefined();
+    expect(screen.getByText("Agent Activity")).toBeDefined();
   });
 
   it("renders plan steps", async () => {
@@ -174,7 +174,7 @@ describe("DebugPanel", () => {
   it("shows search input", async () => {
     const transcript = parseTranscript(basicMcpTranscript);
     await renderDebug(transcript);
-    expect(screen.getByPlaceholderText("Search debug events...")).toBeDefined();
+    expect(screen.getByPlaceholderText("Search agent activity...")).toBeDefined();
   });
 });
 
@@ -286,7 +286,7 @@ describe("TranscriptDetail", () => {
   it("renders both panels", async () => {
     const transcript = parseTranscript(basicMcpTranscript);
     await renderDetail(transcript);
-    expect(screen.getByText("Debug")).toBeDefined();
+    expect(screen.getByText("Agent Activity")).toBeDefined();
     expect(screen.getByText("Message Timeline")).toBeDefined();
   });
 

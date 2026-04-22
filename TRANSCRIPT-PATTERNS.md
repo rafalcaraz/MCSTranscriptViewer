@@ -104,6 +104,8 @@ None of the above?
 15. [Connector & Auth Events](#15-connector--auth-events)
     - [15.5 Multi-Agent (Connected Agents)](#155-multi-agent-connected-agents-pattern)
     - [15.6 Provider Handoff Events](#156-provider-handoff-events-genesys-salesforce-etc)
+    - [15.7 D365 Omnichannel (LCW) Handoff Pattern](#157-d365-omnichannel-lcw-handoff-pattern)
+    - [15.8 D365 Omnichannel Session Context (msdyn_*)](#158-d365-omnichannel-session-context-msdyn_)
 16. [Unhandled / Future Patterns](#16-unhandled--future-patterns)
 
 ---
@@ -1203,6 +1205,128 @@ reads as a system event, not a chat turn.
 `crc5e_agentkrDG73.topic.Escalate`) firing immediately before/after the
 handoff. The dialog trace identifies *which* topic decided to escalate; the
 handoff event carries the payload sent to the external system.
+
+---
+
+## 15.7 D365 Omnichannel (LCW) Handoff Pattern
+
+A second, completely different handoff shape — used by Microsoft's own
+Dynamics 365 Customer Service when a Copilot Studio agent is wired into
+the Omnichannel for Customer Service via the **Live Chat Widget (LCW)**.
+
+Unlike the §15.6 provider events, D365 emits **no `*Handoff` event**. The
+signal is split across three things:
+
+```jsonc
+// 1. EscalationRequested trace (intent acknowledged)
+{ "valueType": "EscalationRequested", "type": "trace",
+  "value": { "escalationRequestType": 1 }, "from": { "role": 0 } }
+
+// 2. Bot transfer message (visible to user)
+{ "type": "message", "from": { "role": 0 }, "channelId": "lcw",
+  "text": "I am transferring you to a representative. Please hold..." }
+
+// 3. HandOff trace — usually emitted twice in succession (no payload)
+{ "valueType": "HandOff", "type": "trace", "value": {} }
+{ "valueType": "HandOff", "type": "trace", "value": {} }
+
+// 4. Session ends with outcome=HandOff
+{ "valueType": "SessionInfo", "type": "trace",
+  "value": { "outcome": "HandOff",
+             "outcomeReason": "AgentTransferRequestedByUser" } }
+```
+
+### ⚠ The PVA Escalate-not-configured fake-out
+
+Critically, PVA's **built-in Escalate system topic** emits the SAME
+`EscalationRequested` + `HandOff` traces even when escalation is NOT
+configured. The bot tells the user *"Escalating to a representative is not
+currently configured"* and the session may end as either:
+
+  - `outcome=Abandoned`, `outcomeReason=UserError`, OR
+  - `outcome=HandOff`, `outcomeReason=AgentTransferFromQuestionMaxAttempts`
+
+So a `HandOff` trace alone — and even `outcome=HandOff` alone — is
+**unreliable**. The discriminator is `outcomeReason`:
+
+| `outcomeReason` prefix | Meaning | Real handoff? |
+|---|---|---|
+| `AgentTransferRequestedBy*` | Explicit user/bot ask | ✅ yes |
+| `AgentTransferFrom*` | System bailout (max attempts, unknown intent) | ❌ no |
+| anything else | Various fail/abandon | ❌ no |
+
+### Detection rule (used by the parser)
+
+We treat a transcript as a real D365 handoff only when **all three** are true:
+
+1. `outcome === "HandOff"` (SessionInfo or ConversationInfo)
+2. `outcomeReason` starts with `"AgentTransferRequestedBy"`
+3. `channelId === "lcw"` — channel actually wired to a human queue
+
+When the rule matches, the parser **synthesizes** a single `HandoffEvent`
+(provider `"D365 Omnichannel"`, attached to the bot's transfer message)
+so the transcript surfaces in the same list filter and inline 🚪 callout
+as §15.6 custom event handoffs. Duplicate `HandOff` traces are deduped.
+
+If we ever see legitimate non-LCW handoffs in the wild (other Omnichannel
+channels, custom DirectLine integrations) we'll need to revisit the
+channel gate.
+
+---
+
+## 15.8 D365 Omnichannel Session Context (msdyn_*)
+
+When an LCW visitor opens a chat, D365 sends a `startConversation` event
+from the visitor side carrying the full Omnichannel session context:
+
+```jsonc
+{
+  "type": "event", "name": "startConversation",
+  "from": { "role": 1 },
+  "channelId": "lcw",
+  "channelData": { "tags": "ChannelId-lcw,OmnichannelContextMessage,Hidden",
+                   "sourceChannelId": "omnichannel" },
+  "value": {
+    "msdyn_liveworkitemid":   "<work item GUID — primary D365 record id>",
+    "msdyn_ConversationId":   "<usually equal to liveworkitemid>",
+    "msdyn_sessionid":        "<session GUID>",
+    "msdyn_WorkstreamId":     "<workstream / queue GUID>",
+    "msdyn_ChannelInstanceId":"<channel instance GUID>",
+    "msdyn_Locale":           "en-US",
+    "msdyn_browser":          "Edge",
+    "msdyn_device":           "Desktop",
+    "msdyn_os":               "Windows",
+    "msdyn_msdyn_ocliveworkitem_msdyn_livechatengagementctx_liveworkitemid": [
+      { "RecordId": "<contact GUID>", "PrimaryDisplayValue": "<email or name>" }
+    ]
+  }
+}
+```
+
+The activity is tagged `Hidden` so it's not meant to render as a chat
+turn. We surface it as the **🌐 D365 Omnichannel** card above the timeline,
+with a Web API deep link to the work item.
+
+### Authenticated visitors → OIDC claims
+
+When the LCW is configured for authentication, the same `value` payload
+**also** carries OIDC claims about the signed-in visitor:
+
+```jsonc
+{
+  "sub":                "<stable user id>",
+  "preferred_username": "john.doe@hls-mock.com",
+  "email":              "john.doe@hls-mock.com",
+  "given_name":         "John",
+  "family_name":        "Doe",
+  "phone_number":       "555-100-0001"
+}
+```
+
+Recognized OIDC keys: `sub`, `preferred_username`, `email`, `given_name`,
+`family_name`, `phone_number`. We treat `sub` as the marker for "this
+session is authenticated" and surface the rest as the **🔐 Authenticated
+visitor** card with a PII reveal toggle.
 
 ---
 
