@@ -13,7 +13,7 @@ interface OmnichannelContextPanelProps {
  * the raw msdyn_* payload behind a toggle for advanced inspection.
  */
 export function OmnichannelContextPanel({ context }: OmnichannelContextPanelProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [showRaw, setShowRaw] = useState(false);
 
   const workItemUrl = context.liveWorkItemId

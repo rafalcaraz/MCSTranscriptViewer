@@ -12,7 +12,7 @@ interface AuthenticatedVisitorPanelProps {
  * even when revealed since it can also identify a real person.
  */
 export function AuthenticatedVisitorPanel({ visitor }: AuthenticatedVisitorPanelProps) {
-  const [collapsed, setCollapsed] = useState(false);
+  const [collapsed, setCollapsed] = useState(true);
   const [revealed, setRevealed] = useState(false);
 
   const fullName = [visitor.givenName, visitor.familyName].filter(Boolean).join(" ");
