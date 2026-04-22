@@ -1,11 +1,25 @@
-import { useState, useCallback, useEffect } from "react";
+import { useState, useCallback, useEffect, lazy, Suspense } from "react";
 import { useTranscripts, useTranscript, type TranscriptFilters } from "./hooks/useTranscripts";
 import { useBotLookup } from "./hooks/useLookups";
 import { TranscriptList } from "./components/TranscriptList/TranscriptList";
-import { TranscriptDetail } from "./components/TranscriptDetail/TranscriptDetail";
-import { AnalyticsSummary } from "./components/Analytics/AnalyticsSummary";
 import { INITIAL_FILTER_STATE, type ListFilterState } from "./state/listFilters";
 import "./App.css";
+
+// Code-split the detail and analytics views — they are heavy (DebugPanel, MessageTimeline,
+// PDF/HTML exporters) and not needed for the initial list render. Vite emits a separate
+// chunk for each that loads on first navigation and is then cached.
+const TranscriptDetail = lazy(() =>
+  import("./components/TranscriptDetail/TranscriptDetail").then((m) => ({ default: m.TranscriptDetail })),
+);
+const AnalyticsSummary = lazy(() =>
+  import("./components/Analytics/AnalyticsSummary").then((m) => ({ default: m.AnalyticsSummary })),
+);
+
+const LazyFallback = ({ label }: { label: string }) => (
+  <div className="app-root" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+    {label}
+  </div>
+);
 
 type View = "list" | "detail" | "analytics";
 
@@ -88,16 +102,18 @@ function App() {
 
   if (view === "detail") {
     if (detailLoading) {
-      return <div className="app-root" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>Loading transcript...</div>;
+      return <LazyFallback label="Loading transcript..." />;
     }
     if (transcript) {
       return (
-        <TranscriptDetail
-          transcript={transcript}
-          onBack={handleBack}
-          onOpenTranscript={handleSelect}
-          allLoadedTranscripts={transcripts}
-        />
+        <Suspense fallback={<LazyFallback label="Loading transcript..." />}>
+          <TranscriptDetail
+            transcript={transcript}
+            onBack={handleBack}
+            onOpenTranscript={handleSelect}
+            allLoadedTranscripts={transcripts}
+          />
+        </Suspense>
       );
     }
   }
@@ -139,7 +155,9 @@ function App() {
           />
         )}
         {view === "analytics" && (
-          <AnalyticsSummary transcripts={transcripts} />
+          <Suspense fallback={<LazyFallback label="Loading analytics..." />}>
+            <AnalyticsSummary transcripts={transcripts} />
+          </Suspense>
         )}
       </div>
     </div>
