@@ -4,6 +4,7 @@ import { useBotLookup } from "./hooks/useLookups";
 import { TranscriptList } from "./components/TranscriptList/TranscriptList";
 import { INITIAL_FILTER_STATE, type ListFilterState } from "./state/listFilters";
 import "./App.css";
+import { NetworkSpike } from "./components/NetworkSpike";
 
 // Code-split the detail and analytics views — they are heavy (DebugPanel, MessageTimeline,
 // PDF/HTML exporters) and not needed for the initial list render. Vite emits a separate
@@ -134,6 +135,7 @@ function App() {
           Analytics
         </button>
         <span className="app-version" title={`Built: ${__BUILD_TIME__}`}>v1.0.5 · {new Date(__BUILD_TIME__).toLocaleString()}</span>
+        <NetworkSpike />
         <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
           {darkMode ? "☀️" : "🌙"}
         </button>

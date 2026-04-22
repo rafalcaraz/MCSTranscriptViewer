@@ -2354,3 +2354,86 @@ tr[role="button"] {
 .plan-debug-block { font-size: 12px; padding: 6px 0; }
 .plan-debug-ask { margin-top: 6px; }
 .plan-debug-ask > summary { cursor: pointer; font-size: 11px; color: var(--text-secondary); }
+/* ── 🧪 Network/DLP spike (temporary, behind 🧪 button) ────────────── */
+.spike-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+}
+.spike-card {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  border-radius: 10px;
+  width: min(900px, 92vw);
+  max-height: 88vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 10px 40px rgba(0,0,0,0.4);
+  overflow: hidden;
+}
+.spike-header {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px;
+  border-bottom: 1px solid var(--border-light);
+}
+.spike-body {
+  padding: 12px 16px;
+  overflow: auto;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+.spike-footer {
+  padding: 10px 16px;
+  border-top: 1px solid var(--border-light);
+  font-size: 12px;
+  background: var(--bg-surface);
+}
+.spike-btn, .spike-btn-mini {
+  background: var(--accent, #4f8cff);
+  color: white;
+  border: 0;
+  border-radius: 6px;
+  padding: 6px 12px;
+  cursor: pointer;
+  font-weight: 500;
+}
+.spike-btn-mini { padding: 3px 8px; font-size: 11px; }
+.spike-btn:disabled, .spike-btn-mini:disabled { opacity: 0.5; cursor: not-allowed; }
+.spike-result {
+  border: 1px solid var(--border-light);
+  border-radius: 6px;
+  padding: 8px 10px;
+  background: var(--bg-surface);
+}
+.spike-row-top {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.spike-label { font-weight: 600; flex: 1; }
+.spike-status { font-family: ui-monospace, monospace; font-size: 12px; opacity: 0.85; }
+.spike-url { font-size: 11px; opacity: 0.7; margin: 4px 0 2px; }
+.spike-note { font-size: 12px; opacity: 0.75; margin-bottom: 4px; }
+.spike-detail {
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+  background: var(--code-bg);
+  padding: 6px 8px;
+  border-radius: 4px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+.spike-ok { border-left: 4px solid #22c55e; }
+.spike-non-2xx { border-left: 4px solid #f59e0b; }
+.spike-blocked-cors, .spike-blocked-csp { border-left: 4px solid #ef4444; }
+.spike-network-error { border-left: 4px solid #ef4444; }
+.spike-running { border-left: 4px solid #4f8cff; }
+.spike-idle { border-left: 4px solid transparent; }
