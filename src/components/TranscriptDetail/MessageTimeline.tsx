@@ -183,8 +183,8 @@ export function MessageTimeline({ messages, reactions, handoffs = [], activeMess
           {messageSearch && matchingIndices.length > 0 && (
             <div className="search-nav">
               <span className="search-count">{searchIndex + 1}/{matchingIndices.length}</span>
-              <button className="search-nav-btn" onClick={goPrev} title="Previous (Shift+Enter)">▲</button>
-              <button className="search-nav-btn" onClick={goNext} title="Next (Enter)">▼</button>
+              <button className="search-nav-btn" onClick={goPrev} title="Previous (Shift+Enter)" aria-label="Previous match">▲</button>
+              <button className="search-nav-btn" onClick={goNext} title="Next (Enter)" aria-label="Next match">▼</button>
             </div>
           )}
           {messageSearch && matchingIndices.length === 0 && (

@@ -216,8 +216,11 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
       <div className="panel-title" style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
         <span>Agent Activity</span>
         <button
+          type="button"
           className={`mode-toggle ${advancedMode ? "active" : ""}`}
           onClick={() => setAdvancedMode(!advancedMode)}
+          aria-pressed={advancedMode}
+          aria-label={advancedMode ? "Switch to basic view" : "Switch to advanced view"}
         >
           {advancedMode ? "🔧 Advanced" : "📋 Basic"}
           {advancedEvents.length > 0 && !advancedMode && (
@@ -238,8 +241,8 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
           {searchQuery && debugMatchingIndices.length > 0 && (
             <div className="search-nav">
               <span className="search-count">{debugSearchIndex + 1}/{debugMatchingIndices.length}</span>
-              <button className="search-nav-btn" onClick={debugGoPrev} title="Previous (Shift+Enter)">▲</button>
-              <button className="search-nav-btn" onClick={debugGoNext} title="Next (Enter)">▼</button>
+              <button className="search-nav-btn" onClick={debugGoPrev} title="Previous (Shift+Enter)" aria-label="Previous match">▲</button>
+              <button className="search-nav-btn" onClick={debugGoNext} title="Next (Enter)" aria-label="Next match">▼</button>
             </div>
           )}
           {searchQuery && debugMatchingIndices.length === 0 && (
@@ -262,10 +265,12 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
             <div className="tools-list">
               {availableTools.map((tool) => (
                 <button
+                  type="button"
                   key={tool.identifier}
                   className={`tool-badge ${selectedTool === tool.identifier ? "selected" : ""}`}
                   onClick={() => setSelectedTool(selectedTool === tool.identifier ? null : tool.identifier)}
                   title={tool.description}
+                  aria-pressed={selectedTool === tool.identifier}
                 >
                   {tool.displayName}
                 </button>
@@ -405,6 +410,16 @@ export function DebugPanel({ planSteps, availableTools, mcpServerInit, knowledge
                   className="step-header"
                   onClick={() => toggleStep(step.stepId)}
                   onDoubleClick={() => onStepSelect(step.replyToId)}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter" || e.key === " ") {
+                      e.preventDefault();
+                      toggleStep(step.stepId);
+                    }
+                  }}
+                  tabIndex={0}
+                  role="button"
+                  aria-expanded={isOpen}
+                  aria-label={`${shortToolName(step.taskDialogId)} step ${stepIndex}, ${isOpen ? "expanded" : "collapsed"}`}
                   title={step.replyToId ? "Double-click to highlight linked message" : undefined}
                 >
                   <span className={`chevron ${isOpen ? "open" : ""}`}>▶</span>

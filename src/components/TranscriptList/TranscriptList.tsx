@@ -379,7 +379,19 @@ export function TranscriptList({
         </thead>
         <tbody>
           {clientFiltered.map((t) => (
-            <tr key={t.conversationtranscriptid} onClick={() => onSelect(t.conversationtranscriptid)}>
+            <tr
+              key={t.conversationtranscriptid}
+              onClick={() => onSelect(t.conversationtranscriptid)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter" || e.key === " ") {
+                  e.preventDefault();
+                  onSelect(t.conversationtranscriptid);
+                }
+              }}
+              tabIndex={0}
+              role="button"
+              aria-label={`Open transcript ${getDisplayName(t.metadata.botName, t.metadata.botId) || "unnamed"} from ${new Date(t.conversationstarttime).toLocaleString()}`}
+            >
               <td>
                 <strong>{getDisplayName(t.metadata.botName, t.metadata.botId) || "—"}</strong>
                 {childAgentSchemas.has(t.metadata.botName) && (

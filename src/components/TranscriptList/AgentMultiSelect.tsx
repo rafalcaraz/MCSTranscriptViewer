@@ -63,6 +63,9 @@ export function AgentMultiSelect({ agents, selectedSchemaNames, onChange }: Agen
         className={`agent-multiselect-trigger ${selectedSchemaNames.length > 0 ? "active" : ""}`}
         onClick={() => setOpen((o) => !o)}
         title={selectedSchemaNames.length > 0 ? selectedSchemaNames.join(", ") : "Filter by agent"}
+        aria-expanded={open}
+        aria-haspopup="listbox"
+        aria-label={`Filter by agent. ${buttonLabel}`}
       >
         🤖 {buttonLabel} <span className="agent-multiselect-caret">▾</span>
       </button>
