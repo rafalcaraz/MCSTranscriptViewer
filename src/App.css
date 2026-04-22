@@ -8,6 +8,22 @@ button, input, select, textarea {
   color: inherit;
 }
 
+/* Visible keyboard focus ring for interactive elements — keeps the mouse UX
+   unchanged while making tab navigation discoverable for keyboard / screen-reader
+   users. Uses :focus-visible so it only appears for keyboard focus, not clicks. */
+:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+tr[role="button"]:focus-visible,
+.step-header:focus-visible {
+  outline: 2px solid var(--color-primary);
+  outline-offset: -2px;
+}
+tr[role="button"] {
+  cursor: pointer;
+}
+
 :root {
   --bg-primary: #fff;
   --bg-secondary: #f5f5f5;
@@ -56,7 +72,20 @@ button, input, select, textarea {
   --event-gpt-border: #107c10;
   /* Orphan/OAuth */
   --orphan-bg: #fff8e1;
+  --orphan-bg-hover: #fff3c4;
   --orphan-border: #e6c200;
+  /* Attachment / source chip palettes (kept distinct in light mode for visual variety) */
+  --chip-upload-bg: #fff4e5;
+  --chip-upload-border: #ffb566;
+  --chip-upload-text: #8a4a00;
+  --chip-paste-bg: #e7f5ff;
+  --chip-paste-border: #74c0fc;
+  --chip-paste-text: #1864ab;
+  --chip-file-bg: #f3f0ff;
+  --chip-file-border: #b197fc;
+  --chip-file-text: #5f3dc4;
+  --knowledge-source-border: #c0d8f0;
+  --knowledge-source-used-border: #b7e4b7;
 }
 
 [data-theme="dark"] {
@@ -104,7 +133,20 @@ button, input, select, textarea {
   --event-gpt-bg: #1a3a1a;
   --event-gpt-border: #4caf50;
   --orphan-bg: #332c10;
+  --orphan-bg-hover: #4a4018;
   --orphan-border: #8a7a20;
+  /* Attachment / source chip palettes — dark-mode tuned (deep bg + lighter fg) */
+  --chip-upload-bg: #3a2a15;
+  --chip-upload-border: #c87a30;
+  --chip-upload-text: #f0b070;
+  --chip-paste-bg: #15283a;
+  --chip-paste-border: #4a8ad0;
+  --chip-paste-text: #7cb8f0;
+  --chip-file-bg: #2a1f3a;
+  --chip-file-border: #8a72c4;
+  --chip-file-text: #b8a5e0;
+  --knowledge-source-border: #3a5a80;
+  --knowledge-source-used-border: #3a6a3a;
 }
 .app-root {
   height: 100vh;
@@ -151,7 +193,7 @@ button, input, select, textarea {
   cursor: pointer;
   transition: all 0.15s;
 }
-.dev-toggle-btn:hover { background: #fff3c4; }
+.dev-toggle-btn:hover { background: var(--orphan-bg-hover); }
 
 .app-version {
   margin-left: auto;
@@ -1005,7 +1047,7 @@ button, input, select, textarea {
 .agent-chip.unselected {
   background: var(--bg-hover);
   color: var(--text-tertiary);
-  border-color: #e0e0e0;
+  border-color: var(--border-primary);
 }
 .agent-chip.unselected:hover {
   background: var(--color-primary-light);
@@ -1169,12 +1211,12 @@ button, input, select, textarea {
   font-size: 11px;
   background: var(--color-primary-light);
   color: var(--color-primary);
-  border: 1px solid #c0d8f0;
+  border: 1px solid var(--knowledge-source-border);
 }
 .knowledge-source-badge.used {
   background: var(--success-bg);
   color: var(--success-text);
-  border-color: #b7e4b7;
+  border-color: var(--knowledge-source-used-border);
 }
 .knowledge-response-detail {
   margin-top: 6px;
@@ -1584,19 +1626,19 @@ button, input, select, textarea {
   text-overflow: ellipsis;
 }
 .attachment-chip-upload {
-  background: #fff4e5;
-  border-color: #ffb566;
-  color: #8a4a00;
+  background: var(--chip-upload-bg);
+  border-color: var(--chip-upload-border);
+  color: var(--chip-upload-text);
 }
 .attachment-chip-paste {
-  background: #e7f5ff;
-  border-color: #74c0fc;
-  color: #1864ab;
+  background: var(--chip-paste-bg);
+  border-color: var(--chip-paste-border);
+  color: var(--chip-paste-text);
 }
 .attachment-chip-file {
-  background: #f3f0ff;
-  border-color: #b197fc;
-  color: #5f3dc4;
+  background: var(--chip-file-bg);
+  border-color: var(--chip-file-border);
+  color: var(--chip-file-text);
 }
 .attachment-chip-unknown {
   background: var(--bg-hover);
@@ -1609,8 +1651,8 @@ button, input, select, textarea {
   display: inline-block;
   padding: 1px 6px;
   border-radius: 8px;
-  background: #e7f5ff;
-  color: #1864ab;
+  background: var(--chip-paste-bg);
+  color: var(--chip-paste-text);
   font-size: 11px;
   font-weight: 600;
   cursor: help;
@@ -1881,8 +1923,8 @@ button, input, select, textarea {
   padding: 0;
   border: 1px dashed var(--accent-color, #94a3b8);
   border-radius: 8px;
-  background: var(--surface-2, #f8fafc);
-  color: var(--text-color, inherit);
+  background: var(--bg-tertiary);
+  color: var(--text-primary);
   overflow: hidden;
   max-width: 92%;
   align-self: stretch;
@@ -1894,7 +1936,7 @@ button, input, select, textarea {
   gap: 8px;
   width: 100%;
   padding: 8px 12px;
-  background: var(--surface-3, #eef2f7);
+  background: var(--bg-hover);
   border: none;
   border-bottom: 1px dashed var(--accent-color, #94a3b8);
   font-size: 0.9em;
@@ -1907,7 +1949,7 @@ button, input, select, textarea {
 .handoff-callout-header:hover { filter: brightness(0.97); }
 
 .handoff-callout-icon { font-size: 1.1em; }
-.handoff-callout-title strong { color: var(--accent-color, #4f46e5); }
+.handoff-callout-title strong { color: var(--accent-color, var(--color-primary)); }
 .handoff-callout-event {
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.78em;
@@ -1929,7 +1971,7 @@ button, input, select, textarea {
 .handoff-callout-json {
   margin: 0;
   padding: 10px;
-  background: var(--surface-3, #0f172a0a);
+  background: var(--code-bg);
   border-radius: 6px;
   font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
   font-size: 0.82em;
@@ -1939,12 +1981,7 @@ button, input, select, textarea {
   overflow: auto;
 }
 
-@media (prefers-color-scheme: dark) {
-  .handoff-callout { background: rgba(255, 255, 255, 0.03); }
-  .handoff-callout-header { background: rgba(255, 255, 255, 0.05); }
-  .handoff-callout-event { background: rgba(255, 255, 255, 0.08); }
-  .handoff-callout-json { background: rgba(0, 0, 0, 0.35); }
-}
+[data-theme="dark"] .handoff-callout-event { background: rgba(255, 255, 255, 0.08); }
 
 .handoff-row-icon {
   display: inline-block;

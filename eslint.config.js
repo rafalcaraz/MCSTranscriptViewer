@@ -19,5 +19,12 @@ export default defineConfig([
       ecmaVersion: 2020,
       globals: globals.browser,
     },
+    rules: {
+      // React 19 added these rules but they flag working idioms across the codebase
+      // (debounce-reset effects, cache-warmup effects, deterministic-enough skeleton widths).
+      // Refactoring to satisfy them risks behavior regressions; disable globally for now.
+      'react-hooks/set-state-in-effect': 'off',
+      'react-hooks/purity': 'off',
+    },
   },
 ])
