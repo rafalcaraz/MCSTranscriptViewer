@@ -64,7 +64,13 @@ export function MultiEnvPanel() {
     const instance = new PublicClientApplication(config);
     instance
       .initialize()
-      .then(() => {
+      .then(async () => {
+        // Recover from any stuck "interaction in progress" state from a prior aborted popup.
+        try {
+          await instance.handleRedirectPromise();
+        } catch {
+          /* ignore */
+        }
         setPca(instance);
         const accts = instance.getAllAccounts();
         if (accts.length > 0) setAccount(accts[0]);
@@ -85,6 +91,12 @@ export function MultiEnvPanel() {
     persistConfig();
     setStatus({ kind: "signing-in" });
     try {
+      // Belt-and-suspenders: recover from any stuck interaction state before opening popup.
+      try {
+        await pca.handleRedirectPromise();
+      } catch {
+        /* ignore */
+      }
       const result = await pca.loginPopup({
         scopes: [GLOBAL_DISCO_SCOPE],
         prompt: "select_account",
@@ -93,9 +105,32 @@ export function MultiEnvPanel() {
       pca.setActiveAccount(result.account);
       await loadEnvs(pca, result.account);
     } catch (e: unknown) {
-      const err = e as { message?: string };
-      setStatus({ kind: "error", message: `Sign-in failed: ${err.message ?? String(e)}` });
+      const err = e as { message?: string; errorCode?: string };
+      const hint =
+        err.errorCode === "interaction_in_progress"
+          ? " (Click 'Reset auth state' below and try again.)"
+          : "";
+      setStatus({ kind: "error", message: `Sign-in failed: ${err.message ?? String(e)}${hint}` });
     }
+  };
+
+  const resetAuthState = () => {
+    // Wipe any MSAL keys from storage to clear stuck "interaction_in_progress" state.
+    const wipe = (storage: Storage) => {
+      const toRemove: string[] = [];
+      for (let i = 0; i < storage.length; i++) {
+        const k = storage.key(i);
+        if (k && (k.startsWith("msal.") || k.includes("login.windows.net") || k.includes("login.microsoftonline.com"))) {
+          toRemove.push(k);
+        }
+      }
+      toRemove.forEach((k) => storage.removeItem(k));
+    };
+    try { wipe(localStorage); } catch { /* ignore */ }
+    try { wipe(sessionStorage); } catch { /* ignore */ }
+    setAccount(null);
+    setEnvs([]);
+    setStatus({ kind: "idle" });
   };
 
   const signOut = async () => {
@@ -216,6 +251,11 @@ export function MultiEnvPanel() {
       {status.kind === "error" && (
         <section className="me-card error">
           <strong>Error:</strong> {status.message}
+          <div>
+            <button className="me-btn ghost" onClick={resetAuthState}>
+              Reset auth state
+            </button>
+          </div>
         </section>
       )}
 
