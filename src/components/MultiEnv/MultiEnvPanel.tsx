@@ -1,10 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import {
-  PublicClientApplication,
-  type AccountInfo,
-  type Configuration,
-  InteractionRequiredAuthError,
-} from "@azure/msal-browser";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { MultiEnvWorkspace, type EnvOption } from "./MultiEnvWorkspace";
 import "./MultiEnvPanel.css";
 
 const LS_CLIENT_ID = "multiEnv.clientId";
@@ -13,6 +8,8 @@ const LS_SELECTED_ENV = "multiEnv.selectedEnvUrl";
 
 const GLOBAL_DISCO_URL = "https://globaldisco.crm.dynamics.com/api/discovery/v2.0/Instances";
 const GLOBAL_DISCO_SCOPE = "https://globaldisco.crm.dynamics.com/.default";
+
+const POPUP_TIMEOUT_MS = 5 * 60 * 1000;
 
 type DiscoveryInstance = {
   ApiUrl: string;
@@ -32,53 +29,51 @@ type Status =
   | { kind: "ready" }
   | { kind: "error"; message: string };
 
+type AuthMessage =
+  | {
+      type: "token";
+      accessToken: string;
+      refreshToken?: string;
+      expiresIn: number;
+      scope: string;
+      tokenType: string;
+      tenantId: string;
+      clientId: string;
+    }
+  | { type: "error"; message: string };
+
+type EnvTokenCacheEntry = { token: string; expiresAt: number };
+
+function randomChannelId(): string {
+  const arr = new Uint8Array(8);
+  crypto.getRandomValues(arr);
+  return "multiEnv.auth." + Array.from(arr).map((b) => b.toString(16).padStart(2, "0")).join("");
+}
+
 export function MultiEnvPanel() {
   const [clientId, setClientId] = useState<string>(() => localStorage.getItem(LS_CLIENT_ID) ?? "");
   const [tenantId, setTenantId] = useState<string>(() => localStorage.getItem(LS_TENANT_ID) ?? "organizations");
-  const [pca, setPca] = useState<PublicClientApplication | null>(null);
-  const [account, setAccount] = useState<AccountInfo | null>(null);
+  const [accessToken, setAccessToken] = useState<string>("");
+  const [authedTenantId, setAuthedTenantId] = useState<string>("");
+  const [authedClientId, setAuthedClientId] = useState<string>("");
+  const refreshTokenRef = useRef<string>("");
+  const envTokenCache = useRef<Map<string, EnvTokenCacheEntry>>(new Map());
   const [envs, setEnvs] = useState<DiscoveryInstance[]>([]);
   const [selectedEnvUrl, setSelectedEnvUrl] = useState<string>(() => localStorage.getItem(LS_SELECTED_ENV) ?? "");
   const [status, setStatus] = useState<Status>({ kind: "idle" });
+  const [configCollapsed, setConfigCollapsed] = useState<boolean>(() => !!localStorage.getItem(LS_CLIENT_ID));
+  const cleanupRef = useRef<(() => void) | null>(null);
 
   const redirectUri = useMemo(() => {
     if (typeof window === "undefined") return "";
-    // Dedicated redirect page (NOT the main app URL) so the popup doesn't load the
-    // full React app. Must be registered as the redirect URI in the App Registration.
     return window.location.origin + "/auth-redirect.html";
   }, []);
 
   useEffect(() => {
-    if (!clientId.trim()) {
-      setPca(null);
-      return;
-    }
-    const config: Configuration = {
-      auth: {
-        clientId: clientId.trim(),
-        authority: `https://login.microsoftonline.com/${tenantId.trim() || "organizations"}`,
-        redirectUri,
-      },
-      cache: {
-        cacheLocation: "localStorage",
-      },
+    return () => {
+      cleanupRef.current?.();
     };
-    const instance = new PublicClientApplication(config);
-    instance
-      .initialize()
-      .then(async () => {
-        // Recover from any stuck "interaction in progress" state from a prior aborted popup.
-        try {
-          await instance.handleRedirectPromise();
-        } catch {
-          /* ignore */
-        }
-        setPca(instance);
-        const accts = instance.getAllAccounts();
-        if (accts.length > 0) setAccount(accts[0]);
-      })
-      .catch((e) => setStatus({ kind: "error", message: `MSAL init failed: ${e?.message ?? e}` }));
-  }, [clientId, tenantId, redirectUri]);
+  }, []);
 
   const persistConfig = () => {
     localStorage.setItem(LS_CLIENT_ID, clientId.trim());
@@ -86,80 +81,107 @@ export function MultiEnvPanel() {
   };
 
   const signIn = async () => {
-    if (!pca) {
+    const cid = clientId.trim();
+    if (!cid) {
       setStatus({ kind: "error", message: "Enter a Client ID first." });
       return;
     }
     persistConfig();
     setStatus({ kind: "signing-in" });
-    try {
-      // Belt-and-suspenders: recover from any stuck interaction state before opening popup.
-      try {
-        await pca.handleRedirectPromise();
-      } catch {
-        /* ignore */
-      }
-      const result = await pca.loginPopup({
-        scopes: [GLOBAL_DISCO_SCOPE],
-        prompt: "select_account",
-      });
-      setAccount(result.account);
-      pca.setActiveAccount(result.account);
-      await loadEnvs(pca, result.account);
-    } catch (e: unknown) {
-      const err = e as { message?: string; errorCode?: string };
-      const hint =
-        err.errorCode === "interaction_in_progress"
-          ? " (Click 'Reset auth state' below and try again.)"
-          : "";
-      setStatus({ kind: "error", message: `Sign-in failed: ${err.message ?? String(e)}${hint}` });
-    }
-  };
 
-  const resetAuthState = () => {
-    // Wipe any MSAL keys from storage to clear stuck "interaction_in_progress" state.
-    const wipe = (storage: Storage) => {
-      const toRemove: string[] = [];
-      for (let i = 0; i < storage.length; i++) {
-        const k = storage.key(i);
-        if (k && (k.startsWith("msal.") || k.includes("login.windows.net") || k.includes("login.microsoftonline.com"))) {
-          toRemove.push(k);
+    try {
+      const d = document as Document & { hasStorageAccess?: () => Promise<boolean>; requestStorageAccess?: () => Promise<void> };
+      if (d.hasStorageAccess && d.requestStorageAccess) {
+        const has = await d.hasStorageAccess();
+        if (!has) {
+          await d.requestStorageAccess().catch(() => undefined);
         }
       }
-      toRemove.forEach((k) => storage.removeItem(k));
+    } catch { /* ignore */ }
+
+    const channelId = randomChannelId();
+    const tid = tenantId.trim() || "organizations";
+    const url = new URL(window.location.origin + "/auth-redirect.html");
+    url.searchParams.set("start", "1");
+    url.searchParams.set("clientId", cid);
+    url.searchParams.set("tenantId", tid);
+    url.searchParams.set("scope", GLOBAL_DISCO_SCOPE);
+    url.searchParams.set("channelId", channelId);
+
+    const channel = new BroadcastChannel(channelId);
+    let timeoutId: number | null = null;
+    let popup: Window | null = null;
+    let pollId: number | null = null;
+    let resolved = false;
+
+    const handle = (msg: AuthMessage) => {
+      if (resolved) return;
+      resolved = true;
+      cleanup();
+      try { popup?.close(); } catch { /* ignore */ }
+      if (msg.type === "token") {
+        setAccessToken(msg.accessToken);
+        refreshTokenRef.current = msg.refreshToken ?? "";
+        setAuthedTenantId(msg.tenantId);
+        setAuthedClientId(msg.clientId);
+        envTokenCache.current.clear();
+        setConfigCollapsed(true);
+        void loadEnvs(msg.accessToken);
+      } else {
+        setStatus({ kind: "error", message: msg.message });
+      }
     };
-    try { wipe(localStorage); } catch { /* ignore */ }
-    try { wipe(sessionStorage); } catch { /* ignore */ }
-    setAccount(null);
-    setEnvs([]);
-    setStatus({ kind: "idle" });
-  };
 
-  const signOut = async () => {
-    if (!pca) return;
-    try {
-      await pca.logoutPopup();
-    } catch {
-      /* ignore */
+    const onWindowMessage = (ev: MessageEvent) => {
+      const data = ev.data as (AuthMessage & { channelId?: string }) | undefined;
+      if (!data || typeof data !== "object") return;
+      if (data.channelId !== channelId) return;
+      if (data.type !== "token" && data.type !== "error") return;
+      handle(data);
+    };
+
+    const cleanup = () => {
+      try { channel.close(); } catch { /* ignore */ }
+      window.removeEventListener("message", onWindowMessage);
+      if (timeoutId !== null) clearTimeout(timeoutId);
+      if (pollId !== null) clearInterval(pollId);
+      cleanupRef.current = null;
+    };
+    cleanupRef.current = cleanup;
+
+    channel.onmessage = (ev: MessageEvent<AuthMessage>) => handle(ev.data);
+    window.addEventListener("message", onWindowMessage);
+
+    timeoutId = window.setTimeout(() => {
+      if (resolved) return;
+      cleanup();
+      setStatus({ kind: "error", message: "Sign-in timed out. Close the popup and try again." });
+    }, POPUP_TIMEOUT_MS);
+
+    popup = window.open(url.toString(), "multiEnvAuth", "width=520,height=720");
+    if (!popup) {
+      cleanup();
+      setStatus({ kind: "error", message: "Popup was blocked. Allow popups for this site and try again." });
+      return;
     }
-    setAccount(null);
-    setEnvs([]);
-    setStatus({ kind: "idle" });
+
+    pollId = window.setInterval(() => {
+      if (popup && popup.closed) {
+        if (pollId !== null) { clearInterval(pollId); pollId = null; }
+        setTimeout(() => {
+          if (resolved) return;
+          cleanup();
+          setStatus((s) => (s.kind === "signing-in" ? { kind: "error", message: "Popup closed before the parent could receive the token." } : s));
+        }, 3000);
+      }
+    }, 500);
   };
 
-  const loadEnvs = async (instance: PublicClientApplication, acct: AccountInfo) => {
+  const loadEnvs = async (token: string) => {
     setStatus({ kind: "loading-envs" });
     try {
-      const tokenResp = await instance
-        .acquireTokenSilent({ account: acct, scopes: [GLOBAL_DISCO_SCOPE] })
-        .catch(async (err) => {
-          if (err instanceof InteractionRequiredAuthError) {
-            return instance.acquireTokenPopup({ account: acct, scopes: [GLOBAL_DISCO_SCOPE] });
-          }
-          throw err;
-        });
       const resp = await fetch(GLOBAL_DISCO_URL, {
-        headers: { Authorization: `Bearer ${tokenResp.accessToken}`, Accept: "application/json" },
+        headers: { Authorization: `Bearer ${token}`, Accept: "application/json" },
       });
       if (!resp.ok) {
         throw new Error(`Discovery returned ${resp.status} ${resp.statusText}`);
@@ -174,11 +196,74 @@ export function MultiEnvPanel() {
     }
   };
 
-  const selectedEnv = envs.find((e) => e.ApiUrl === selectedEnvUrl);
+  const signOut = () => {
+    setAccessToken("");
+    refreshTokenRef.current = "";
+    envTokenCache.current.clear();
+    setAuthedTenantId("");
+    setAuthedClientId("");
+    setEnvs([]);
+    setSelectedEnvUrl("");
+    localStorage.removeItem(LS_SELECTED_ENV);
+    setStatus({ kind: "idle" });
+  };
+
+  // Returns an env-scoped access token, refreshing via the captured refresh_token
+  // when needed. Cached per env so successive Web API calls don't re-hit /token.
+  const getEnvToken = useCallback(async (envApiUrl: string): Promise<string> => {
+    const cached = envTokenCache.current.get(envApiUrl);
+    // Refresh 60s before expiry to avoid races.
+    if (cached && cached.expiresAt - 60_000 > Date.now()) return cached.token;
+
+    const refreshToken = refreshTokenRef.current;
+    if (!refreshToken || !authedTenantId || !authedClientId) {
+      throw new Error("Not signed in (no refresh token captured). Sign out and back in.");
+    }
+
+    const scope = `${envApiUrl.replace(/\/$/, "")}/.default`;
+    const body = new URLSearchParams();
+    body.set("client_id", authedClientId);
+    body.set("grant_type", "refresh_token");
+    body.set("refresh_token", refreshToken);
+    body.set("scope", `${scope} offline_access`);
+
+    const resp = await fetch(`https://login.microsoftonline.com/${encodeURIComponent(authedTenantId)}/oauth2/v2.0/token`, {
+      method: "POST",
+      headers: { "Content-Type": "application/x-www-form-urlencoded" },
+      body: body.toString(),
+    });
+    const json = (await resp.json()) as {
+      access_token?: string;
+      refresh_token?: string;
+      expires_in?: number;
+      error?: string;
+      error_description?: string;
+    };
+    if (!resp.ok || !json.access_token) {
+      const msg = json.error_description || json.error || `Token endpoint returned ${resp.status}`;
+      throw new Error(`Token refresh failed: ${msg}`);
+    }
+    if (json.refresh_token) refreshTokenRef.current = json.refresh_token;
+    const expiresAt = Date.now() + (json.expires_in ?? 3600) * 1000;
+    envTokenCache.current.set(envApiUrl, { token: json.access_token, expiresAt });
+    return json.access_token;
+  }, [authedTenantId, authedClientId]);
+
+  const envOptions: EnvOption[] = useMemo(
+    () => envs.map((e) => ({
+      apiUrl: e.ApiUrl,
+      friendlyName: e.FriendlyName,
+      region: e.Region,
+      urlName: e.UrlName,
+      uniqueName: e.UniqueName,
+    })),
+    [envs],
+  );
 
   const handleSelectEnv = (url: string) => {
     setSelectedEnvUrl(url);
-    localStorage.setItem(LS_SELECTED_ENV, url);
+    if (url) localStorage.setItem(LS_SELECTED_ENV, url);
+    else localStorage.removeItem(LS_SELECTED_ENV);
   };
 
   return (
@@ -186,65 +271,67 @@ export function MultiEnvPanel() {
       <header className="me-header">
         <h2>Multi-Env (preview)</h2>
         <p className="me-sub">
-          Sign in with an Entra App Registration to discover Dataverse environments you have access to. This is read-only and fully additive — your normal Transcripts tab is unaffected.
+          Sign in with an Entra App Registration to discover Dataverse environments you have access to. Pick one, then explore its agents and transcripts. Read-only — your normal Transcripts tab is unaffected.
         </p>
       </header>
 
       <section className="me-card">
-        <h3>1. Configure</h3>
-        <div className="me-field">
-          <label>App Registration Client ID</label>
-          <input
-            type="text"
-            value={clientId}
-            onChange={(e) => setClientId(e.target.value)}
-            placeholder="00000000-0000-0000-0000-000000000000"
-            spellCheck={false}
-            autoComplete="off"
-          />
+        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+          <h3 style={{ margin: 0 }}>Configuration</h3>
+          <button className="me-btn ghost" onClick={() => setConfigCollapsed((v) => !v)}>
+            {configCollapsed ? "Show" : "Hide"}
+          </button>
         </div>
-        <div className="me-field">
-          <label>Tenant ID (or &quot;organizations&quot; / &quot;common&quot;)</label>
-          <input
-            type="text"
-            value={tenantId}
-            onChange={(e) => setTenantId(e.target.value)}
-            placeholder="organizations"
-            spellCheck={false}
-            autoComplete="off"
-          />
-        </div>
-        <div className="me-field">
-          <label>Redirect URI (register this in your App Registration)</label>
-          <input type="text" value={redirectUri} readOnly />
-        </div>
-        <div className="me-hint">
-          Required API permissions: <code>Dynamics CRM &gt; user_impersonation</code> (delegated). Admin consent recommended.
-        </div>
+        {!configCollapsed && (
+          <>
+            <div className="me-field">
+              <label>App Registration Client ID</label>
+              <input
+                type="text"
+                value={clientId}
+                onChange={(e) => setClientId(e.target.value)}
+                placeholder="00000000-0000-0000-0000-000000000000"
+                spellCheck={false}
+                autoComplete="off"
+              />
+            </div>
+            <div className="me-field">
+              <label>Tenant ID (or &quot;organizations&quot; / &quot;common&quot;)</label>
+              <input
+                type="text"
+                value={tenantId}
+                onChange={(e) => setTenantId(e.target.value)}
+                placeholder="organizations"
+                spellCheck={false}
+                autoComplete="off"
+              />
+            </div>
+            <div className="me-field">
+              <label>Redirect URI (register as a SPA platform)</label>
+              <input type="text" value={redirectUri} readOnly />
+            </div>
+            <div className="me-hint">
+              Required API permissions: <code>Dynamics CRM &gt; user_impersonation</code> (delegated). Admin consent recommended.
+              The redirect URI must be registered under <strong>Single-page application</strong> (not Web).
+            </div>
+          </>
+        )}
       </section>
 
       <section className="me-card">
-        <h3>2. Sign in</h3>
-        {!account ? (
-          <button className="me-btn primary" onClick={signIn} disabled={!pca || status.kind === "signing-in"}>
+        <h3>Sign in</h3>
+        {!accessToken ? (
+          <button className="me-btn primary" onClick={signIn} disabled={status.kind === "signing-in"}>
             {status.kind === "signing-in" ? "Signing in…" : "Sign in with Microsoft"}
           </button>
         ) : (
           <div className="me-account">
-            <div>
-              Signed in as <strong>{account.username}</strong>
-            </div>
+            <div>Signed in.{status.kind === "loading-envs" && " Loading environments…"}</div>
             <div className="me-actions">
-              <button
-                className="me-btn"
-                onClick={() => pca && account && loadEnvs(pca, account)}
-                disabled={status.kind === "loading-envs"}
-              >
+              <button className="me-btn" onClick={() => void loadEnvs(accessToken)} disabled={status.kind === "loading-envs"}>
                 {status.kind === "loading-envs" ? "Loading…" : "Refresh environments"}
               </button>
-              <button className="me-btn ghost" onClick={signOut}>
-                Sign out
-              </button>
+              <button className="me-btn ghost" onClick={signOut}>Sign out</button>
             </div>
           </div>
         )}
@@ -253,51 +340,16 @@ export function MultiEnvPanel() {
       {status.kind === "error" && (
         <section className="me-card error">
           <strong>Error:</strong> {status.message}
-          <div>
-            <button className="me-btn ghost" onClick={resetAuthState}>
-              Reset auth state
-            </button>
-          </div>
         </section>
       )}
 
-      {envs.length > 0 && (
-        <section className="me-card">
-          <h3>3. Pick an environment</h3>
-          <div className="me-env-list">
-            {envs.map((env) => (
-              <button
-                key={env.EnvironmentId}
-                className={`me-env-item ${env.ApiUrl === selectedEnvUrl ? "selected" : ""}`}
-                onClick={() => handleSelectEnv(env.ApiUrl)}
-              >
-                <div className="me-env-name">{env.FriendlyName}</div>
-                <div className="me-env-meta">
-                  <span className="me-env-region">{env.Region}</span>
-                  <span className="me-env-url">{env.ApiUrl}</span>
-                </div>
-              </button>
-            ))}
-          </div>
-          <div className="me-summary">
-            {envs.length} environment{envs.length === 1 ? "" : "s"} discovered.
-            {selectedEnv && (
-              <>
-                {" "}
-                Selected: <strong>{selectedEnv.FriendlyName}</strong>
-              </>
-            )}
-          </div>
-        </section>
-      )}
-
-      {selectedEnv && (
-        <section className="me-card">
-          <h3>4. Next steps (TBD)</h3>
-          <p className="me-sub">
-            Auth + discovery proven. Next milestone: query <code>{selectedEnv.ApiUrl}/api/data/v9.2/conversationtranscripts</code> with a token scoped to that env.
-          </p>
-        </section>
+      {accessToken && envs.length > 0 && (
+        <MultiEnvWorkspace
+          envs={envOptions}
+          selectedEnvUrl={selectedEnvUrl}
+          onSelectEnv={handleSelectEnv}
+          getEnvToken={getEnvToken}
+        />
       )}
     </div>
   );

@@ -165,6 +165,16 @@ All user inputs are sanitized via allowlist: `[a-zA-Z0-9\s\-._@:]`. GUIDs are sa
 ### Filter state lifted to App.tsx
 All list page filter state (date range, search, agent, outcome, feedback, user search query) lives in `App.tsx` as `ListFilterState` so it persists when navigating to detail view and back.
 
+### Multi-Env tab — auth, discovery, access scoping
+Cross-tenant transcript browsing without leaving the app. Lives under `src/components/MultiEnv/`.
+
+- **Auth: manual OAuth + PKCE** (NOT MSAL.js). When the app runs in `apps.powerapps.com` as an iframe, Chrome storage partitioning isolates iframe localStorage from the popup's top-level storage, breaking MSAL's cache lookup. We sidestep by running the popup as a self-contained state machine in `src/auth-redirect.ts`: PKCE → AAD authorize → token exchange → broadcast result back.
+- **Multi-channel result delivery.** Token is broadcast via three paths simultaneously — `BroadcastChannel`, `window.opener.postMessage`, and `opener.opener.postMessage` — because at least one survives partitioning + COOP from `login.microsoftonline.com`.
+- **Per-env tokens via refresh_token.** First sign-in returns `offline_access` refresh token; subsequent env switches exchange it silently for env-scoped access tokens (no re-popup). Cached with 60s pre-expiry refresh in `MultiEnvPanel.tsx`.
+- **Env discovery.** `https://api.bap.microsoft.com/providers/Microsoft.BusinessAppPlatform/scopes/admin/environments?api-version=2020-10-01` with management.core.windows.net scope.
+- **Access scoping = client-side.** The `conversationtranscript` table is owned by a Microsoft service principal; "Transcript Viewer" gets ALL transcripts in the env regardless of which `/bots` the user can read. We mirror the existing tab's pattern: `$select` the small `metadata` field, parse `BotName` (schema name), intersect with the schema names of bots returned by `/bots` (which IS RLS-scoped). Selected-agent dropdown further narrows by schema name. UI shows "X hidden (not your accessible agents)" so this is visible.
+- **App Registration requirements:** redirect URI registered as **Single-page application** (token endpoint CORS); `Dynamics CRM > user_impersonation` delegated permission (admin consent recommended for cross-tenant use).
+
 ## Dataverse API Notes (Power Apps Code Apps)
 
 - `ConversationtranscriptsService.getAll()` wraps calls in `$batch` requests internally

@@ -180,3 +180,34 @@
   font-size: 13px;
   color: var(--color-text-secondary, #666);
 }
+
+.me-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.me-list li {
+  padding: 8px 10px;
+  background: var(--color-bg-subtle, #f7f7f7);
+  border: 1px solid var(--color-border, #e0e0e0);
+  border-radius: 4px;
+  font-size: 13px;
+}
+
+.me-list-meta {
+  color: var(--color-text-secondary, #666);
+  font-size: 12px;
+}
+
+.me-error-inline {
+  padding: 10px 12px;
+  background: var(--color-error-bg, #fdecea);
+  border: 1px solid var(--color-error-border, #f5c2c0);
+  border-radius: 4px;
+  font-size: 13px;
+  color: var(--color-error-text, #611a15);
+}

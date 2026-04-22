@@ -153,6 +153,15 @@ Playwright or Cypress: full app flow — load list, filter, open transcript, ver
 #### 11. `new-transcript-samples` — Provide New Transcript Samples
 User to provide additional transcript samples to discover more activity types, edge cases, and content patterns. Each new environment/agent type may reveal patterns we haven't seen.
 
+#### 12. `multi-env-pagination` — Multi-Env transcript pagination
+Multi-Env currently fetches top 100 transcripts per env then access-scopes client-side. For envs with thousands of transcripts where the user only has access to a few bots, a single page may yield very few visible rows. Add `Prefer: odata.maxpagesize` + skipToken pagination, OR optionally pre-filter server-side by bot schema name once we have a reliable mapping.
+
+#### 13. `multi-env-detail-resolvers` — Per-env name resolvers in detail view
+TranscriptDetail (reused by Multi-Env) currently uses default-env hooks for bot/user display name lookup. When viewing a transcript from a different env, these gracefully degrade to raw IDs. Wire env-aware resolvers (or pass an "env context" that the hooks can consume) so display names show in cross-env detail views too.
+
+#### 14. `multi-env-tests` — Multi-Env unit/integration tests
+Coverage for: PKCE helper, auth-redirect state machine (Phase A/B), refresh-token cache eviction, access-scoping intersection logic in MultiEnvWorkspace, friendly error mapping in multiEnvDataSource.
+
 ---
 
 ## 📊 Data Sources Analyzed
