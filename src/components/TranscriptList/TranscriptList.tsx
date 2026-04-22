@@ -1,6 +1,7 @@
 import { useMemo, useEffect, useRef, useCallback } from "react";
 import type { ParsedTranscript, TranscriptType } from "../../types/transcript";
 import { formatDuration, isParticipant } from "../../utils/parseTranscript";
+import { getChannelInfo } from "../../utils/channels";
 import { searchTranscripts, type ContentSearchOptions } from "../../hooks/useTranscripts";
 import { useBotLookup, useUserDisplayNames, type BotInfo } from "../../hooks/useLookups";
 import { UserSearch } from "./UserSearch";
@@ -402,6 +403,14 @@ export function TranscriptList({
                     🔗 child
                   </span>
                 )}
+                {(() => {
+                  const ch = getChannelInfo(t.channelId);
+                  return ch ? (
+                    <span className={`channel-badge channel-${ch.id}`} title={ch.description}>
+                      <span aria-hidden="true">{ch.emoji}</span> {ch.label}
+                    </span>
+                  ) : null;
+                })()}
               </td>
               <td>{getUserDisplayName(t.userAadObjectId)}</td>
               <td>{new Date(t.conversationstarttime).toLocaleString()}</td>

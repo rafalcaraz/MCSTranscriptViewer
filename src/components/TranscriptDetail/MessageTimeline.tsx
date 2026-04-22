@@ -4,6 +4,7 @@ import { formatTimestamp } from "../../utils/parseTranscript";
 import { OrphanReactionItem } from "./OrphanReactionItem";
 import { AdaptiveCardRenderer } from "./AdaptiveCardRenderer";
 import { HandoffCallout } from "./HandoffCallout";
+import { SsmlPreview } from "./SsmlPreview";
 import Markdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 
@@ -246,6 +247,7 @@ export function MessageTimeline({ messages, reactions, handoffs = [], activeMess
                   style={msg.speakingAgent?.isChild ? ({ "--agent-accent": agentAccent(msg.speakingAgent.schemaName) } as React.CSSProperties) : undefined}
                 >
                   {renderMessageContent(msg)}
+                  {msg.role === "bot" && msg.speak && <SsmlPreview ssml={msg.speak} />}
                   {msg.attachmentSummary && msg.attachmentSummary.kind !== "card" && (
                     <div className="msg-attachments">
                       {msg.attachmentSummary.items.map((item, i) => {

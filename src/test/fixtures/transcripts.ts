@@ -462,3 +462,313 @@ export const handoffNonLcwTranscript: DataverseTranscriptRecord = {
     ],
   }),
 };
+
+/**
+ * D365 Voice Channel handoff: Bot Framework first-class `type:"handoff"`
+ * activity with value.type="transferToAgent". Channel is conversationconductor
+ * (D365 Voice / IVR). No *Handoff event, no LCW signaling — would have been
+ * missed by both prior detection paths.
+ *
+ * Regression: hasHandoff must be TRUE; provider derived from value.context.va_BotName.
+ */
+export const voiceFirstClassHandoffTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-handoff-001",
+  name: "test_voice_handoff",
+  createdon: "2026-04-22T10:00:00Z",
+  conversationstarttime: "2026-04-22T09:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voiceagent","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776812000, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "Connect me with sales", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776812005, from: { id: "bot-1", role: 0 }, channelId: "conversationconductor", textFormat: "plain", text: "Transferring you now.", attachments: [], replyToId: "msg-user-1" },
+      {
+        id: "ho-act-1",
+        type: "handoff",
+        timestamp: 1776812006,
+        from: { id: "bot-1", role: 0 },
+        channelId: "conversationconductor",
+        replyToId: "msg-bot-1",
+        value: { type: "transferToAgent", context: { va_BotName: "Salesforce", queueId: "q-sales-01" } },
+      },
+    ],
+  }),
+};
+
+/**
+ * D365 Voice session with full pvaSetContext + an SSML-bearing bot message.
+ * Used to validate VoiceContext extraction (phone numbers, locale, voice
+ * config, Nuance session) and ChatMessage.speak preservation.
+ */
+export const voiceSessionTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-session-001",
+  name: "test_voice_session",
+  createdon: "2026-04-22T12:00:00Z",
+  conversationstarttime: "2026-04-22T11:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voicebot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      {
+        id: "evt-pva-ctx-1",
+        type: "event",
+        name: "pvaSetContext",
+        timestamp: 1776820000,
+        from: { id: "visitor-1", role: 1 },
+        channelId: "conversationconductor",
+        channelData: {
+          ChannelSpecifier: "IVR",
+          ivrResultContextOnHangup: false,
+          "vnd.microsoft.msdyn.oc.data": {
+            voices: {
+              "en-US": {
+                voiceName: "de-DE-Seraphina:DragonHDLatestNeural",
+                speakingSpeed: 0,
+                voiceStyle: null,
+                pitch: 0,
+              },
+            },
+          },
+          nuanceCreateGrpcState: { SessionId: "ceea9a40-1234-1234-1234-abcabcabcabc" },
+        },
+        value: {
+          msdyn_sessionid: "91d91471-aaaa-bbbb-cccc-ddddeeeeffff",
+          msdyn_ocliveworkitemid: "3b867b92-aaaa-bbbb-cccc-ddddeeeeffff",
+          msdyn_ConversationId: "3b867b92-aaaa-bbbb-cccc-ddddeeeeffff",
+          msdyn_OrganizationPhone: "+18334895405",
+          msdyn_CustomerPhone: "+13204346038",
+          msdyn_Locale: "en-US",
+        },
+      },
+      {
+        id: "msg-bot-1",
+        type: "message",
+        timestamp: 1776820005,
+        from: { id: "bot-1", role: 0 },
+        channelId: "conversationconductor",
+        textFormat: "plain",
+        text: "Hello and thank you for calling.",
+        speak: "<speak version=\"1.0\" xml:lang=\"en-US\"><voice name=\"de-DE-Seraphina:DragonHDLatestNeural\"><prosody rate=\"0%\" pitch=\"0%\">Hello and thank you for calling.</prosody></voice></speak>",
+      },
+      { id: "msg-user-1", type: "message", timestamp: 1776820010, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "Hi", attachments: [] },
+    ],
+  }),
+};
+
+/**
+ * Copilot Studio author-configured handoff (AgentTransferConfiguredByAuthor):
+ * the author wired a transfer node into a topic, and at runtime the platform
+ * emits both the first-class `handoff` activity AND a HandOff trace. The LCW
+ * synthesizer would skip this (reason isn't AgentTransferRequestedBy*), but
+ * the activity captures it.
+ *
+ * Regression: hasHandoff must be TRUE; exactly 1 handoff in the array
+ * (no double-counting between the activity and any synthesized event).
+ */
+export const studioAuthorHandoffTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-studio-author-handoff-001",
+  name: "test_studio_author_handoff",
+  createdon: "2026-04-22T11:00:00Z",
+  conversationstarttime: "2026-04-22T10:55:00Z",
+  metadata: '{"BotId":"studio-bot","AADTenantId":"tenant-test","BotName":"msftcsa_studiobot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776815000, from: { id: "user-1", role: 1 }, channelId: "pva-studio", textFormat: "plain", text: "I want to buy something", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776815005, from: { id: "bot-1", role: 0 }, channelId: "pva-studio", textFormat: "markdown", text: "Routing you to our sales specialist.", attachments: [], replyToId: "msg-user-1" },
+      {
+        id: "ho-act-1",
+        type: "handoff",
+        timestamp: 1776815006,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-studio",
+        replyToId: "msg-bot-1",
+        value: { type: "transferToAgent" },
+      },
+      { valueType: "HandOff", id: "ho-trace-1", type: "trace", timestamp: 1776815007, from: { id: "bot-1", role: 0 }, replyToId: "msg-bot-1", value: {} },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776815300, from: { id: "", role: 0 }, value: { startTimeUtc: "2026-04-22T10:55:00Z", endTimeUtc: "2026-04-22T11:00:00Z", type: "Engaged", outcome: "HandOff", turnCount: 2, impliedSuccess: true, outcomeReason: "AgentTransferConfiguredByAuthor" } },
+    ],
+  }),
+};
+
+/**
+ * LCW transcript where a Copilot Studio author wired a Transfer node into a
+ * topic. Platform sets `outcome: HandOff` + `outcomeReason:
+ * AgentTransferConfiguredByAuthor` on SessionInfo but does NOT emit a
+ * first-class handoff activity (older runtime). Tier-3 expectation: the LCW
+ * synthesizer fires (4th allowed reason) -> exactly 1 handoff event.
+ */
+export const lcwConfiguredByAuthorTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-lcw-author-handoff-001",
+  name: "test_lcw_author_handoff",
+  createdon: "2026-04-22T13:00:00Z",
+  conversationstarttime: "2026-04-22T12:55:00Z",
+  metadata: '{"BotId":"lcw-bot","AADTenantId":"tenant-test","BotName":"msftcsa_lcwbot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776823000, from: { id: "user-1", role: 1 }, channelId: "lcw", textFormat: "plain", text: "I need a human", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776823005, from: { id: "bot-1", role: 0 }, channelId: "lcw", textFormat: "markdown", text: "Connecting you to an agent.", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "HandOff", id: "ho-trace-1", type: "trace", timestamp: 1776823006, from: { id: "bot-1", role: 0 }, replyToId: "msg-bot-1", value: {} },
+      { valueType: "SessionInfo", id: "0", type: "trace", timestamp: 1776823300, from: { id: "", role: 0 }, channelId: "lcw", value: { startTimeUtc: "2026-04-22T12:55:00Z", endTimeUtc: "2026-04-22T13:00:00Z", type: "Engaged", outcome: "HandOff", turnCount: 2, impliedSuccess: true, outcomeReason: "AgentTransferConfiguredByAuthor" } },
+    ],
+  }),
+};
+
+/**
+ * Voice transcript that ends with both an `endOfConversation` activity
+ * (channelData.EndConversationReason: "CCAAS_TRANSFER") and a
+ * PRRSurveyRequest trace - but NO PRRSurveyResponse (caller hung up
+ * before answering). Used to validate `prrSurvey.responded === false`.
+ */
+export const voiceEndAndPrrTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-eoc-prr-001",
+  name: "test_voice_eoc_prr",
+  createdon: "2026-04-22T14:00:00Z",
+  conversationstarttime: "2026-04-22T13:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voicebot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776830000, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "Talk to a person", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776830005, from: { id: "bot-1", role: 0 }, channelId: "conversationconductor", textFormat: "plain", text: "One moment.", attachments: [], replyToId: "msg-user-1" },
+      {
+        id: "eoc-1",
+        type: "endOfConversation",
+        timestamp: 1776830010,
+        from: { id: "bot-1", role: 0 },
+        channelId: "conversationconductor",
+        text: "",
+        attachments: [],
+        channelData: { ChannelSpecifier: "", EndConversationReason: "CCAAS_TRANSFER" },
+      },
+      {
+        valueType: "PRRSurveyRequest",
+        id: "prr-1",
+        type: "trace",
+        timestamp: 1776830011,
+        from: { id: "bot-1", role: 0 },
+        value: { type: "PRR" },
+      },
+    ],
+  }),
+};
+
+/**
+ * Voice transcript with both PRRSurveyRequest AND a corresponding
+ * PRRSurveyResponse (caller pressed a key). Used to validate
+ * `prrSurvey.responded === true`.
+ */
+export const voicePrrAnsweredTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-voice-prr-answered-001",
+  name: "test_voice_prr_answered",
+  createdon: "2026-04-22T15:00:00Z",
+  conversationstarttime: "2026-04-22T14:55:00Z",
+  metadata: '{"BotId":"voice-bot","AADTenantId":"tenant-test","BotName":"crd9b_voicebot","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      { id: "msg-user-1", type: "message", timestamp: 1776840000, from: { id: "user-1", role: 1 }, channelId: "conversationconductor", textFormat: "plain", text: "yes", attachments: [] },
+      { id: "msg-bot-1", type: "message", timestamp: 1776840005, from: { id: "bot-1", role: 0 }, channelId: "conversationconductor", textFormat: "plain", text: "Thanks!", attachments: [], replyToId: "msg-user-1" },
+      { valueType: "PRRSurveyRequest", id: "prr-req-1", type: "trace", timestamp: 1776840006, from: { id: "bot-1", role: 0 }, value: { type: "PRR" } },
+      { valueType: "PRRSurveyResponse", id: "prr-res-1", type: "trace", timestamp: 1776840020, from: { id: "user-1", role: 1 }, value: { rating: 5 } },
+    ],
+  }),
+};
+/**
+ * D365 1P platform autonomous agent (msdyn_*Agent on pva-autonomous channel).
+ * Two plans: an interim plan (StoreEmailTopic) followed by a final plan
+ * (SendEmailTopic). One DynamicPlanAIPluginStepFinished per plan, with
+ * realistic args/observation shapes. Used to validate the planExecutions
+ * extractor + UI panel.
+ */
+export const autonomousPlanExecutionTranscript: DataverseTranscriptRecord = {
+  conversationtranscriptid: "test-autonomous-plan-001",
+  name: "test_autonomous_plan",
+  createdon: "2026-04-22T16:00:00Z",
+  conversationstarttime: "2026-04-22T15:55:00Z",
+  metadata: '{"BotId":"d365-bot","AADTenantId":"tenant-test","BotName":"msdyn_PurchCopilotFollowupTaskAgent","BatchId":0}',
+  schematype: "powervirtualagents",
+  schemaversion: "0.2.2",
+  content: JSON.stringify({
+    activities: [
+      {
+        valueType: "DynamicPlanReceived",
+        id: "dpr-1",
+        type: "event",
+        timestamp: 1776850000,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          steps: ["msdyn_PurchCopilotFollowupTaskAgent.topic.StoreEmailTopic"],
+          isFinalPlan: false,
+          planIdentifier: "plan-aaa",
+        },
+      },
+      {
+        valueType: "DynamicPlanReceivedDebug",
+        id: "dprd-1",
+        type: "event",
+        timestamp: 1776850000,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: { summary: "", ask: "{\"emailInfo\":\"...\"}" },
+      },
+      {
+        valueType: "DynamicPlanAIPluginStepFinished",
+        id: "stf-1",
+        type: "event",
+        timestamp: 1776850002,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          taskDialogId: "msdyn_PurchCopilotFollowupTaskAgent.topic.StoreEmailTopic",
+          stepId: "step-1",
+          observation: { Response: null },
+          arguments: {
+            msdyn_PurchCopilotFollowupTaskSaveEmail_emailBody: "Dear Fabrikam Supplier...",
+            msdyn_PurchCopilotFollowupTaskSaveEmail_dataArea: "USMF",
+          },
+          planIdentifier: "plan-aaa",
+          state: "completed",
+          hasRecommendations: false,
+        },
+      },
+      {
+        valueType: "DynamicPlanReceived",
+        id: "dpr-2",
+        type: "event",
+        timestamp: 1776850010,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          steps: ["msdyn_PurchCopilotFollowupTaskAgent.topic.SendEmailTopic"],
+          isFinalPlan: true,
+          planIdentifier: "plan-bbb",
+        },
+      },
+      {
+        valueType: "DynamicPlanAIPluginStepFinished",
+        id: "stf-2",
+        type: "event",
+        timestamp: 1776850012,
+        from: { id: "bot-1", role: 0 },
+        channelId: "pva-autonomous",
+        value: {
+          taskDialogId: "msdyn_PurchCopilotFollowupTaskAgent.topic.SendEmailTopic",
+          stepId: "step-2",
+          observation: { Response: { messageId: "msg-abc-123" } },
+          arguments: { to: "supplier@example.com", subject: "Follow-up" },
+          planIdentifier: "plan-bbb",
+          state: "completed",
+        },
+      },
+    ],
+  }),
+};

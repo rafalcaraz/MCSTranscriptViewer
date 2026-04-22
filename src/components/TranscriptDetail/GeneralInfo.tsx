@@ -84,6 +84,35 @@ export function GeneralInfo({ transcript }: GeneralInfoProps) {
           </div>
         </div>
       )}
+      {(transcript.endOfConversation || transcript.prrSurvey) && (
+        <div className="lifecycle-signals">
+          {transcript.endOfConversation && (
+            <span
+              className="lifecycle-chip lifecycle-eoc"
+              title={`endOfConversation activity emitted by ${transcript.endOfConversation.byRole} at ${new Date(
+                transcript.endOfConversation.timestamp * 1000,
+              ).toLocaleString()}`}
+            >
+              🏁 End of conversation
+              {transcript.endOfConversation.reason ? ` · ${transcript.endOfConversation.reason}` : ""}
+            </span>
+          )}
+          {transcript.prrSurvey && (
+            <span
+              className={`lifecycle-chip lifecycle-prr ${
+                transcript.prrSurvey.responded ? "lifecycle-prr-answered" : "lifecycle-prr-unanswered"
+              }`}
+              title={
+                transcript.prrSurvey.responded
+                  ? "Post-Resolution Rating survey was requested and the caller responded."
+                  : "Post-Resolution Rating survey was requested but no response was recorded (caller likely hung up)."
+              }
+            >
+              ⭐ PRR survey · {transcript.prrSurvey.responded ? "answered" : "no response"}
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

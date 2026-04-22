@@ -13,7 +13,7 @@ export interface ActivityFrom {
 
 export interface RawActivity {
   id?: string;
-  type: "trace" | "event" | "message" | "invoke" | "invokeResponse" | "endOfConversation" | "conversationUpdate" | "installationUpdate";
+  type: "trace" | "event" | "message" | "invoke" | "invokeResponse" | "endOfConversation" | "conversationUpdate" | "installationUpdate" | "handoff";
   timestamp: number;
   from: ActivityFrom;
   name?: string;
@@ -144,6 +144,8 @@ export interface ChatMessage {
   attachmentSummary?: AttachmentSummary;
   /** For bot messages in multi-agent transcripts, identifies the speaking agent. */
   speakingAgent?: SpeakingAgent;
+  /** SSML markup that was synthesized for TTS playback (D365 Voice Channel only). */
+  speak?: string;
 }
 
 export interface DialogTrace {
@@ -321,6 +323,42 @@ export interface AuthenticatedVisitor {
   raw: Record<string, unknown>;
 }
 
+/**
+ * D365 Voice Channel context attached to `conversationconductor` sessions.
+ * Extracted from the `pvaSetContext` event payload (the voice equivalent of
+ * the LCW `startConversation` event). Carries IVR + telephony state including
+ * caller and organization phone numbers, the Nuance speech session, and the
+ * neural TTS voice configuration. All fields are optional.
+ *
+ * Note: `customerPhone` is PII and should be treated with care.
+ */
+export interface VoiceContext {
+  /** Voice work item GUID. Note the lowercase `oc` prefix vs LCW's `liveworkitemid`. */
+  liveWorkItemId?: string;
+  /** Conversation GUID, usually equal to liveWorkItemId. */
+  conversationId?: string;
+  /** Session GUID. */
+  sessionId?: string;
+  /** Org/agent inbound phone number (E.164). */
+  organizationPhone?: string;
+  /** Caller phone number (E.164). PII. */
+  customerPhone?: string;
+  /** Locale, e.g. "en-US". */
+  locale?: string;
+  /** Channel specifier, e.g. "IVR". */
+  channelSpecifier?: string;
+  /** TTS voice config — neural voice name, speed, pitch — keyed by locale. */
+  voices?: Record<string, { voiceName?: string; speakingSpeed?: number; pitch?: number; voiceStyle?: string | null }>;
+  /** Reason the call ended, when present (e.g. "CallerHangup"). */
+  endConversationReason?: string;
+  /** Nuance speech recognition session id, when present. */
+  nuanceSessionId?: string;
+  /** Raw msdyn_* payload preserved for advanced inspection. */
+  raw: Record<string, unknown>;
+  /** Raw channelData snapshot from the pvaSetContext event. */
+  rawChannelData: Record<string, unknown>;
+}
+
 // ── Unified activity union ────────────────────────────────────────────
 
 export type ParsedActivityType =
@@ -379,6 +417,80 @@ export interface TranscriptMetadata {
   botId: string;
   botName: string;
   aadTenantId: string;
+}
+
+/**
+ * Lightweight signal that an `endOfConversation` activity was emitted.
+ * We surface this only when the activity is actually present in the source
+ * — never inferred from absence (Bot Framework treats it as optional and
+ * many channels skip it). The optional `reason` comes from `channelData
+ * .EndConversationReason`, e.g. "CCAAS_TRANSFER", "CallerHangup".
+ */
+export interface EndOfConversationSignal {
+  /** Activity timestamp (epoch seconds). */
+  timestamp: number;
+  /** "user" if from.role===1, "bot" if from.role===0. */
+  byRole: "user" | "bot";
+  /** Free-form reason from channelData when present. */
+  reason?: string;
+}
+
+/**
+ * Marker that a Post-Resolution Rating (PRR) survey was requested. Voice
+ * channel equivalent of CSAT — the IVR plays a "press 1 to 5" prompt after
+ * a successful resolution. Payload is intentionally tiny ({ type: "PRR" });
+ * absence of a corresponding `PRRSurveyResponse` means the caller hung up
+ * before answering.
+ */
+export interface SurveySignal {
+  /** Activity timestamp (epoch seconds). */
+  timestamp: number;
+  /** Survey kind, e.g. "PRR" — comes from value.type. */
+  type?: string;
+  /** True if a corresponding PRRSurveyResponse was also seen (rating provided). */
+  responded: boolean;
+}
+
+/**
+ * Single step actually executed by a D365 1P platform agent on the
+ * `pva-autonomous` channel — extracted from the
+ * `DynamicPlanAIPluginStepFinished` event. Each step represents one
+ * topic/tool the LLM-driven runtime decided to invoke, with the args
+ * it picked and the observation it received back.
+ */
+export interface PlanExecutionStep {
+  stepId: string;
+  taskDialogId: string;
+  /** Activity timestamp (epoch seconds). */
+  timestamp: number;
+  /** Step state, typically "completed" — also "failed" / "skipped" in the wild. */
+  state?: string;
+  /** Inputs the LLM chose for the step (key/value, values can be any JSON). */
+  arguments?: Record<string, unknown>;
+  /** Whatever the step returned. Often `{ Response: null }`, sometimes structured. */
+  observation?: unknown;
+  /** Whether the step produced downstream recommendations for the planner. */
+  hasRecommendations?: boolean;
+}
+
+/**
+ * One LLM-issued plan in an autonomous D365 1P agent run. A transcript can
+ * carry several of these — the planner often re-issues a fresh plan
+ * (`isFinalPlan: false`) as it gathers more context, then a final plan
+ * (`isFinalPlan: true`).
+ */
+export interface PlanExecution {
+  planIdentifier: string;
+  /** Timestamp of the DynamicPlanReceived event that introduced this plan. */
+  receivedAt: number;
+  /** True when the planner declared this its final plan. */
+  isFinalPlan?: boolean;
+  /** taskDialogIds the plan declared up-front (may differ from `steps` actually run). */
+  declaredSteps: string[];
+  /** Steps actually executed (DynamicPlanAIPluginStepFinished), in time order. */
+  steps: PlanExecutionStep[];
+  /** Optional LLM reasoning payload from DynamicPlanReceivedDebug. */
+  debug?: { summary?: string; ask?: string };
 }
 
 export interface ParsedTranscript {
@@ -444,6 +556,25 @@ export interface ParsedTranscript {
   omnichannelContext?: OmnichannelContext;
   /** OIDC claims for an authenticated visitor, when present in the LCW session. */
   authenticatedVisitor?: AuthenticatedVisitor;
+  /** D365 Voice Channel context (phone numbers, IVR state, TTS voice), when present. */
+  voiceContext?: VoiceContext;
+  /**
+   * `endOfConversation` activity, when emitted. Never inferred from absence —
+   * many channels never emit it. Use this only as a positive signal.
+   */
+  endOfConversation?: EndOfConversationSignal;
+  /**
+   * Post-Resolution Rating (PRR) survey signal — voice channel CSAT equivalent.
+   * Set only when a `PRRSurveyRequest` trace is present in the source.
+   */
+  prrSurvey?: SurveySignal;
+  /**
+   * Plans executed by an autonomous D365 1P platform agent on the
+   * `pva-autonomous` channel. Empty / undefined for every other channel.
+   * Built from `DynamicPlanReceived` + `DynamicPlanAIPluginStepFinished`
+   * events. Ordered by receivedAt.
+   */
+  planExecutions?: PlanExecution[];
   /** Distinct child agent schema names this transcript invoked (derived from connectedAgentInvocations). */
   invokedChildAgentSchemaNames: string[];
 }

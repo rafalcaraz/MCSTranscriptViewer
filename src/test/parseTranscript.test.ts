@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import { parseTranscript, formatTimestamp, formatDuration, shortToolName, prettyAgentName } from "../utils/parseTranscript";
+import type { DataverseTranscriptRecord } from "../utils/parseTranscript";
 import {
   basicMcpTranscript,
   pvaStudioReactionsTranscript,
@@ -18,6 +19,13 @@ import {
   d365LcwHandoffTranscript,
   fakeHandoffOutcomeTranscript,
   handoffNonLcwTranscript,
+  voiceFirstClassHandoffTranscript,
+  studioAuthorHandoffTranscript,
+  voiceSessionTranscript,
+  lcwConfiguredByAuthorTranscript,
+  voiceEndAndPrrTranscript,
+  voicePrrAnsweredTranscript,
+  autonomousPlanExecutionTranscript,
 } from "./fixtures/transcripts";
 
 // ── Basic Parsing ─────────────────────────────────────────────────────
@@ -820,6 +828,64 @@ describe("parseTranscript — D365 Omnichannel handoff synthesis", () => {
   });
 });
 
+describe("parseTranscript — first-class handoff activity (type=handoff)", () => {
+  it("detects D365 Voice handoff (conversationconductor + transferToAgent) → 1 event", () => {
+    const parsed = parseTranscript(voiceFirstClassHandoffTranscript);
+    expect(parsed.channelId).toBe("conversationconductor");
+    expect(parsed.hasHandoff).toBe(true);
+    expect(parsed.handoffs).toHaveLength(1);
+    const h = parsed.handoffs[0];
+    expect(h.eventName).toBe("handoff");
+    expect(h.provider).toBe("Salesforce");
+    expect(h.isValueStructured).toBe(true);
+  });
+
+  it("detects Studio author-configured handoff and does NOT double-count with LCW synthesis or trace", () => {
+    const parsed = parseTranscript(studioAuthorHandoffTranscript);
+    expect(parsed.hasHandoff).toBe(true);
+    expect(parsed.handoffs).toHaveLength(1);
+    expect(parsed.handoffs[0].eventName).toBe("handoff");
+    expect(parsed.handoffs[0].provider).toBe("Copilot Studio");
+  });
+
+  it("does NOT fire on the OOB Escalate fake-out (HandOff trace only, no handoff activity)", () => {
+    const parsed = parseTranscript(fakeHandoffTraceTranscript);
+    expect(parsed.hasHandoff).toBe(false);
+    expect(parsed.handoffs).toHaveLength(0);
+  });
+});
+
+describe("parseTranscript — D365 Voice context (pvaSetContext)", () => {
+  const parsed = parseTranscript(voiceSessionTranscript);
+
+  it("extracts phone numbers, ids, and locale from pvaSetContext value", () => {
+    const v = parsed.voiceContext!;
+    expect(v).toBeDefined();
+    expect(v.organizationPhone).toBe("+18334895405");
+    expect(v.customerPhone).toBe("+13204346038");
+    expect(v.liveWorkItemId).toBe("3b867b92-aaaa-bbbb-cccc-ddddeeeeffff");
+    expect(v.sessionId).toBe("91d91471-aaaa-bbbb-cccc-ddddeeeeffff");
+    expect(v.locale).toBe("en-US");
+  });
+
+  it("extracts IVR + voice config + Nuance session from channelData", () => {
+    const v = parsed.voiceContext!;
+    expect(v.channelSpecifier).toBe("IVR");
+    expect(v.voices?.["en-US"]?.voiceName).toBe("de-DE-Seraphina:DragonHDLatestNeural");
+    expect(v.nuanceSessionId).toBe("ceea9a40-1234-1234-1234-abcabcabcabc");
+  });
+
+  it("preserves the bot message's speak SSML on ChatMessage.speak", () => {
+    const botMsg = parsed.messages.find((m) => m.id === "msg-bot-1");
+    expect(botMsg?.speak).toContain("<speak");
+    expect(botMsg?.speak).toContain("Seraphina");
+  });
+
+  it("returns voiceContext=undefined for transcripts without pvaSetContext", () => {
+    expect(parseTranscript(basicMcpTranscript).voiceContext).toBeUndefined();
+  });
+});
+
 describe("parseTranscript — Omnichannel context + authenticated visitor", () => {
   it("extracts msdyn_* context from startConversation event", () => {
     const parsed = parseTranscript(d365LcwHandoffTranscript);
@@ -850,5 +916,103 @@ describe("parseTranscript — Omnichannel context + authenticated visitor", () =
     const parsed = parseTranscript(basicMcpTranscript);
     expect(parsed.omnichannelContext).toBeUndefined();
     expect(parsed.authenticatedVisitor).toBeUndefined();
+  });
+});
+
+
+// ── Tier 3: lifecycle signals & ConfiguredByAuthor synthesis ─────────
+
+describe("parseTranscript — LCW author-configured handoff (synth path)", () => {
+  it("synthesizes handoff for AgentTransferConfiguredByAuthor on LCW (4th allowed reason)", () => {
+    const parsed = parseTranscript(lcwConfiguredByAuthorTranscript);
+    expect(parsed.channelId).toBe("lcw");
+    expect(parsed.globalOutcomeReason).toBe("AgentTransferConfiguredByAuthor");
+    expect(parsed.hasHandoff).toBe(true);
+    expect(parsed.handoffs.length).toBe(1);
+    const ev = parsed.handoffs[0];
+    expect(ev.eventName).toBe("D365OmnichannelHandoff");
+    expect(ev.provider).toBe("D365 Omnichannel");
+  });
+});
+
+describe("parseTranscript — endOfConversation signal", () => {
+  it("extracts endOfConversation activity with channelData reason", () => {
+    const parsed = parseTranscript(voiceEndAndPrrTranscript);
+    expect(parsed.endOfConversation).toBeDefined();
+    expect(parsed.endOfConversation?.reason).toBe("CCAAS_TRANSFER");
+    expect(parsed.endOfConversation?.byRole).toBe("bot");
+    expect(parsed.endOfConversation?.timestamp).toBe(1776830010);
+  });
+
+  it("is undefined when no endOfConversation activity present (never inferred)", () => {
+    const parsed = parseTranscript(voiceSessionTranscript);
+    expect(parsed.endOfConversation).toBeUndefined();
+  });
+});
+
+describe("parseTranscript — PRR survey signal", () => {
+  it("marks responded=false when only PRRSurveyRequest present", () => {
+    const parsed = parseTranscript(voiceEndAndPrrTranscript);
+    expect(parsed.prrSurvey).toBeDefined();
+    expect(parsed.prrSurvey?.type).toBe("PRR");
+    expect(parsed.prrSurvey?.responded).toBe(false);
+    expect(parsed.prrSurvey?.timestamp).toBe(1776830011);
+  });
+
+  it("marks responded=true when PRRSurveyResponse also present", () => {
+    const parsed = parseTranscript(voicePrrAnsweredTranscript);
+    expect(parsed.prrSurvey).toBeDefined();
+    expect(parsed.prrSurvey?.responded).toBe(true);
+  });
+
+  it("is undefined when no PRRSurveyRequest present", () => {
+    const parsed = parseTranscript(voiceSessionTranscript);
+    expect(parsed.prrSurvey).toBeUndefined();
+  });
+});
+
+describe("parseTranscript — autonomous plan execution (DynamicPlan family)", () => {
+  it("groups DynamicPlanAIPluginStepFinished into PlanExecution per planIdentifier", () => {
+    const parsed = parseTranscript(autonomousPlanExecutionTranscript);
+    expect(parsed.planExecutions).toBeDefined();
+    expect(parsed.planExecutions!.length).toBe(2);
+    const [p1, p2] = parsed.planExecutions!;
+    expect(p1.planIdentifier).toBe("plan-aaa");
+    expect(p1.isFinalPlan).toBe(false);
+    expect(p1.declaredSteps).toEqual(["msdyn_PurchCopilotFollowupTaskAgent.topic.StoreEmailTopic"]);
+    expect(p1.steps.length).toBe(1);
+    expect(p1.steps[0].state).toBe("completed");
+    expect(p1.steps[0].arguments).toMatchObject({ msdyn_PurchCopilotFollowupTaskSaveEmail_dataArea: "USMF" });
+    expect(p1.debug?.ask).toBe('{"emailInfo":"..."}');
+    expect(p2.planIdentifier).toBe("plan-bbb");
+    expect(p2.isFinalPlan).toBe(true);
+    expect(p2.steps[0].observation).toEqual({ Response: { messageId: "msg-abc-123" } });
+  });
+
+  it("returns undefined when no DynamicPlan events are present (non-autonomous transcripts)", () => {
+    const parsed = parseTranscript(voiceSessionTranscript);
+    expect(parsed.planExecutions).toBeUndefined();
+  });
+
+  it("orphan DynamicPlanAIPluginStepFinished without matching Received plan is dropped", () => {
+    const orphan: DataverseTranscriptRecord = {
+      ...autonomousPlanExecutionTranscript,
+      conversationtranscriptid: "test-orphan-step",
+      content: JSON.stringify({
+        activities: [
+          {
+            valueType: "DynamicPlanAIPluginStepFinished",
+            id: "stf-x",
+            type: "event",
+            timestamp: 1776860000,
+            from: { id: "bot-1", role: 0 },
+            channelId: "pva-autonomous",
+            value: { taskDialogId: "topic.X", stepId: "x", planIdentifier: "missing", state: "completed" },
+          },
+        ],
+      }),
+    };
+    const parsed = parseTranscript(orphan);
+    expect(parsed.planExecutions).toBeUndefined();
   });
 });
