@@ -14,6 +14,11 @@ const TranscriptDetail = lazy(() =>
 const AnalyticsSummary = lazy(() =>
   import("./components/Analytics/AnalyticsSummary").then((m) => ({ default: m.AnalyticsSummary })),
 );
+const BrowseFlowsWorkspace = lazy(() =>
+  import("./components/BrowseFlows/BrowseFlowsWorkspace").then((m) => ({
+    default: m.BrowseFlowsWorkspace,
+  })),
+);
 
 const LazyFallback = ({ label }: { label: string }) => (
   <div className="app-root" style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
@@ -21,7 +26,7 @@ const LazyFallback = ({ label }: { label: string }) => (
   </div>
 );
 
-type View = "list" | "detail" | "analytics";
+type View = "list" | "detail" | "analytics" | "browseflows";
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -133,6 +138,13 @@ function App() {
         >
           Analytics
         </button>
+        <button
+          className={`tab-btn ${view === "browseflows" ? "active" : ""}`}
+          onClick={() => setView("browseflows")}
+          title="Browse transcripts from any environment using Power Automate flows — no MSAL sign-in required"
+        >
+          Browse via Flows
+        </button>
         <span className="app-version" title={`Built: ${__BUILD_TIME__}`}>v1.0.5 · {new Date(__BUILD_TIME__).toLocaleString()}</span>
         <button className="theme-toggle" onClick={() => setDarkMode(d => !d)} title={darkMode ? "Switch to light mode" : "Switch to dark mode"}>
           {darkMode ? "☀️" : "🌙"}
@@ -157,6 +169,11 @@ function App() {
         {view === "analytics" && (
           <Suspense fallback={<LazyFallback label="Loading analytics..." />}>
             <AnalyticsSummary transcripts={transcripts} />
+          </Suspense>
+        )}
+        {view === "browseflows" && (
+          <Suspense fallback={<LazyFallback label="Loading Browse via Flows..." />}>
+            <BrowseFlowsWorkspace />
           </Suspense>
         )}
       </div>
