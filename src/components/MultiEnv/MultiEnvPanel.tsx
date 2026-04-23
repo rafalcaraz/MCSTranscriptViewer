@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { MultiEnvWorkspace, type EnvOption } from "./MultiEnvWorkspace";
+import { BrowseEnvironmentsWorkspace, type EnvOption } from "./BrowseEnvironmentsWorkspace";
 import { friendlyAuthError } from "../../utils/authErrors";
 import "./MultiEnvPanel.css";
 
@@ -291,7 +291,8 @@ export function MultiEnvPanel() {
 
   return (
     <div className="multi-env-panel">
-      <header className="me-header">
+      <div className="me-narrow">
+        <header className="me-header">
         <h2>Browse Environments (preview)</h2>
         <p className="me-sub">
           Sign in with an Entra App Registration to discover Dataverse environments you have access to — including across tenants. Pick one, then explore its agents and transcripts. Read-only — your normal &quot;This Environment&quot; tab is unaffected.
@@ -368,9 +369,10 @@ export function MultiEnvPanel() {
           <strong>Error:</strong> {status.message}
         </section>
       )}
+      </div>
 
       {accessToken && envs.length > 0 && (
-        <MultiEnvWorkspace
+        <BrowseEnvironmentsWorkspace
           envs={envOptions}
           selectedEnvUrl={selectedEnvUrl}
           onSelectEnv={handleSelectEnv}

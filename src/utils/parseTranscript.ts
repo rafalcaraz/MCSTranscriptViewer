@@ -50,6 +50,22 @@ export interface DataverseTranscriptRecord {
   schemaversion?: string;
 }
 
+/**
+ * Cheap accessor for the bot schema name on a raw Dataverse record. Parses
+ * only the small `metadata` JSON field (NOT the heavy `content` field), so
+ * suitable for pre-filtering thousands of rows before deep-parsing the
+ * survivors. Returns `""` when the record is missing/malformed metadata.
+ */
+export function extractBotName(record: DataverseTranscriptRecord): string {
+  if (!record.metadata) return "";
+  try {
+    const m = JSON.parse(record.metadata) as { BotName?: string };
+    return m.BotName ?? "";
+  } catch {
+    return "";
+  }
+}
+
 export function parseTranscript(record: DataverseTranscriptRecord): ParsedTranscript {
   const contentObj = JSON.parse(record.content) as { activities: RawActivity[] };
   const rawActivities = contentObj.activities ?? [];

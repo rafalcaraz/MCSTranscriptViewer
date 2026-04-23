@@ -1,7 +1,16 @@
 .multi-env-panel {
-  max-width: 900px;
-  margin: 0 auto;
   padding: 24px;
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+/* Pre-signin / config / signin sections stay narrow & centered.
+   The TranscriptList workspace below them is rendered full-width. */
+.me-narrow {
+  max-width: 900px;
+  width: 100%;
+  align-self: center;
   display: flex;
   flex-direction: column;
   gap: 16px;

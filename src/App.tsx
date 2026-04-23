@@ -1,18 +1,15 @@
-import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
 import { useTranscripts, useTranscript, type TranscriptFilters } from "./hooks/useTranscripts";
-import { useBotLookup } from "./hooks/useLookups";
+import { useFilteredTranscripts } from "./hooks/useFilteredTranscripts";
+import { useBotLookup } from "./context/LookupsContext";
 import { TranscriptList } from "./components/TranscriptList/TranscriptList";
 import { INITIAL_FILTER_STATE, type ListFilterState } from "./state/listFilters";
 import "./App.css";
 
-// Code-split the detail and analytics views — they are heavy (DebugPanel, MessageTimeline,
-// PDF/HTML exporters) and not needed for the initial list render. Vite emits a separate
-// chunk for each that loads on first navigation and is then cached.
+// Code-split the detail view — it is heavy (DebugPanel, MessageTimeline,
+// PDF/HTML exporters) and not needed for the initial list render.
 const TranscriptDetail = lazy(() =>
   import("./components/TranscriptDetail/TranscriptDetail").then((m) => ({ default: m.TranscriptDetail })),
-);
-const AnalyticsSummary = lazy(() =>
-  import("./components/Analytics/AnalyticsSummary").then((m) => ({ default: m.AnalyticsSummary })),
 );
 const MultiEnvPanel = lazy(() =>
   import("./components/MultiEnv/MultiEnvPanel").then((m) => ({ default: m.MultiEnvPanel })),
@@ -24,17 +21,13 @@ const LazyFallback = ({ label }: { label: string }) => (
   </div>
 );
 
-type View = "list" | "detail" | "analytics" | "multienv";
+type View = "list" | "detail" | "multienv";
 
-const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 50;
 
 function App() {
   const [view, setView] = useState<View>("list");
-  const [selectedId, setSelectedId] = useState<string | undefined>(() => {
-    if (typeof window === "undefined") return undefined;
-    const m = window.location.hash.match(/[#&]t=([0-9a-f-]{36})/i);
-    return m ? m[1] : undefined;
-  });
+  const [selectedId, setSelectedId] = useState<string | undefined>(undefined);
   const [listFilters, setListFilters] = useState<ListFilterState>(INITIAL_FILTER_STATE);
   const [darkMode, setDarkMode] = useState(() => {
     if (typeof window !== "undefined") {
@@ -50,50 +43,29 @@ function App() {
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
 
-  // Sync view with initial deep-link selectedId (set above) and react to back/forward navigation.
-  useEffect(() => {
-    if (selectedId) setView("detail");
-    const onHash = () => {
-      const m = window.location.hash.match(/[#&]t=([0-9a-f-]{36})/i);
-      if (m) {
-        setSelectedId(m[1]);
-        setView("detail");
-      } else {
-        setSelectedId(undefined);
-        setView((v) => (v === "detail" ? "list" : v));
-      }
-    };
-    window.addEventListener("hashchange", onHash);
-    return () => window.removeEventListener("hashchange", onHash);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-
   const { accessibleBots, ready: botsReady } = useBotLookup();
+  const accessibleSchemaNames = useMemo(
+    () => new Set(accessibleBots.map((b) => b.schemaName).filter(Boolean)),
+    [accessibleBots],
+  );
 
   const [filters, setFilters] = useState<TranscriptFilters>({
     pageSize: DEFAULT_PAGE_SIZE,
   });
 
-  const { transcripts, loading, error, hasMore, totalLoaded, loadMore } = useTranscripts(filters);
+  const rawPage = useTranscripts(filters);
+  const { transcripts, loading, error, hasMore, totalLoaded, loadMore, autoLoading } =
+    useFilteredTranscripts(rawPage, accessibleSchemaNames, botsReady, DEFAULT_PAGE_SIZE);
   const { transcript, loading: detailLoading } = useTranscript(selectedId);
 
   const handleSelect = (id: string) => {
     setSelectedId(id);
     setView("detail");
-    if (typeof window !== "undefined") {
-      const newHash = `#t=${id}`;
-      if (window.location.hash !== newHash) {
-        window.history.pushState(null, "", newHash);
-      }
-    }
   };
 
   const handleBack = () => {
     setView("list");
     setSelectedId(undefined);
-    if (typeof window !== "undefined" && window.location.hash) {
-      window.history.pushState(null, "", window.location.pathname + window.location.search);
-    }
   };
 
   const handleFiltersChange = useCallback((newFilters: { dateFrom?: string; dateTo?: string; contentSearch?: string; participantAadId?: string }) => {
@@ -132,12 +104,6 @@ function App() {
           This Environment
         </button>
         <button
-          className={`tab-btn ${view === "analytics" ? "active" : ""}`}
-          onClick={() => setView("analytics")}
-        >
-          Analytics
-        </button>
-        <button
           className={`tab-btn ${view === "multienv" ? "active" : ""}`}
           onClick={() => setView("multienv")}
           title="Sign in with your own credentials to browse Dataverse environments cross-tenant (preview)"
@@ -153,7 +119,7 @@ function App() {
         {view === "list" && (
           <TranscriptList
             transcripts={transcripts}
-            loading={loading || !botsReady}
+            loading={loading || autoLoading || !botsReady}
             error={error}
             hasMore={hasMore}
             totalLoaded={totalLoaded}
@@ -164,11 +130,6 @@ function App() {
             onFilterStateChange={setListFilters}
             accessibleBots={accessibleBots}
           />
-        )}
-        {view === "analytics" && (
-          <Suspense fallback={<LazyFallback label="Loading analytics..." />}>
-            <AnalyticsSummary transcripts={transcripts} />
-          </Suspense>
         )}
         {view === "multienv" && (
           <Suspense fallback={<LazyFallback label="Loading Browse Environments..." />}>

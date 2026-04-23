@@ -1,4 +1,5 @@
 import { describe, it, expect, vi } from "vitest";
+import type * as React from "react";
 import { render, screen, fireEvent } from "@testing-library/react";
 import { parseTranscript } from "../utils/parseTranscript";
 import {
@@ -49,6 +50,27 @@ vi.mock("../hooks/useLookups", () => ({
     loading: false,
     search: vi.fn(),
   }),
+}));
+
+// Components consume lookups via the context, not the hooks module directly.
+// Mock the context with the same in-memory shape so renders don't need a Provider.
+vi.mock("../context/LookupsContext", () => ({
+  useBotLookup: () => ({
+    getDisplayName: (schema: string) => schema,
+    ready: true,
+    accessibleBots: [],
+    accessibleBotIds: [],
+  }),
+  useUserDisplayNames: () => ({
+    getDisplayName: (id: string | undefined) => id ?? "Anonymous",
+  }),
+  useAadUserSearch: () => ({
+    results: [],
+    loading: false,
+    search: vi.fn(),
+  }),
+  LookupsProvider: ({ children }: { children: React.ReactNode }) => children as React.ReactElement,
+  defaultEnvLookupsImpl: {},
 }));
 
 // ── MessageTimeline ───────────────────────────────────────────────────
