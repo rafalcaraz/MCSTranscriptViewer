@@ -7,7 +7,7 @@ import { OmnichannelContextPanel } from "./OmnichannelContextPanel";
 import { AuthenticatedVisitorPanel } from "./AuthenticatedVisitorPanel";
 import { VoiceContextPanel } from "./VoiceContextPanel";
 import { exportTranscriptPDF, exportTranscriptHTML } from "../../utils/exportTranscript";
-import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
+import { useBotLookup, useUserDisplayNames } from "../../context/LookupsContext";
 import { findChildTranscript, findParentTranscript } from "../../utils/findRelatedTranscripts";
 import { buildRecordWebApiUrl } from "../../utils/dataverseEnvUrl";
 

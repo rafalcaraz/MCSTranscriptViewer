@@ -1,13 +1,13 @@
-import { useMemo, useEffect, useRef, useCallback } from "react";
+import { useMemo, useEffect, useRef, useCallback, type ReactNode } from "react";
 import type { ParsedTranscript, TranscriptType } from "../../types/transcript";
 import { formatDuration, isParticipant } from "../../utils/parseTranscript";
 import { getChannelInfo } from "../../utils/channels";
 import { searchTranscripts, type ContentSearchOptions } from "../../hooks/useTranscripts";
-import { useBotLookup, useUserDisplayNames, type BotInfo } from "../../hooks/useLookups";
+import { useBotLookup, useUserDisplayNames } from "../../context/LookupsContext";
+import type { AadUser, BotInfo } from "../../hooks/useLookups";
 import { UserSearch } from "./UserSearch";
 import { AgentMultiSelect } from "./AgentMultiSelect";
 import { ActiveFilters, type RemovableFilterKey } from "./ActiveFilters";
-import type { AadUser } from "../../hooks/useLookups";
 import { INITIAL_FILTER_STATE, type ListFilterState } from "../../state/listFilters";
 
 const outcomeBadgeClass: Record<string, string> = {
@@ -35,6 +35,9 @@ interface TranscriptListProps {
   filterState: ListFilterState;
   onFilterStateChange: (state: ListFilterState) => void;
   accessibleBots: BotInfo[];
+  /** Optional content rendered as the first item in the filter toolbar — used by
+   *  Browse Environments to embed an env-picker typeahead alongside the date filters. */
+  headerLeading?: ReactNode;
 }
 
 export function TranscriptList({
@@ -49,6 +52,7 @@ export function TranscriptList({
   filterState: f,
   onFilterStateChange: setF,
   accessibleBots,
+  headerLeading,
 }: TranscriptListProps) {
   const { getDisplayName } = useBotLookup();
 
@@ -245,6 +249,7 @@ export function TranscriptList({
       {/* Unified filter toolbar */}
       <div className="filter-section">
         <div className="list-toolbar">
+          {headerLeading}
           <div className="filter-group">
             <label>From</label>
             <input

@@ -1,6 +1,5 @@
-import { useState, useEffect, useCallback, useMemo } from "react";
-import { parseTranscript, type DataverseTranscriptRecord } from "../utils/parseTranscript";
-import type { ParsedTranscript } from "../types/transcript";
+import { useState, useEffect, useCallback } from "react";
+import { type DataverseTranscriptRecord } from "../utils/parseTranscript";
 import { ConversationtranscriptsService } from "../generated/services/ConversationtranscriptsService";
 import type { Conversationtranscripts } from "../generated/models/ConversationtranscriptsModel";
 import { captureOrgUrlFromRecord } from "../utils/dataverseEnvUrl";
@@ -13,9 +12,15 @@ export interface TranscriptFilters {
   pageSize: number;
 }
 
-export interface TranscriptPage {
-  transcripts: ParsedTranscript[];
-  totalLoaded: number;
+import type { ParsedTranscript } from "../types/transcript";
+import { parseTranscript } from "../utils/parseTranscript";
+
+/** Raw transcript page returned from the data layer — NOT parsed yet.
+ *  Consumers run records through useFilteredTranscripts to get parsed
+ *  transcripts (and to apply the access filter). Avoids the cost of
+ *  parsing rows that will be filtered out. */
+export interface RawTranscriptPage {
+  records: DataverseTranscriptRecord[];
   hasMore: boolean;
   loading: boolean;
   error: string | null;
@@ -23,7 +28,11 @@ export interface TranscriptPage {
   refresh: () => void;
 }
 
-const DEFAULT_PAGE_SIZE = 25;
+// Larger default page = fewer round-trips when client-side bot-access filter
+// drops a lot of rows. 50 is a sweet spot — Dataverse keeps response times
+// reasonable up to ~100, and parseTranscript is cached per-id so re-parsing
+// on append is free.
+const DEFAULT_PAGE_SIZE = 50;
 
 function toRecord(dv: Conversationtranscripts): DataverseTranscriptRecord {
   return {
@@ -69,7 +78,7 @@ function escapeOData(value: string): string {
     .replace(/'/g, "''");                   // Escape remaining single quotes
 }
 
-export function useTranscripts(filters: TranscriptFilters): TranscriptPage {
+export function useTranscripts(filters: TranscriptFilters): RawTranscriptPage {
   const [records, setRecords] = useState<DataverseTranscriptRecord[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -149,14 +158,8 @@ export function useTranscripts(filters: TranscriptFilters): TranscriptPage {
     fetchPage(false);
   }, [fetchPage]);
 
-  const transcripts = useMemo(
-    () => records.map(parseTranscript),
-    [records]
-  );
-
   return {
-    transcripts,
-    totalLoaded: transcripts.length,
+    records,
     hasMore,
     loading,
     error,

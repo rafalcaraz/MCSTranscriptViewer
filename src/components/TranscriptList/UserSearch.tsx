@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from "react";
-import { useAadUserSearch, type AadUser } from "../../hooks/useLookups";
+import { useAadUserSearch } from "../../context/LookupsContext";
+import type { AadUser } from "../../hooks/useLookups";
 
 interface UserSearchProps {
   onUserSelect: (user: AadUser) => void;

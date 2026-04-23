@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import type { ParsedTranscript } from "../../types/transcript";
 import { formatDuration } from "../../utils/parseTranscript";
-import { useBotLookup, useUserDisplayNames } from "../../hooks/useLookups";
+import { useBotLookup, useUserDisplayNames } from "../../context/LookupsContext";
 
 const outcomeBadgeClass: Record<string, string> = {
   Resolved: "badge-success",

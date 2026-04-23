@@ -23,7 +23,7 @@ const LazyFallback = ({ label }: { label: string }) => (
 
 type View = "list" | "detail" | "analytics";
 
-const DEFAULT_PAGE_SIZE = 25;
+const DEFAULT_PAGE_SIZE = 50;
 
 function App() {
   const [view, setView] = useState<View>("list");
