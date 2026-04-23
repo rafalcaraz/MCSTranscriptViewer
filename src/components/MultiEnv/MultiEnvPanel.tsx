@@ -67,7 +67,10 @@ export function MultiEnvPanel() {
 
   const redirectUri = useMemo(() => {
     if (typeof window === "undefined") return "";
-    return window.location.origin + "/auth-redirect.html";
+    // Auth flow lives inside the same index.html (the Code App host only
+    // serves the entry HTML at the prefixed asset path), so the registered
+    // redirect URI IS the current page's full URL — origin + pathname.
+    return window.location.origin + window.location.pathname;
   }, []);
 
   useEffect(() => {
@@ -102,8 +105,11 @@ export function MultiEnvPanel() {
 
     const channelId = randomChannelId();
     const tid = tenantId.trim() || "organizations";
-    const url = new URL(window.location.origin + "/auth-redirect.html");
-    url.searchParams.set("start", "1");
+    // Open the popup at our own index.html (only HTML the Code App host
+    // serves) with ?auth=start; main.tsx will detect it and run the flow
+    // instead of mounting React.
+    const url = new URL(window.location.origin + window.location.pathname);
+    url.searchParams.set("auth", "start");
     url.searchParams.set("clientId", cid);
     url.searchParams.set("tenantId", tid);
     url.searchParams.set("scope", GLOBAL_DISCO_SCOPE);
@@ -340,6 +346,7 @@ export function MultiEnvPanel() {
             <div className="me-hint">
               Required API permissions: <code>Dynamics CRM &gt; user_impersonation</code> (delegated). Admin consent recommended.
               The redirect URI must be registered under <strong>Single-page application</strong> (not Web).
+              In Power Apps Player this URI includes the resource/asset path prefix — copy the value above exactly as shown.
             </div>
           </>
         )}

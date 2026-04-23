@@ -1,24 +1,18 @@
-// Manual OAuth 2.0 Authorization Code + PKCE flow.
+// Same-page auth bootstrap.
 //
-// Why not MSAL.js loginPopup?
-// - When this app runs inside the Power Apps player iframe (apps.powerapps.com
-//   embedding localhost:5173), Chrome's storage partitioning gives the iframe
-//   a different localStorage partition than the popup it spawns. MSAL.js relies
-//   on shared storage between parent and popup to coordinate, so it never
-//   completes. login.microsoftonline.com's COOP also breaks window.opener.
+// Why this file exists separately from auth-redirect.html:
+// In Power Apps Player, the Code App host only serves the registered
+// `buildEntryPoint` (index.html) at the prefixed asset path — auxiliary HTML
+// files like a separate auth-redirect.html return RouteNotFound. So we fold
+// the popup-side OAuth dance into index.html itself: main.tsx checks for
+// the `?auth=start` query (Phase A) or a `#code=` / `#error=` hash
+// (Phase B/C) BEFORE mounting React, runs the flow, and skips mounting.
 //
-// This page runs entirely in the popup and uses two channels independent of
-// the parent: its own URL (carries config in), sessionStorage (carries PKCE
-// verifier across the AAD round-trip), and BroadcastChannel (delivers the
-// access token to the parent at the end). The popup never reads from the
-// parent's storage.
-//
-// State machine:
-//   Phase A (search has ?start=1): generate PKCE, stash in sessionStorage,
-//                                  redirect to AAD /authorize.
-//   Phase B (hash has #code=...):  exchange code at /token, broadcast token,
-//                                  close window.
-//   Phase C (hash has #error=...): broadcast error, close window.
+// State machine (mirrors the old auth-redirect.html):
+//   Phase A  (search has ?auth=start):    generate PKCE, stash, redirect to AAD.
+//   Phase B  (hash has #code=...):        exchange code, broadcast, close window.
+//   Phase C  (hash has #error=...):       broadcast error, close window.
+//   No match:                              return false; main.tsx mounts React.
 
 import { generateCodeChallenge, generateCodeVerifier, generateRandomString } from "./utils/pkce";
 import { friendlyAuthError } from "./utils/authErrors";
@@ -49,30 +43,24 @@ type AuthMessage =
   | { type: "error"; message: string; code?: string };
 
 function broadcast(channelId: string, msg: AuthMessage): void {
-  // Send the token over EVERY plausible channel because Chrome's storage
-  // partitioning means we don't know which one the iframe parent can hear:
-  //   1. BroadcastChannel — works if popup and iframe share a storage partition
-  //      (e.g. if Storage Access API granted, or browser doesn't partition).
-  //   2. window.opener.postMessage — works if COOP didn't sever the opener
-  //      (it usually does after the AAD round-trip, but try anyway).
-  //   3. window.opener.opener / top — extra fallback for nested cases.
-  // The wire payload includes channelId so listeners can filter to their attempt.
+  // Fan out across every channel because Chrome's storage partitioning means
+  // we don't know which one the iframe parent can hear (see auth-redirect.ts
+  // history for full reasoning).
   const wire = { ...msg, channelId };
-  console.log("[auth-redirect] broadcasting", { type: msg.type, channelId, hasOpener: !!window.opener });
+  console.log("[authBootstrap] broadcasting", { type: msg.type, channelId, hasOpener: !!window.opener });
   try {
     const ch = new BroadcastChannel(channelId);
     ch.postMessage(msg);
     setTimeout(() => ch.close(), 100);
   } catch (e) {
-    console.error("[auth-redirect] BroadcastChannel failed", e);
+    console.error("[authBootstrap] BroadcastChannel failed", e);
   }
   try {
     window.opener?.postMessage(wire, "*");
   } catch (e) {
-    console.warn("[auth-redirect] opener.postMessage failed", e);
+    console.warn("[authBootstrap] opener.postMessage failed", e);
   }
   try {
-    // If the iframe's parent is reachable through a chain (rare but cheap to try).
     (window.opener?.opener as Window | undefined)?.postMessage(wire, "*");
   } catch { /* ignore */ }
 }
@@ -81,6 +69,17 @@ function closeSelfSoon(delayMs = 250): void {
   setTimeout(() => {
     try { window.close(); } catch { /* ignore */ }
   }, delayMs);
+}
+
+function showStatusInRoot(text: string): void {
+  // We never mounted React in this window — write a friendly message into the
+  // existing #root div so the user sees something while the popup is alive.
+  const root = document.getElementById("root");
+  if (root) {
+    root.innerHTML = `<div style="font-family: sans-serif; padding: 24px; color: #ddd;">${text}</div>`;
+  } else {
+    document.body.textContent = text;
+  }
 }
 
 function parseHashParams(hash: string): URLSearchParams {
@@ -95,14 +94,15 @@ async function startPhase(): Promise<void> {
   const channelId = (search.get("channelId") || "").trim();
 
   if (!clientId || !scope || !channelId) {
-    console.error("[auth-redirect] start phase missing params", { clientId, scope, channelId });
-    document.body.textContent = "Missing required params (clientId, scope, channelId).";
+    console.error("[authBootstrap] start phase missing params", { clientId, scope, channelId });
+    showStatusInRoot("Missing required params (clientId, scope, channelId).");
     return;
   }
 
   const codeVerifier = generateCodeVerifier();
   const codeChallenge = await generateCodeChallenge(codeVerifier);
   const state = generateRandomString(32);
+  // Strip query/hash so the redirect_uri exactly matches what's registered.
   const redirectUri = window.location.origin + window.location.pathname;
 
   const pending: PendingAuth = { clientId, tenantId, scope, channelId, codeVerifier, state, redirectUri };
@@ -119,15 +119,16 @@ async function startPhase(): Promise<void> {
   authorize.searchParams.set("state", state);
   authorize.searchParams.set("prompt", "select_account");
 
-  console.log("[auth-redirect] phase A -> redirecting to AAD");
+  console.log("[authBootstrap] phase A -> redirecting to AAD");
+  showStatusInRoot("Redirecting to Microsoft sign-in…");
   window.location.replace(authorize.toString());
 }
 
 async function callbackPhase(hashParams: URLSearchParams): Promise<void> {
   const raw = sessionStorage.getItem(SS_KEY);
   if (!raw) {
-    console.error("[auth-redirect] callback with no pending auth in sessionStorage");
-    document.body.textContent = "No pending auth state. Close this window and try again.";
+    console.error("[authBootstrap] callback with no pending auth in sessionStorage");
+    showStatusInRoot("No pending auth state. Close this window and try again.");
     return;
   }
   const pending = JSON.parse(raw) as PendingAuth;
@@ -137,9 +138,9 @@ async function callbackPhase(hashParams: URLSearchParams): Promise<void> {
   if (error) {
     const desc = hashParams.get("error_description") || "";
     const friendly = friendlyAuthError(error, desc);
-    console.error("[auth-redirect] AAD returned error", { error, desc });
+    console.error("[authBootstrap] AAD returned error", { error, desc });
     broadcast(pending.channelId, { type: "error", message: friendly, code: error });
-    document.body.textContent = `Sign-in error: ${friendly}`;
+    showStatusInRoot(`Sign-in error: ${friendly}`);
     closeSelfSoon(1500);
     return;
   }
@@ -183,13 +184,13 @@ async function callbackPhase(hashParams: URLSearchParams): Promise<void> {
     };
     if (!resp.ok || !json.access_token) {
       const friendly = friendlyAuthError(json.error ?? null, json.error_description ?? null);
-      console.error("[auth-redirect] token exchange failed", friendly, json);
+      console.error("[authBootstrap] token exchange failed", friendly, json);
       broadcast(pending.channelId, { type: "error", message: friendly, code: json.error });
-      document.body.textContent = `Token exchange failed: ${friendly}`;
+      showStatusInRoot(`Token exchange failed: ${friendly}`);
       closeSelfSoon(1500);
       return;
     }
-    console.log("[auth-redirect] token acquired, broadcasting to parent");
+    console.log("[authBootstrap] token acquired, broadcasting to parent");
     broadcast(pending.channelId, {
       type: "token",
       accessToken: json.access_token,
@@ -200,31 +201,40 @@ async function callbackPhase(hashParams: URLSearchParams): Promise<void> {
       tenantId: pending.tenantId,
       clientId: pending.clientId,
     });
-    document.body.textContent = "Sign-in complete. You can close this window.";
+    showStatusInRoot("Sign-in complete. You can close this window.");
     closeSelfSoon(1200);
   } catch (e) {
     const msg = (e as Error).message ?? String(e);
-    console.error("[auth-redirect] token request threw", e);
+    console.error("[authBootstrap] token request threw", e);
     broadcast(pending.channelId, { type: "error", message: msg });
     closeSelfSoon(1500);
   }
 }
 
-async function main(): Promise<void> {
-  console.log("[auth-redirect] loaded at", window.location.href);
+/**
+ * Inspects the current URL. If it's an auth-flow popup (start phase or
+ * AAD callback), runs the flow and returns true (caller MUST NOT mount React).
+ * Otherwise returns false and the SPA boots normally.
+ *
+ * Detection criteria:
+ *  - search contains `auth=start`  -> Phase A
+ *  - hash contains `code=` or `error=` and sessionStorage has SS_KEY -> Phase B/C
+ *
+ * The hash check requires SS_KEY presence so a benign `#error=...` someone
+ * accidentally hits in the main app doesn't hijack the boot.
+ */
+export function runAuthIfPending(): boolean {
+  if (typeof window === "undefined") return false;
+  console.log("[authBootstrap] inspect", window.location.href);
   const search = new URLSearchParams(window.location.search);
+  if (search.get("auth") === "start") {
+    void startPhase();
+    return true;
+  }
   const hashParams = parseHashParams(window.location.hash);
-
-  if (search.get("start") === "1") {
-    await startPhase();
-    return;
+  if ((hashParams.has("code") || hashParams.has("error")) && sessionStorage.getItem(SS_KEY)) {
+    void callbackPhase(hashParams);
+    return true;
   }
-  if (hashParams.has("code") || hashParams.has("error")) {
-    await callbackPhase(hashParams);
-    return;
-  }
-  console.warn("[auth-redirect] loaded with no recognized state");
-  document.body.textContent = "Auth redirect page (idle).";
+  return false;
 }
-
-void main();
