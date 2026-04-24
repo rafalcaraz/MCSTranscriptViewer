@@ -1,0 +1,37 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<CanvasApp xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">
+  <Name>msftcsa_mcsconversationviewer_6ae15</Name>
+  <AppVersion>2026-04-24T04:23:25Z</AppVersion>
+  <Status>Ready</Status>
+  <CreatedByClientVersion>0.0.0.0</CreatedByClientVersion>
+  <MinClientVersion>0.0.0.0</MinClientVersion>
+  <Tags>{}</Tags>
+  <IsCdsUpgraded>0</IsCdsUpgraded>
+  <GalleryItemId xsi:nil="true"></GalleryItemId>
+  <BackgroundColor>RGBA(255,255,255,1)</BackgroundColor>
+  <DisplayName>MCS Conversation Viewer</DisplayName>
+  <Description xsi:nil="true"></Description>
+  <CommitMessage xsi:nil="true"></CommitMessage>
+  <Publisher xsi:nil="true"></Publisher>
+  <AuthorizationReferences>[]</AuthorizationReferences>
+  <ConnectionReferences>{"a81fc66b-2715-43a9-81f7-8a7d0a8e4bb5":{"id":"/providers/Microsoft.PowerApps/apis/shared_logicflows","displayName":"Logic flows","iconUri":"https://conn-afd-prod-endpoint-bmc9bqahasf3grgk.b01.azurefd.net/v1.0.1774/1.0.1774.4397/logicflows/icon.png","dataSources":["get_agents"],"dependencies":[],"dependents":[],"parameterHints":{"workflowEntityId":{"value":"012424bf-bf3e-f111-88b5-000d3a34206e"},"workflowDisplayName":{"value":"Get-Agents"},"workflowName":{"value":"f3df8359-22bc-4413-9c6e-a567f758707b"}},"parameterHintsV2":{"workflowEntityId":{"value":"012424bf-bf3e-f111-88b5-000d3a34206e"},"workflowDisplayName":{"value":"Get-Agents"},"workflowName":{"value":"f3df8359-22bc-4413-9c6e-a567f758707b"}},"isOnPremiseConnection":false,"bypassConsent":false,"dataSets":{},"apiTier":"Standard","actions":[]},"69413a0c-5a05-426e-96bc-92f23f8b02e9":{"id":"/providers/Microsoft.PowerApps/apis/shared_logicflows","displayName":"Logic flows","iconUri":"https://conn-afd-prod-endpoint-bmc9bqahasf3grgk.b01.azurefd.net/v1.0.1774/1.0.1774.4397/logicflows/icon.png","dataSources":["get_transcripts"],"dependencies":[],"dependents":[],"parameterHints":{"workflowEntityId":{"value":"3584687a-c03e-f111-88b5-000d3a34206e"},"workflowDisplayName":{"value":"Get-Transcripts"},"workflowName":{"value":"275b4d73-834e-4cdf-a2c1-4988f03548a6"}},"parameterHintsV2":{"workflowEntityId":{"value":"3584687a-c03e-f111-88b5-000d3a34206e"},"workflowDisplayName":{"value":"Get-Transcripts"},"workflowName":{"value":"275b4d73-834e-4cdf-a2c1-4988f03548a6"}},"isOnPremiseConnection":false,"bypassConsent":false,"dataSets":{},"apiTier":"Standard","actions":[]}}</ConnectionReferences>
+  <DatabaseReferences>{"default.cds":{"databaseDetails":{"referenceType":"Environmental","environmentName":"default.cds","overrideValues":{"status":"NotSpecified","environmentVariableName":""}},"dataSources":{"conversationtranscripts":{"entitySetName":"conversationtranscripts","logicalName":"conversationtranscript"},"microsoftentraids":{"entitySetName":"aadusers","logicalName":"aaduser"},"agents":{"entitySetName":"bots","logicalName":"bot"}}}}</DatabaseReferences>
+  <AppComponents>[]</AppComponents>
+  <AppComponentDependencies>[]</AppComponentDependencies>
+  <CanConsumeAppPass>1</CanConsumeAppPass>
+  <CanvasAppType>4</CanvasAppType>
+  <BypassConsent>0</BypassConsent>
+  <AdminControlBypassConsent>0</AdminControlBypassConsent>
+  <EmbeddedApp xsi:nil="true"></EmbeddedApp>
+  <IntroducedVersion>1.0</IntroducedVersion>
+  <CdsDependencies>{"cdsdependencies":[{"dependencyid":"012424bf-bf3e-f111-88b5-000d3a34206e","componenttype":29,"componenttypeplatformname":"Workflow"},{"dependencyid":"3584687a-c03e-f111-88b5-000d3a34206e","componenttype":29,"componenttypeplatformname":"Workflow"},{"logicalname":"conversationtranscript","componenttype":1},{"logicalname":"aaduser","componenttype":1},{"logicalname":"bot","componenttype":1}]}</CdsDependencies>
+  <IsCustomizable>1</IsCustomizable>
+  <CodeAppPackageUris>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/BrowseFlowsWorkspace-BKiEdIvL.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/index-DuJmNpmK.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/index-H6Hi3BVs.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/TranscriptDetail-C_L2lRhh.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/vite.svg_ContentType_image/svg+xml</CodeAppPackageUri>
+  </CodeAppPackageUris>
+</CanvasApp>

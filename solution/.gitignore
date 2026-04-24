@@ -1,0 +1,13 @@
+# Compiled Code App bundle drifts on every `npx power-apps push`.
+# We track the metadata stub (.meta.xml) but ignore the bundle output —
+# the live bundle is sourced from `my-app/dist/` via push, not from git.
+src/CanvasApps/*_CodeAppPackages/
+
+# Packed solution exports (zip artifacts of `pac solution pack`).
+*.zip
+
+# Build output of `npm run solution:pack`.
+out/
+
+# Temp scratch dir for `npm run solution:pull` exports.
+.tmp-pull/
