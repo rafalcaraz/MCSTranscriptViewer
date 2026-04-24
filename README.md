@@ -123,10 +123,6 @@ Append `#t=<conversationtranscriptid>` to the app URL to land directly on a spec
 
 System-aware with manual toggle. Persisted across sessions.
 
-### 📊 Light analytics (optional)
-
-Aggregate stats over the loaded set: total conversations, average turns, average duration, total tool calls, outcome breakdown, channel distribution. *Note: this app is intentionally focused on transcript inspection, not analytics.*
-
 ---
 
 ## Transcript classification
@@ -231,8 +227,6 @@ src/
 │   │   ├── DebugPanel.tsx               # Plan steps, tools, knowledge, connected-agent invocations
 │   │   ├── AdaptiveCardRenderer.tsx     # Lightweight inline renderer
 │   │   └── OrphanReactionItem.tsx       # On-demand cross-transcript reaction lookup
-│   └── Analytics/
-│       └── AnalyticsSummary.tsx         # Aggregate stats
 └── generated/                           # Auto-generated Dataverse service + models
 ```
 
