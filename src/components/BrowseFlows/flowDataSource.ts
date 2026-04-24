@@ -9,6 +9,27 @@
 // Pure helpers (FetchXML builders + error classification) live in
 // `flowHelpers.ts` so they can be unit-tested without pulling in the Power
 // Apps SDK at module load time.
+//
+// ─────────────────────────────────────────────────────────────────────────────
+// FLOW INPUT LEGEND
+// ─────────────────────────────────────────────────────────────────────────────
+// Power Apps codegen turns Power Automate trigger fields into generic names
+// (`text`, `text_6`, `text_7`, …) numbered by creation order — the display
+// names you see in the Power Automate UI are NOT preserved. Document the
+// semantic meaning here whenever a flow is added or its inputs change so the
+// next person doesn't have to crack open the flow JSON to figure it out.
+//
+//   Get_Agents      — generated/models/Get_AgentsModel.ts → ManualTriggerInput
+//     text   : Dataverse environment URL  (e.g. https://orgname.crm.dynamics.com)
+//     text_6 : FetchXML query string      (built by buildAgentsFetchXml)
+//
+//   Get_Transcripts — generated/models/Get_TranscriptsModel.ts → ManualTriggerInput
+//     text   : Dataverse environment URL
+//     text_6 : FetchXML query string      (built by buildTranscriptsFetchXml)
+//
+// To get cleaner names auto-generated, rename the trigger field IDs (not just
+// labels) in the flow JSON, then re-run `npx power-apps refresh-data-source`.
+// ─────────────────────────────────────────────────────────────────────────────
 
 import { Get_AgentsService } from "../../generated/services/Get_AgentsService";
 import { Get_TranscriptsService } from "../../generated/services/Get_TranscriptsService";

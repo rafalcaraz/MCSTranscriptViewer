@@ -155,6 +155,45 @@ User to provide additional transcript samples to discover more activity types, e
 
 ---
 
+### 🛠️ ALM / Repo Hygiene
+
+#### 12. `solution-in-repo` — Add Unpacked Solution to Repo
+**Why:** Today the Dataverse-side artifacts (2 flows: `Get_Agents`, `Get_Transcripts`; 1 connection reference; the Code App component) live only in the maker portal — not in source control. New contributors have no way to provision their own env without manual recreation.
+
+**Plan:**
+- Export the unmanaged solution from maker → `pac solution unpack --zipFile out.zip --folder solution/src --packageType Unmanaged`
+- Commit the unpacked tree under `solution/src/` (Workflows/, Other/, Solution.xml, etc.)
+- `.gitignore` packed `.zip` exports
+- Verify whether the Code App ships as a `.msapp` bundle or just a metadata stub (gitignore the `.msapp` if present — it drifts on every `power-apps push`)
+
+**Bonus:** once unpacked, we can read the actual flow trigger JSON to verify the `text` / `text_6` legend in `flowDataSource.ts` against the source of truth.
+
+#### 13. `code-app-mda-coexistence` — Solve Code App ↔ Solution Coupling
+**Context:** If the solution grows to include a model-driven app that references the Code App, the Code App becomes a hard solution dependency. Need a clean pattern to avoid double-sourcing the compiled bundle.
+
+**Options to evaluate:**
+- **A (recommended starting point):** Single solution, gitignore `CanvasApps/*.msapp`, keep metadata stub. `power-apps push` keeps the live component fresh; MDA reference holds via stub.
+- **B:** Two-solution split — `Infra` (flows + conn ref + MDA) in git, `App` (Code App only) auto-managed by `power-apps push`. Cross-solution reference via publisher prefix.
+- **C:** Pre-commit hook strips `.msapp`, CI repacks before import.
+
+Pick + document once we actually add the MDA.
+
+#### 14. `contributing-md` — Author CONTRIBUTING.md
+**Why:** No onboarding doc today. New contributor would have to reverse-engineer setup.
+
+**Should cover:**
+- Repo layout (`my-app/` Code App vs `solution/` Dataverse artifacts)
+- One-time env setup: `pac solution pack` → import → wire up connection reference → turn on flows
+- Per-dev-cycle: `npm install` → `npx power-apps refresh-data-source` → `npm run dev` (local) or `npx power-apps push` (publish)
+- How to regenerate `src/generated/` after flow signature changes
+- Branching model (main, Dev, demo/* branches)
+- Build/lint/test commands (`npm run build`, `npm run lint`, `npm run test`)
+- How to update the FLOW INPUT LEGEND in `flowDataSource.ts` when adding/changing flows
+
+**Depends on:** `solution-in-repo` (so the steps actually point at real folders).
+
+---
+
 ## 📊 Data Sources Analyzed
 
 | File | Records | Agents | Key Finding |
