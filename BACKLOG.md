@@ -157,16 +157,11 @@ User to provide additional transcript samples to discover more activity types, e
 
 ### 🛠️ ALM / Repo Hygiene
 
-#### 12. `solution-in-repo` — Add Unpacked Solution to Repo
-**Why:** Today the Dataverse-side artifacts (2 flows: `Get_Agents`, `Get_Transcripts`; 1 connection reference; the Code App component) live only in the maker portal — not in source control. New contributors have no way to provision their own env without manual recreation.
+#### 12. `solution-in-repo` — ✅ DONE (April 2026)
 
-**Plan:**
-- Export the unmanaged solution from maker → `pac solution unpack --zipFile out.zip --folder solution/src --packageType Unmanaged`
-- Commit the unpacked tree under `solution/src/` (Workflows/, Other/, Solution.xml, etc.)
-- `.gitignore` packed `.zip` exports
-- Verify whether the Code App ships as a `.msapp` bundle or just a metadata stub (gitignore the `.msapp` if present — it drifts on every `power-apps push`)
+Unpacked solution lives under [`solution/`](./solution/). Tracks 2 flows (`Get-Agents`, `Get-Transcripts`), connection reference (`msftcsa_MCSConvoViewerDataverse`), and the Code App metadata stub. Compiled bundle (`*_CodeAppPackages/`) is gitignored — regenerated on every `power-apps push`. See [`solution/README.md`](./solution/README.md) for pack/unpack workflow.
 
-**Bonus:** once unpacked, we can read the actual flow trigger JSON to verify the `text` / `text_6` legend in `flowDataSource.ts` against the source of truth.
+**Bonus verified:** flow trigger schema confirms our `flowDataSource.ts` legend — `text` is `envUrl`, `text_6` is `fetchXml`.
 
 #### 13. `code-app-mda-coexistence` — Solve Code App ↔ Solution Coupling
 **Context:** If the solution grows to include a model-driven app that references the Code App, the Code App becomes a hard solution dependency. Need a clean pattern to avoid double-sourcing the compiled bundle.
