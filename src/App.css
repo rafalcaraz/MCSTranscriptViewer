@@ -632,41 +632,6 @@ tr[role="button"] {
   line-height: 1.4;
 }
 
-/* ── Analytics ───────────────────────────── */
-.analytics-page { padding: 24px; }
-.analytics-page h1 { font-size: 22px; margin: 0 0 20px; }
-.stats-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
-  margin-bottom: 24px;
-}
-.stat-card {
-  background: var(--bg-primary);
-  border-radius: 8px;
-  padding: 20px;
-  box-shadow: var(--shadow-card);
-}
-.stat-card .big-num {
-  font-size: 28px;
-  font-weight: 700;
-  color: var(--color-primary);
-}
-.stat-card .stat-label {
-  font-size: 12px;
-  color: var(--text-tertiary);
-  margin-top: 2px;
-}
-.analytics-section { margin-bottom: 24px; }
-.analytics-section h2 {
-  font-size: 16px;
-  margin: 0 0 12px;
-  padding-bottom: 8px;
-  border-bottom: 1px solid var(--border-subtle);
-}
-.badge-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; }
-.badge-row .count { font-weight: 600; font-size: 14px; }
-
 /* ── Sync Highlights ──────────────────────── */
 .message-row.active .msg-bubble.highlighted {
   outline: 2px solid var(--color-primary);

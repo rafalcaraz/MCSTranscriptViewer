@@ -6,14 +6,11 @@ import { TranscriptList } from "./components/TranscriptList/TranscriptList";
 import { INITIAL_FILTER_STATE, type ListFilterState } from "./state/listFilters";
 import "./App.css";
 
-// Code-split the detail and analytics views — they are heavy (DebugPanel, MessageTimeline,
+// Code-split the detail and BrowseFlows views — they are heavy (DebugPanel, MessageTimeline,
 // PDF/HTML exporters) and not needed for the initial list render. Vite emits a separate
 // chunk for each that loads on first navigation and is then cached.
 const TranscriptDetail = lazy(() =>
   import("./components/TranscriptDetail/TranscriptDetail").then((m) => ({ default: m.TranscriptDetail })),
-);
-const AnalyticsSummary = lazy(() =>
-  import("./components/Analytics/AnalyticsSummary").then((m) => ({ default: m.AnalyticsSummary })),
 );
 const BrowseFlowsWorkspace = lazy(() =>
   import("./components/BrowseFlows/BrowseFlowsWorkspace").then((m) => ({
@@ -27,7 +24,7 @@ const LazyFallback = ({ label }: { label: string }) => (
   </div>
 );
 
-type View = "list" | "detail" | "analytics" | "browseflows";
+type View = "list" | "detail" | "browseflows";
 
 const DEFAULT_PAGE_SIZE = 50;
 
@@ -140,12 +137,6 @@ function App() {
           Transcripts
         </button>
         <button
-          className={`tab-btn ${view === "analytics" ? "active" : ""}`}
-          onClick={() => setView("analytics")}
-        >
-          Analytics
-        </button>
-        <button
           className={`tab-btn ${view === "browseflows" ? "active" : ""}`}
           onClick={() => setView("browseflows")}
           title="Browse transcripts from any environment using Power Automate flows — no MSAL sign-in required"
@@ -172,11 +163,6 @@ function App() {
             onFilterStateChange={setListFilters}
             accessibleBots={accessibleBots}
           />
-        )}
-        {view === "analytics" && (
-          <Suspense fallback={<LazyFallback label="Loading analytics..." />}>
-            <AnalyticsSummary transcripts={transcripts} />
-          </Suspense>
         )}
         {view === "browseflows" && (
           <Suspense fallback={<LazyFallback label="Loading Browse via Flows..." />}>
