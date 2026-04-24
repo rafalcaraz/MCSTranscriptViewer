@@ -26,6 +26,7 @@ import type { TranscriptFilters } from "../../hooks/useTranscripts";
 import { useFilteredTranscripts } from "../../hooks/useFilteredTranscripts";
 import { createFlowLookupsImpl, useFlowTranscripts } from "./flowHooks";
 import { validateEnvViaFlow } from "./flowDataSource";
+import type { FlowErrorCategory, FlowErrorDetails } from "./flowDataSource";
 
 const TranscriptDetail = lazy(() =>
   import("../TranscriptDetail/TranscriptDetail").then((m) => ({ default: m.TranscriptDetail })),
@@ -38,7 +39,12 @@ type ValidateStatus =
   | { kind: "untested" }
   | { kind: "validating" }
   | { kind: "valid"; agentCount: number }
-  | { kind: "error"; message: string };
+  | {
+      kind: "error";
+      category: FlowErrorCategory;
+      message: string;
+      details: FlowErrorDetails;
+    };
 
 // ── Styles (inline, reusing CSS vars from the existing app theme) ────
 
@@ -52,6 +58,117 @@ const inputStyle: CSSProperties = {
   color: "var(--color-text, #222)",
   minWidth: 320,
   boxSizing: "border-box",
+};
+
+// ── Error theme: distinct visuals per failure category ───────────────
+//
+// Operators reading these on screen need to distinguish *at a glance*:
+//   - flow_failure       → red, "fix the flow"
+//   - permission_denied  → blue, "you don't have access" (not actionable from
+//                          the app — they need rights granted in target env)
+//   - query_error        → amber, "our query is wrong" (escalate, fix code)
+//   - downstream_other   → orange, "downstream service failed in an
+//                          unrecognized way"
+//   - parse_error        → purple, "flow output schema drifted"
+const ERROR_THEME: Record<
+  FlowErrorCategory,
+  {
+    badgeIcon: string;
+    badgeLabel: string;
+    badgeColor: string;
+    cardBg: string;
+    cardBorder: string;
+    cardText: string;
+    title: string;
+    subtitle: string;
+    hints: string[];
+  }
+> = {
+  flow_failure: {
+    badgeIcon: "🔴",
+    badgeLabel: "Flow failed",
+    badgeColor: "var(--color-error, #c00)",
+    cardBg: "var(--color-error-bg, #fee2e2)",
+    cardBorder: "var(--color-error-border, #fca5a5)",
+    cardText: "var(--color-error, #900)",
+    title: "Flow failed to run",
+    subtitle:
+      "The Power Automate flow itself never produced a successful response. " +
+      "This points at the flow definition, its connections, or the gateway.",
+    hints: [
+      "Open Power Automate → flow → Run history. If you see no new run for this attempt, the gateway rejected the request before invocation.",
+      "Re-authorize the flow's Dataverse connection (it may have expired).",
+      "Verify the connection reference IDs in power.config.json still match the deployed flow's workflow GUIDs.",
+      "Re-run `npx power-apps push` after editing the flow definition.",
+    ],
+  },
+  permission_denied: {
+    badgeIcon: "🔒",
+    badgeLabel: "Access denied",
+    badgeColor: "#1d4ed8",
+    cardBg: "#dbeafe",
+    cardBorder: "#93c5fd",
+    cardText: "#1e3a8a",
+    title: "Access denied in the target environment",
+    subtitle:
+      "The flow ran fine, but the identity it uses to call Dataverse doesn't " +
+      "have read permission on this table in the target environment. Nothing " +
+      "to fix in the app — get rights granted (or use a different env).",
+    hints: [
+      "Have an environment admin grant read perms on the bot / conversationtranscript tables for the user that owns the flow's Dataverse connection.",
+      "Or pick a different environment URL where you do have access.",
+    ],
+  },
+  query_error: {
+    badgeIcon: "🐛",
+    badgeLabel: "Query bug",
+    badgeColor: "#b07a00",
+    cardBg: "#fef9c3",
+    cardBorder: "#fde047",
+    cardText: "#713f12",
+    title: "Bad query — likely a bug in the app",
+    subtitle:
+      "The flow ran fine, but Dataverse rejected the query we sent. This is " +
+      "almost always a bug in the FetchXML we constructed (wrong attribute " +
+      "name, illegal combination of FetchXML attributes, etc.). Escalate.",
+    hints: [
+      "Check the message below for the exact attribute / clause Dataverse complained about.",
+      "Compare against the FetchXML built in flowDataSource.ts (buildAgentsFetchXml / buildTranscriptsFetchXml).",
+    ],
+  },
+  downstream_other: {
+    badgeIcon: "⚠️",
+    badgeLabel: "Downstream error",
+    badgeColor: "#c2410c",
+    cardBg: "#ffedd5",
+    cardBorder: "#fdba74",
+    cardText: "#7c2d12",
+    title: "Downstream service returned an unexpected error",
+    subtitle:
+      "The flow ran fine, but Dataverse (or the service the flow called) " +
+      "responded with an error that doesn't fit the usual permission/query " +
+      "patterns. Could be transient (5xx) or an unrecognized failure shape.",
+    hints: [
+      "Retry — if it was transient (5xx) the next attempt may succeed.",
+      "If it persists, expand 'Raw payload' below and share with engineering.",
+    ],
+  },
+  parse_error: {
+    badgeIcon: "🟣",
+    badgeLabel: "Flow output unparseable",
+    badgeColor: "#7c3aed",
+    cardBg: "#ede9fe",
+    cardBorder: "#c4b5fd",
+    cardText: "#4c1d95",
+    title: "Flow returned 200, but its output couldn't be parsed",
+    subtitle:
+      "The flow finished without an `errordetails` value, but the `valuejson` " +
+      "field wasn't valid JSON. The flow's output schema may have drifted.",
+    hints: [
+      "Open the flow and verify the final 'Respond to PowerApp' action returns valuejson as a string.",
+      "After re-saving the flow, run `npx power-apps refresh-data-source get_agents` (and get_transcripts) to re-sync the typed model.",
+    ],
+  },
 };
 
 // ── Top-level workspace ──────────────────────────────────────────────
@@ -70,7 +187,12 @@ export function BrowseFlowsWorkspace() {
       setStatus({ kind: "valid", agentCount: result.agentCount });
       setValidatedUrl(url);
     } else {
-      setStatus({ kind: "error", message: result.error ?? "Unknown error" });
+      setStatus({
+        kind: "error",
+        category: result.category,
+        message: result.message,
+        details: result.details,
+      });
       setValidatedUrl(null);
     }
   }, [inputUrl]);
@@ -97,8 +219,8 @@ export function BrowseFlowsWorkspace() {
         );
       case "error":
         return (
-          <span style={{ color: "var(--color-error, #c00)", fontSize: 13 }}>
-            ❌ {status.message}
+          <span style={{ color: ERROR_THEME[status.category].badgeColor, fontSize: 13 }}>
+            {ERROR_THEME[status.category].badgeIcon} {ERROR_THEME[status.category].badgeLabel}
           </span>
         );
     }
@@ -148,41 +270,7 @@ export function BrowseFlowsWorkspace() {
           flow&apos;s Dataverse connection handles authentication.
         </p>
         {urlBar}
-        {status.kind === "error" && (
-          <div
-            style={{
-              marginTop: 16,
-              padding: 14,
-              background: "var(--color-error-bg, #fee2e2)",
-              borderRadius: 6,
-              color: "var(--color-error, #900)",
-              fontSize: 13,
-              border: "1px solid var(--color-error-border, #fca5a5)",
-            }}
-          >
-            <strong>Connection failed</strong>
-            <br />
-            {status.message}
-            <br />
-            <br />
-            <em>Common causes:</em>
-            <ul style={{ margin: "4px 0 0 0", paddingLeft: 20 }}>
-              <li>
-                The flow&apos;s Dataverse connection needs re-authorization in
-                Power Automate
-              </li>
-              <li>
-                Your account lacks read permission on the{" "}
-                <code>bot</code> or <code>conversationtranscript</code> tables
-                in the target environment
-              </li>
-              <li>
-                The environment URL format is incorrect (expected:
-                https://orgname.crm.dynamics.com)
-              </li>
-            </ul>
-          </div>
-        )}
+        {status.kind === "error" && <ErrorCard status={status} />}
       </div>
     );
   }
@@ -195,6 +283,114 @@ export function BrowseFlowsWorkspace() {
       envUrl={validatedUrl}
       headerLeading={urlBar}
     />
+  );
+}
+
+// ── ErrorCard: category-aware status panel ───────────────────────────
+
+function ErrorCard({
+  status,
+}: {
+  status: {
+    kind: "error";
+    category: FlowErrorCategory;
+    message: string;
+    details: FlowErrorDetails;
+  };
+}) {
+  const theme = ERROR_THEME[status.category];
+  const { details } = status;
+  const hasInner =
+    details.innerStatusCode != null ||
+    details.innerErrorCode != null ||
+    details.innerErrorMessage != null;
+
+  return (
+    <div
+      style={{
+        marginTop: 16,
+        padding: 14,
+        background: theme.cardBg,
+        borderRadius: 6,
+        color: theme.cardText,
+        fontSize: 13,
+        border: `1px solid ${theme.cardBorder}`,
+      }}
+    >
+      <div style={{ fontWeight: 700, fontSize: 14, marginBottom: 4 }}>
+        {theme.badgeIcon} {theme.title}
+      </div>
+      <div style={{ opacity: 0.85, marginBottom: 10 }}>{theme.subtitle}</div>
+
+      <div
+        style={{
+          background: "rgba(0,0,0,0.06)",
+          padding: "8px 10px",
+          borderRadius: 4,
+          fontFamily: "ui-monospace, SFMono-Regular, Menlo, monospace",
+          fontSize: 12,
+          marginBottom: 10,
+          wordBreak: "break-word",
+        }}
+      >
+        {status.message}
+      </div>
+
+      {hasInner && (
+        <div style={{ marginBottom: 10, fontSize: 12 }}>
+          <strong>Downstream details:</strong>
+          <ul style={{ margin: "4px 0 0 0", paddingLeft: 20 }}>
+            {details.innerStatusCode != null && (
+              <li>
+                Status: <code>{details.innerStatusCode}</code>
+              </li>
+            )}
+            {details.innerErrorCode && (
+              <li>
+                Error code: <code>{details.innerErrorCode}</code>
+              </li>
+            )}
+            {details.innerErrorMessage && (
+              <li>
+                Message: <code>{details.innerErrorMessage}</code>
+              </li>
+            )}
+          </ul>
+        </div>
+      )}
+
+      <div>
+        <em>What to try:</em>
+        <ul style={{ margin: "4px 0 0 0", paddingLeft: 20 }}>
+          {theme.hints.map((h, i) => (
+            <li key={i}>{h}</li>
+          ))}
+        </ul>
+      </div>
+
+      {details.raw && (
+        <details style={{ marginTop: 10 }}>
+          <summary style={{ cursor: "pointer", fontSize: 12, opacity: 0.75 }}>
+            Raw payload
+          </summary>
+          <pre
+            style={{
+              marginTop: 6,
+              padding: 8,
+              background: "rgba(0,0,0,0.06)",
+              borderRadius: 4,
+              fontSize: 11,
+              maxHeight: 240,
+              overflow: "auto",
+              whiteSpace: "pre-wrap",
+              wordBreak: "break-word",
+            }}
+          >
+            {details.raw}
+          </pre>
+        </details>
+      )}
+    </div>
   );
 }
 

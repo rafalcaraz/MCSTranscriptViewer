@@ -29,11 +29,6 @@ export const Botscomponentstate = {
   3: 'DeletedUnpublished'
 } as const;
 export type Botscomponentstate = keyof typeof Botscomponentstate;
-export const Botsismanaged = {
-  0: 'Unmanaged',
-  1: 'Managed'
-} as const;
-export type Botsismanaged = keyof typeof Botsismanaged;
 export const Botslanguage = {
   1033: 'English',
   1034: 'Spanish',
@@ -64,7 +59,8 @@ export const Botslanguage = {
   21514: 'Spanish_UnitedStates_',
   3081: 'English_Australia_',
   1037: 'Hebrew',
-  2070: 'Portuguese_Portugal_'
+  2070: 'Portuguese_Portugal_',
+  20490: 'Spanish_PuertoRico_'
 } as const;
 export type Botslanguage = keyof typeof Botslanguage;
 export const Botsruntimeprovider = {
@@ -115,7 +111,8 @@ export const Botssupportedlanguages = {
   21514: 'Spanish_UnitedStates_',
   3081: 'English_Australia_',
   1037: 'Hebrew',
-  2070: 'Portuguese_Portugal_'
+  2070: 'Portuguese_Portugal_',
+  20490: 'Spanish_PuertoRico_'
 } as const;
 export type Botssupportedlanguages = keyof typeof Botssupportedlanguages;
 
@@ -129,7 +126,7 @@ export interface BotsBase {
   botid: string;
   configuration?: string;
   iconbase64?: string;
-  importsequencenumber?: string;
+  importsequencenumber?: number;
   iscustomizable: string;
   language: Botslanguage;
   name?: string;
@@ -144,11 +141,11 @@ export interface BotsBase {
   schemaname: string;
   statecode: Botsstatecode;
   statuscode?: Botsstatuscode;
-  supportedlanguages?: Botssupportedlanguages;
+  supportedlanguages?: Botssupportedlanguages[];
   synchronizationstatus?: string;
   template?: string;
-  timezoneruleversionnumber?: string;
-  utcconversiontimezonecode?: string;
+  timezoneruleversionnumber?: number;
+  utcconversiontimezonecode?: number;
 }
 
 export interface Bots extends BotsBase {
@@ -163,7 +160,7 @@ export interface Bots extends BotsBase {
   createdon?: string;
   createdonbehalfbyname?: string;
   createdonbehalfbyyominame: string;
-  ismanaged: Botsismanaged;
+  ismanaged: boolean;
   ismanagedname?: string;
   languagename?: string;
   modifiedbyname?: string;
@@ -184,7 +181,7 @@ export interface Bots extends BotsBase {
   statuscodename?: string;
   supportedlanguagesname?: string;
   supportingsolutionid?: string;
-  versionnumber?: string;
+  versionnumber?: number;
   createdby?: object;
   _createdby_value?: string;
   createdonbehalfby?: object;
