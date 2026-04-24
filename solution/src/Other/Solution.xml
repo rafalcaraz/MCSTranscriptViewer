@@ -1,0 +1,118 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<ImportExportXml version="9.2.26033.174" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26033.174" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26033.00179">
+  <SolutionManifest>
+    <UniqueName>ConvTranscriptViewerCodeApps</UniqueName>
+    <LocalizedNames>
+      <LocalizedName description="Conv Transcript Viewer - CodeApps" languagecode="1033" />
+    </LocalizedNames>
+    <Descriptions />
+    <Version>1.0.0.9</Version>
+    <Managed>0</Managed>
+    <Publisher>
+      <UniqueName>MicrosoftCSA</UniqueName>
+      <LocalizedNames>
+        <LocalizedName description="Microsoft CSA" languagecode="1033" />
+      </LocalizedNames>
+      <Descriptions />
+      <EMailAddress xsi:nil="true"></EMailAddress>
+      <SupportingWebsiteUrl xsi:nil="true"></SupportingWebsiteUrl>
+      <CustomizationPrefix>msftcsa</CustomizationPrefix>
+      <CustomizationOptionValuePrefix>32173</CustomizationOptionValuePrefix>
+      <Addresses>
+        <Address>
+          <AddressNumber>1</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+        <Address>
+          <AddressNumber>2</AddressNumber>
+          <AddressTypeCode>1</AddressTypeCode>
+          <City xsi:nil="true"></City>
+          <County xsi:nil="true"></County>
+          <Country xsi:nil="true"></Country>
+          <Fax xsi:nil="true"></Fax>
+          <FreightTermsCode xsi:nil="true"></FreightTermsCode>
+          <ImportSequenceNumber xsi:nil="true"></ImportSequenceNumber>
+          <Latitude xsi:nil="true"></Latitude>
+          <Line1 xsi:nil="true"></Line1>
+          <Line2 xsi:nil="true"></Line2>
+          <Line3 xsi:nil="true"></Line3>
+          <Longitude xsi:nil="true"></Longitude>
+          <Name xsi:nil="true"></Name>
+          <PostalCode xsi:nil="true"></PostalCode>
+          <PostOfficeBox xsi:nil="true"></PostOfficeBox>
+          <PrimaryContactName xsi:nil="true"></PrimaryContactName>
+          <ShippingMethodCode>1</ShippingMethodCode>
+          <StateOrProvince xsi:nil="true"></StateOrProvince>
+          <Telephone1 xsi:nil="true"></Telephone1>
+          <Telephone2 xsi:nil="true"></Telephone2>
+          <Telephone3 xsi:nil="true"></Telephone3>
+          <TimeZoneRuleVersionNumber xsi:nil="true"></TimeZoneRuleVersionNumber>
+          <UPSZone xsi:nil="true"></UPSZone>
+          <UTCOffset xsi:nil="true"></UTCOffset>
+          <UTCConversionTimeZoneCode xsi:nil="true"></UTCConversionTimeZoneCode>
+        </Address>
+      </Addresses>
+    </Publisher>
+    <RootComponents>
+      <RootComponent type="29" id="{012424bf-bf3e-f111-88b5-000d3a34206e}" behavior="0" />
+      <RootComponent type="29" id="{3584687a-c03e-f111-88b5-000d3a34206e}" behavior="0" />
+      <RootComponent type="300" schemaName="msftcsa_mcsconversationviewer_6ae15" behavior="0" />
+    </RootComponents>
+    <MissingDependencies>
+      <MissingDependency>
+        <Required type="1" schemaName="aaduser" displayName="Microsoft Entra ID" solution="MetadataExtension (1.0.2.117)">
+          <package appName="Data Modeling Extensions Package" version="1.0.0.34">msft_AsyncAttributeMetadataApp (1.0.0.34)</package>
+        </Required>
+        <Dependent type="300" schemaName="msftcsa_mcsconversationviewer_6ae15" displayName="MCS Conversation Viewer" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="1" schemaName="bot" displayName="Agent" solution="PowerVirtualAgents (2026.2.4.19561674)">
+          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        </Required>
+        <Dependent type="29" displayName="Get-Agents" id="{012424bf-bf3e-f111-88b5-000d3a34206e}" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="1" schemaName="bot" displayName="Agent" solution="PowerVirtualAgents (2026.2.4.19561674)">
+          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        </Required>
+        <Dependent type="300" schemaName="msftcsa_mcsconversationviewer_6ae15" displayName="MCS Conversation Viewer" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="1" schemaName="conversationtranscript" displayName="ConversationTranscript" solution="PowerVirtualAgentsCommon (2026.2.4.19561674)">
+          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        </Required>
+        <Dependent type="29" displayName="Get-Transcripts" id="{3584687a-c03e-f111-88b5-000d3a34206e}" />
+      </MissingDependency>
+      <MissingDependency>
+        <Required type="1" schemaName="conversationtranscript" displayName="ConversationTranscript" solution="PowerVirtualAgentsCommon (2026.2.4.19561674)">
+          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        </Required>
+        <Dependent type="300" schemaName="msftcsa_mcsconversationviewer_6ae15" displayName="MCS Conversation Viewer" />
+      </MissingDependency>
+    </MissingDependencies>
+  </SolutionManifest>
+</ImportExportXml>

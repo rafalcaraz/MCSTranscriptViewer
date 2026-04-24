@@ -195,6 +195,10 @@ npm run build
 
 Output goes to `./dist` — publish via `pac code push` or the Power Apps maker portal.
 
+### 6. (Optional) Provision the Dataverse side from source
+
+The flows + connection reference + Code App stub are tracked under [`solution/`](./solution/) as an unpacked Power Platform solution. Pack and import to provision a fresh environment, then `npx power-apps push` to populate the Code App. See [`solution/README.md`](./solution/README.md) for the full pack/unpack workflow and first-time setup steps.
+
 ---
 
 ## Architecture

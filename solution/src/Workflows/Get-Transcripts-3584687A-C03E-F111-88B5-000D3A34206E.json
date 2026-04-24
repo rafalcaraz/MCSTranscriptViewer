@@ -1,0 +1,169 @@
+{
+  "properties": {
+    "connectionReferences": {
+      "shared_commondataserviceforapps": {
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        },
+        "connection": {
+          "connectionReferenceLogicalName": "msftcsa_MCSConvoViewerDataverse"
+        },
+        "runtimeSource": "embedded"
+      }
+    },
+    "definition": {
+      "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
+      "contentVersion": "1.0.0.0",
+      "parameters": {
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
+        },
+        "$connections": {
+          "defaultValue": {},
+          "type": "Object"
+        }
+      },
+      "triggers": {
+        "manual": {
+          "type": "Request",
+          "kind": "PowerAppV2",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "text": {
+                  "title": "envUrl",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "Please enter your input",
+                  "x-ms-content-hint": "TEXT"
+                },
+                "text_6": {
+                  "title": "fetchXml",
+                  "type": "string",
+                  "x-ms-dynamically-added": true,
+                  "description": "Please enter your input",
+                  "x-ms-content-hint": "TEXT"
+                }
+              },
+              "required": [
+                "text",
+                "text_6"
+              ]
+            }
+          },
+          "metadata": {
+            "operationMetadataId": "9505766d-ff2c-4509-835b-c69781387733"
+          }
+        }
+      },
+      "actions": {
+        "Respond_to_a_Power_App_or_flow": {
+          "type": "Response",
+          "kind": "PowerApp",
+          "inputs": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "valuejson": {
+                  "title": "valueJson",
+                  "x-ms-dynamically-added": true,
+                  "type": "string"
+                },
+                "nextlink": {
+                  "title": "nextLink",
+                  "x-ms-dynamically-added": true,
+                  "type": "string"
+                },
+                "count": {
+                  "title": "count",
+                  "x-ms-dynamically-added": true,
+                  "type": "number"
+                },
+                "errordetails": {
+                  "title": "errorDetails",
+                  "type": "string",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
+                }
+              },
+              "additionalProperties": {}
+            },
+            "statusCode": 200,
+            "body": {
+              "valuejson": "@{if(equals(variables('errorDetails'),''),string(outputs('List_rows')?['body']?['value']),'')}",
+              "nextlink": "@{if(equals(variables('errorDetails'),''),coalesce(outputs('List_rows')?['body']?['@odata.nextLink'], ''),'')}",
+              "count": "@if(equals(variables('errorDetails'),''),length(outputs('List_rows')?['body']?['value']),-1)",
+              "errordetails": "@{variables('errorDetails')}"
+            }
+          },
+          "runAfter": {
+            "Set_variable": [
+              "Succeeded",
+              "Skipped"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "2fc300ea-6b58-4fc5-9d8f-c47fea802b96"
+          }
+        },
+        "Init_var_-_errorDetails": {
+          "type": "InitializeVariable",
+          "inputs": {
+            "variables": [
+              {
+                "name": "errorDetails",
+                "type": "string"
+              }
+            ]
+          },
+          "runAfter": {}
+        },
+        "Try": {
+          "type": "Scope",
+          "actions": {
+            "List_Rows": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "organization": "@triggerBody()['text']",
+                  "entityName": "conversationtranscripts",
+                  "fetchXml": "@triggerBody()?['text_6']"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                  "operationId": "ListRecordsWithOrganization",
+                  "connectionName": "shared_commondataserviceforapps"
+                }
+              },
+              "metadata": {
+                "operationMetadataId": "2206face-7648-4c57-bfd0-a54e6bd354d3"
+              }
+            }
+          },
+          "runAfter": {
+            "Init_var_-_errorDetails": [
+              "Succeeded"
+            ]
+          }
+        },
+        "Set_variable": {
+          "type": "SetVariable",
+          "inputs": {
+            "name": "errorDetails",
+            "value": "@string(outputs('List_Rows'))"
+          },
+          "runAfter": {
+            "Try": [
+              "Failed",
+              "TimedOut"
+            ]
+          }
+        }
+      }
+    },
+    "templateName": null
+  },
+  "schemaVersion": "1.0.0.0"
+}
