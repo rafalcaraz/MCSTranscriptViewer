@@ -144,10 +144,35 @@ async function main() {
   log(`Packing ${packageType.toLowerCase()} solution`);
   mkdirSync(solutionOut, { recursive: true });
   rmSync(zipPath, { force: true });
-  const relZip = path.relative(repoRoot, zipPath).split(path.sep).join("/");
-  run(
-    `pac solution pack --folder solution/src --zipFile "${relZip}" --packageType ${packageType}`,
+
+  // pac solution pack reads <Managed> from Solution.xml and refuses to produce
+  // a zip whose type doesn't match. Flip it for the duration of the pack, then
+  // restore — keeps the source-of-truth Solution.xml as Unmanaged in git.
+  const solutionXmlPath = path.join(solutionSrc, "Other", "Solution.xml");
+  const originalSolutionXml = readFileSync(solutionXmlPath, "utf8");
+  const wantManagedFlag = packageType === "Managed" ? "1" : "0";
+  const flipped = originalSolutionXml.replace(
+    /<Managed>[01]<\/Managed>/,
+    `<Managed>${wantManagedFlag}</Managed>`,
   );
+  if (flipped === originalSolutionXml && !originalSolutionXml.includes(`<Managed>${wantManagedFlag}</Managed>`)) {
+    throw new Error(`Could not locate <Managed>...</Managed> in ${solutionXmlPath}`);
+  }
+  writeFileSync(solutionXmlPath, flipped, "utf8");
+
+  const relZip = path.relative(repoRoot, zipPath).split(path.sep).join("/");
+  try {
+    run(
+      `pac solution pack --folder solution/src --zipFile "${relZip}" --packageType ${packageType}`,
+    );
+  } finally {
+    writeFileSync(solutionXmlPath, originalSolutionXml, "utf8");
+  }
+
+  // pac sometimes exits 0 even when it refuses to produce the zip — verify.
+  await stat(zipPath).catch(() => {
+    throw new Error(`pac solution pack reported success but ${path.relative(repoRoot, zipPath)} was not created. Scroll up for the pac error.`);
+  });
 
   log("Done");
   console.log(`  📦 ${relZip}`);
