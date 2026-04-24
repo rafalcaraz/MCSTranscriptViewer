@@ -11,7 +11,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "solution:pack": "node scripts/pack-solution.mjs",
-    "solution:pack:managed": "node scripts/pack-solution.mjs --managed"
+    "solution:pack:managed": "node scripts/pack-solution.mjs --managed",
+    "solution:pull": "node scripts/pull-solution.mjs"
   },
   "dependencies": {
     "@microsoft/power-apps": "^1.1.1",
