@@ -1,5 +1,6 @@
-import { useState, useCallback, useEffect, lazy, Suspense } from "react";
+import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
 import { useTranscripts, useTranscript, type TranscriptFilters } from "./hooks/useTranscripts";
+import { useFilteredTranscripts } from "./hooks/useFilteredTranscripts";
 import { useBotLookup } from "./hooks/useLookups";
 import { TranscriptList } from "./components/TranscriptList/TranscriptList";
 import { INITIAL_FILTER_STATE, type ListFilterState } from "./state/listFilters";
@@ -71,12 +72,18 @@ function App() {
   }, []);
 
   const { accessibleBots, ready: botsReady } = useBotLookup();
+  const accessibleSchemaNames = useMemo(
+    () => new Set(accessibleBots.map((b) => b.schemaName).filter(Boolean) as string[]),
+    [accessibleBots],
+  );
 
   const [filters, setFilters] = useState<TranscriptFilters>({
     pageSize: DEFAULT_PAGE_SIZE,
   });
 
-  const { transcripts, loading, error, hasMore, totalLoaded, loadMore } = useTranscripts(filters);
+  const rawPage = useTranscripts(filters);
+  const { transcripts, loading, error, hasMore, totalLoaded, loadMore } =
+    useFilteredTranscripts(rawPage, accessibleSchemaNames, botsReady, DEFAULT_PAGE_SIZE);
   const { transcript, loading: detailLoading } = useTranscript(selectedId);
 
   const handleSelect = (id: string) => {
