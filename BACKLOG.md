@@ -187,6 +187,31 @@ Pick + document once we actually add the MDA.
 
 **Depends on:** `solution-in-repo` (so the steps actually point at real folders).
 
+#### 15. `code-app-template-extraction` — Extract Reusable Code App Boilerplate
+
+**Why:** The patterns we built for this project (unpacked solution-in-repo, `solution:pack` / `:pack:managed` / `:pull` scripts, flow contract tests driven by unpacked workflow JSON, FLOW INPUT LEGEND comment block) are project-agnostic — they apply to **any** Power Apps Code App + Dataverse solution. Today they're hardcoded to this repo's app/solution names. Worth extracting once we have a second project to validate the abstraction.
+
+**Reusable assets to extract:**
+- `scripts/pack-solution.mjs` — generalize: read app logical name + solution unique name from `power.config.json` (or a new `solution.config.json`) instead of hardcoded constants
+- `scripts/pull-solution.mjs` — same generalization
+- `solution/.gitignore` — already generic, copy as-is
+- `solution/README.md` — templatize the placeholders (solution name, conn ref name, flow names)
+- `package.json` script aliases (`solution:pack` / `:pack:managed` / `:pull`)
+- The "ground-truth contract testing" pattern: mock generated services with `vi.hoisted()`, assert against the actual unpacked flow JSON envelope (see `src/test/flowDataSource.contract.test.ts`)
+- The FLOW INPUT LEGEND convention (see `src/components/BrowseFlows/flowDataSource.ts:13-32`) — codegen strips Power Automate UI titles, so document the `text` / `text_6` mappings inline
+
+**Possible extraction targets:**
+- A `create-power-code-app` npx scaffold (long-term)
+- A separate `microsoft/power-code-app-template` repo (medium-term)
+- A doc/blog post + GitHub gist linking back to specific files in this repo (short-term, lowest effort)
+
+**Pitfall to remember:** Vite's content-hashed filenames + `<CodeAppPackageUris>` in `.meta.xml` need re-syncing on every pack — that's the entire point of `pack-solution.mjs`. A naïve template that just copies `dist/` into the solution will produce zips that import but render a blank page.
+
+**Other findings worth carrying over (not just code):**
+- `npx power-apps push` (NOT `pac code push`) is the working publish path for Code Apps as of 2026-04
+- `BotsService.ts` codegen has a TS2352 issue that needs re-patching after every `power-apps refresh-data-source` (see KNOWLEDGE.md)
+- Connection refs in solution exports carry env-specific `workflowName` GUIDs that drift on every flow republish — managed-import behavior across envs is still untested
+
 ---
 
 ## 📊 Data Sources Analyzed
