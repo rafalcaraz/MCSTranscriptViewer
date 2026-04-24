@@ -44,6 +44,26 @@ This app pulls directly from the `conversationtranscript` Dataverse table and re
 - **AAD User column**: resolves user GUIDs to display names via the Dataverse `aaduser` virtual table
 - **Hide connected-agent sub-sessions** (default: on) — keeps the list focused on real user-driven conversations rather than internal child-agent invocations
 
+### 🧪 Browse via Flows — cross-environment browsing (Preview / Experimental)
+
+> **⚠️ Preview.** This tab is experimental. The happy path works end-to-end, but more stress testing and validation is needed before it should be relied on day-to-day.
+
+The default **Transcript List** above is bound to the single Dataverse environment this Code App is deployed into. The **Browse via Flows** tab is an alternative path that lets you point the *same* app at any environment URL you have access to, so one deployed app can serve multiple environments instead of having to publish a per-environment copy.
+
+How it works:
+- Two Power Automate flows do the Dataverse work on your behalf — `Get-Agents` (validates the env URL and lists bots you can see) and `Get-Transcripts` (paged FetchXML query for transcripts).
+- The app calls the flows with the env URL you type in; results are rendered with the same list/filter UI.
+- AAD user resolution reuses the deployed env's `aadusers` lookup (the `aaduser` virtual table is tenant-wide, so no extra flow is needed).
+- Errors are surfaced with semantic categories so you can tell at a glance whether the **flow itself failed**, you **don't have permission** in the target env, the **query was malformed**, or the **downstream service** complained.
+
+Known gaps / what still needs validation:
+- **Environment picker UX** — currently a free-text URL field; needs a real picker (recents, validation, friendly names).
+- More stress testing across orgs of different sizes, slow networks, and large transcript volumes.
+- End-to-end behavioral parity with the default tab (filters, paging edge cases, deep-linking).
+- Flow-side hardening (rate limits, error envelopes, retries).
+
+The intent: **one app, many environments** — without giving up the debug-first detail view that makes this tool useful in the first place.
+
 ### 🔍 Transcript Detail — debug + timeline, side by side
 
 Two-pane layout designed for "what happened and why":
