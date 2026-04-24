@@ -8,3 +8,6 @@ src/CanvasApps/*_CodeAppPackages/
 
 # Build output of `npm run solution:pack`.
 out/
+
+# Temp scratch dir for `npm run solution:pull` exports.
+.tmp-pull/
