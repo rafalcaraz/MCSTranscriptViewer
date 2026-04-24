@@ -8,8 +8,12 @@ export * as AadusersModel from './models/AadusersModel';
 export * as BotsModel from './models/BotsModel';
 export * as CommonModels from './models/CommonModels';
 export * as ConversationtranscriptsModel from './models/ConversationtranscriptsModel';
+export * as Get_AgentsModel from './models/Get_AgentsModel';
+export * as Get_TranscriptsModel from './models/Get_TranscriptsModel';
 
 // Services
 export * from './services/AadusersService';
 export * from './services/BotsService';
 export * from './services/ConversationtranscriptsService';
+export * from './services/Get_AgentsService';
+export * from './services/Get_TranscriptsService';

@@ -8,6 +8,7 @@ import type { GetEntityMetadataOptions, EntityMetadata } from '@microsoft/power-
 import type { IGetOptions, IGetAllOptions } from '../models/CommonModels';
 import type { IOperationResult } from '@microsoft/power-apps/data';
 import { dataSourcesInfo } from '../../../.power/schemas/appschemas/dataSourcesInfo';
+import { deserializeMultiSelectPicklistFields, serializeMultiSelectPicklistFields } from '@microsoft/power-apps/data';
 import { getClient } from '@microsoft/power-apps/data';
 
 
@@ -15,36 +16,46 @@ export class BotsService {
   private static readonly dataSourceName = 'bots';
 
   private static readonly client = getClient(dataSourcesInfo);
+  private static readonly multiSelectPicklistFields = ['supportedlanguages'] as const;
 
   public static async create(record: Omit<BotsBase, 'botid'>): Promise<IOperationResult<Bots>> {
-    const result = await BotsService.client.createRecordAsync<Omit<BotsBase, 'botid'>, Bots>(
+    const result = await BotsService.client.createRecordAsync<Record<string, unknown>, Bots>(
       BotsService.dataSourceName,
-      record
+      serializeMultiSelectPicklistFields(record as Record<string, unknown>, BotsService.multiSelectPicklistFields)
     );
+    if (result.data) {
+      deserializeMultiSelectPicklistFields(result.data as unknown as Record<string, unknown>, BotsService.multiSelectPicklistFields);
+    }
     return result;
   }
 
   public static async update(id: string, changedFields: Partial<Omit<BotsBase, 'botid'>>): Promise<IOperationResult<Bots>> {
-    const result = await BotsService.client.updateRecordAsync<Partial<Omit<BotsBase, 'botid'>>, Bots>(
+    const result = await BotsService.client.updateRecordAsync<Record<string, unknown>, Bots>(
       BotsService.dataSourceName,
-      id.toString(),
-      changedFields
+      id,
+      serializeMultiSelectPicklistFields(changedFields as Record<string, unknown>, BotsService.multiSelectPicklistFields)
     );
+    if (result.data) {
+      deserializeMultiSelectPicklistFields(result.data as unknown as Record<string, unknown>, BotsService.multiSelectPicklistFields);
+    }
     return result;
   }
 
   public static async delete(id: string): Promise<void> {
     await BotsService.client.deleteRecordAsync(
       BotsService.dataSourceName,
-      id.toString());
+      id);
   }
 
   public static async get(id: string, options?: IGetOptions): Promise<IOperationResult<Bots>> {
     const result = await BotsService.client.retrieveRecordAsync<Bots>(
       BotsService.dataSourceName,
-      id.toString(),
+      id,
       options
     );
+    if (result.data) {
+      deserializeMultiSelectPicklistFields(result.data as unknown as Record<string, unknown>, BotsService.multiSelectPicklistFields);
+    }
     return result;
   }
 
@@ -53,6 +64,7 @@ export class BotsService {
       BotsService.dataSourceName,
       options
     );
+    result.data?.forEach(record => deserializeMultiSelectPicklistFields(record as unknown as Record<string, unknown>, BotsService.multiSelectPicklistFields));
     return result;
   }
 

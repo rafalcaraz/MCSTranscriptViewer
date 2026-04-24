@@ -9,7 +9,32 @@
   "buildEntryPoint": "index.html",
   "localAppUrl": "http://localhost:3000",
   "logoPath": "Default",
-  "connectionReferences": {},
+  "connectionReferences": {
+    "a81fc66b-2715-43a9-81f7-8a7d0a8e4bb5": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+      "displayName": "Logic flows",
+      "dataSources": [
+        "get_agents"
+      ],
+      "workflowDetails": {
+        "workflowEntityId": "012424bf-bf3e-f111-88b5-000d3a34206e",
+        "workflowDisplayName": "Get-Agents",
+        "workflowName": "bda2df2b-763c-7573-aff3-c0cf855029dc"
+      }
+    },
+    "69413a0c-5a05-426e-96bc-92f23f8b02e9": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
+      "displayName": "Logic flows",
+      "dataSources": [
+        "get_transcripts"
+      ],
+      "workflowDetails": {
+        "workflowEntityId": "3584687a-c03e-f111-88b5-000d3a34206e",
+        "workflowDisplayName": "Get-Transcripts",
+        "workflowName": "2944b2e1-51b6-1603-b8c2-d6f2d5ab9b49"
+      }
+    }
+  },
   "databaseReferences": {
     "default.cds": {
       "dataSources": {
