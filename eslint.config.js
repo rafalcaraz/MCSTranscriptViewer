@@ -25,6 +25,8 @@ export default defineConfig([
       // Refactoring to satisfy them risks behavior regressions; disable globally for now.
       'react-hooks/set-state-in-effect': 'off',
       'react-hooks/purity': 'off',
+      // Allow underscore-prefixed unused params (intentional API stubs / interface conformance).
+      '@typescript-eslint/no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
     },
   },
 ])

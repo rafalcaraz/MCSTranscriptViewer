@@ -8,6 +8,13 @@
 // Important: each provider boundary is a fresh React subtree. We rely on
 // callers to remount (via `key`) when switching env so per-instance hook state
 // stays consistent.
+//
+// Note: this file intentionally co-locates the Provider component, consumer
+// hooks, types, and the default impl constant so call sites only need a single
+// import. That trips react-refresh/only-export-components (HMR works best when
+// a file exports ONLY components), but since we don't rely on fast-refresh of
+// this lookup wiring during development, we accept the trade-off.
+/* eslint-disable react-refresh/only-export-components */
 
 import { createContext, useContext, type ReactNode } from "react";
 import {

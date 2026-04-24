@@ -366,7 +366,7 @@ export async function fetchAgentsViaFlow(
 
   if (!result.success) {
     const msg = result.error?.message ?? "Get-Agents flow returned an error";
-    // eslint-disable-next-line no-console
+     
     console.warn("[BrowseFlows] Get-Agents !success", { result });
     throw new FlowError(
       `Flow invocation failed: ${msg}`,
@@ -378,7 +378,7 @@ export async function fetchAgentsViaFlow(
 
   const flowErr = extractFlowErrorDetails(result.data);
   if (flowErr) {
-    // eslint-disable-next-line no-console
+     
     console.warn("[BrowseFlows] Get-Agents errordetails", { flowErr, data: result.data });
     throw downstreamFlowError(flowErr, "agents");
   }
@@ -413,7 +413,7 @@ export async function fetchTranscriptsPageViaFlow(
 
   if (!result.success) {
     const msg = result.error?.message ?? "Get-Transcripts flow returned an error";
-    // eslint-disable-next-line no-console
+     
     console.warn("[BrowseFlows] Get-Transcripts !success", { result });
     throw new FlowError(
       `Flow invocation failed: ${msg}`,
@@ -425,7 +425,7 @@ export async function fetchTranscriptsPageViaFlow(
 
   const flowErr = extractFlowErrorDetails(result.data);
   if (flowErr) {
-    // eslint-disable-next-line no-console
+     
     console.warn("[BrowseFlows] Get-Transcripts errordetails", { flowErr, data: result.data });
     throw downstreamFlowError(flowErr, "transcripts");
   }
