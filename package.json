@@ -9,7 +9,8 @@
     "lint": "eslint .",
     "preview": "vite preview",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "solution:pack": "node scripts/pack-solution.mjs"
   },
   "dependencies": {
     "@microsoft/power-apps": "^1.1.1",

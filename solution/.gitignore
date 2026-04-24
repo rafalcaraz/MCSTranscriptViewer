@@ -5,3 +5,6 @@ src/CanvasApps/*_CodeAppPackages/
 
 # Packed solution exports (zip artifacts of `pac solution pack`).
 *.zip
+
+# Build output of `npm run solution:pack`.
+out/
