@@ -23,7 +23,8 @@ Use this when a contributor wants to take a fresh clone and produce a working so
 ```powershell
 cd my-app
 npm install
-npm run solution:pack
+npm run solution:pack            # → ConvTranscriptViewerCodeApps_unmanaged_<MMDDYY_HHMM>.zip
+npm run solution:pack:managed    # → ConvTranscriptViewerCodeApps_managed_<MMDDYY_HHMM>.zip
 ```
 
 What it does (see [`scripts/pack-solution.mjs`](../scripts/pack-solution.mjs)):
@@ -31,7 +32,7 @@ What it does (see [`scripts/pack-solution.mjs`](../scripts/pack-solution.mjs)):
 1. `npm run build` → `dist/`
 2. Mirrors `dist/` into `solution/src/CanvasApps/<app>_CodeAppPackages/`
 3. Regenerates the `<CodeAppPackageUris>` block in the Code App's `.meta.xml` so it references the freshly-hashed bundle filenames
-4. `pac solution pack ... --packageType Unmanaged` → `solution/out/ConvTranscriptViewerCodeApps.zip`
+4. `pac solution pack ... --packageType Unmanaged` (or `Managed` if you pass `--managed`) → `solution/out/ConvTranscriptViewerCodeApps_<type>_<MMDDYY_HHMM>.zip`
 
 Output zip is **self-contained**: it bundles the compiled Code App alongside the two cloud flows and the connection reference. Import it into a fresh Dataverse env and the app works end-to-end after wiring the connection + turning on the flows.
 

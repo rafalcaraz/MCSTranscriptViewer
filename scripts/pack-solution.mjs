@@ -24,12 +24,22 @@ const repoRoot = path.resolve(__dirname, "..");
 const APP_NAME = "msftcsa_mcsconversationviewer_6ae15";
 const SOLUTION_NAME = "ConvTranscriptViewerCodeApps";
 
+// CLI: --managed (default: unmanaged)
+const args = process.argv.slice(2);
+const packageType = args.includes("--managed") ? "Managed" : "Unmanaged";
+
+// Timestamp suffix: _MMDDYY_HHMM (local time)
+const now = new Date();
+const pad = (n) => String(n).padStart(2, "0");
+const stamp = `${pad(now.getMonth() + 1)}${pad(now.getDate())}${String(now.getFullYear()).slice(-2)}_${pad(now.getHours())}${pad(now.getMinutes())}`;
+const zipName = `${SOLUTION_NAME}_${packageType.toLowerCase()}_${stamp}.zip`;
+
 const distDir = path.join(repoRoot, "dist");
 const solutionSrc = path.join(repoRoot, "solution", "src");
 const solutionOut = path.join(repoRoot, "solution", "out");
 const bundleDir = path.join(solutionSrc, "CanvasApps", `${APP_NAME}_CodeAppPackages`);
 const metaXmlPath = path.join(solutionSrc, "CanvasApps", `${APP_NAME}.meta.xml`);
-const zipPath = path.join(solutionOut, `${SOLUTION_NAME}.zip`);
+const zipPath = path.join(solutionOut, zipName);
 
 const MIME_BY_EXT = {
   ".html": "text/html",
@@ -131,12 +141,12 @@ async function main() {
   log("Regenerating <CodeAppPackageUris> in meta.xml");
   await regenerateMetaXml();
 
-  log("Packing unmanaged solution");
+  log(`Packing ${packageType.toLowerCase()} solution`);
   mkdirSync(solutionOut, { recursive: true });
   rmSync(zipPath, { force: true });
   const relZip = path.relative(repoRoot, zipPath).split(path.sep).join("/");
   run(
-    `pac solution pack --folder solution/src --zipFile "${relZip}" --packageType Unmanaged`,
+    `pac solution pack --folder solution/src --zipFile "${relZip}" --packageType ${packageType}`,
   );
 
   log("Done");
