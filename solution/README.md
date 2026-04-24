@@ -16,19 +16,37 @@ The solution name (in maker) is **`ConvTranscriptViewerCodeApps`** (logical: `co
 
 ---
 
-## 🔄 Pack ↔ Unpack workflow
+## 🔄 Build a self-contained unmanaged zip (from source)
 
-### Pack (commit local changes → import zip)
+Use this when a contributor wants to take a fresh clone and produce a working solution zip — no `npx power-apps push` required.
 
 ```powershell
 cd my-app
+npm install
+npm run solution:pack
+```
+
+What it does (see [`scripts/pack-solution.mjs`](../scripts/pack-solution.mjs)):
+
+1. `npm run build` → `dist/`
+2. Mirrors `dist/` into `solution/src/CanvasApps/<app>_CodeAppPackages/`
+3. Regenerates the `<CodeAppPackageUris>` block in the Code App's `.meta.xml` so it references the freshly-hashed bundle filenames
+4. `pac solution pack ... --packageType Unmanaged` → `solution/out/ConvTranscriptViewerCodeApps.zip`
+
+Output zip is **self-contained**: it bundles the compiled Code App alongside the two cloud flows and the connection reference. Import it into a fresh Dataverse env and the app works end-to-end after wiring the connection + turning on the flows.
+
+> **Note:** `solution:pack` rewrites the `.meta.xml` `<CodeAppPackageUris>` block to match the current build's content-hashed filenames. Expect a `.meta.xml` diff after each pack — that's normal.
+
+### Manual pack (if you don't want to rebuild)
+
+```powershell
 pac solution pack `
   --folder solution\src `
   --zipFile solution\out\ConvTranscriptViewerCodeApps.zip `
   --packageType Unmanaged
 ```
 
-Then import the resulting zip via maker portal *or*:
+Then import via maker portal *or*:
 
 ```powershell
 pac solution import --path solution\out\ConvTranscriptViewerCodeApps.zip
@@ -63,14 +81,10 @@ The codegen for `src/generated/services/Get_AgentsService.ts` and `Get_Transcrip
 
 ## 🆕 First-time env setup (new contributor)
 
-1. Pack and import the solution (commands above)
-2. In maker → **Connection References**, set `msftcsa_MCSConvoViewerDataverse` to your Dataverse connection
-3. In maker → **Cloud flows**, **turn on** both `Get-Agents` and `Get-Transcripts`
-4. Switch to `my-app/` and run:
-   ```powershell
-   npm install
-   npx power-apps refresh-data-source   # regenerates src/generated/ against your env
-   npx power-apps push                  # publishes the Code App bundle into the imported solution
-   ```
+1. `npm install && npm run solution:pack` — produces `solution/out/ConvTranscriptViewerCodeApps.zip`
+2. `pac solution import --path solution\out\ConvTranscriptViewerCodeApps.zip`
+3. In maker → **Connection References**, set `msftcsa_MCSConvoViewerDataverse` to your Dataverse connection
+4. In maker → **Cloud flows**, **turn on** both `Get-Agents` and `Get-Transcripts`
+5. (Only if you'll iterate on the React app locally) `npx power-apps refresh-data-source` to regenerate `src/generated/` against your env, then `npm run dev` / `npx power-apps push`
 
 See the root [`README.md`](../README.md) for ongoing dev workflow.

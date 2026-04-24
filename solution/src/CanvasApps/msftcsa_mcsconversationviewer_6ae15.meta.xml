@@ -28,10 +28,10 @@
   <IsCustomizable>1</IsCustomizable>
   <CodeAppPackageUris>
     <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/index.html_ContentType_text/html</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/BrowseFlowsWorkspace-B4Wisker.js_ContentType_application/javascript</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/TranscriptDetail-GhHxlooP.js_ContentType_application/javascript</CodeAppPackageUri>
-    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/index-D8k6TTQD.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/BrowseFlowsWorkspace-DYSz-LQg.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/index-H6Hi3BVs.css_ContentType_text/css</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/index-m452AaX4.js_ContentType_application/javascript</CodeAppPackageUri>
+    <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/assets/TranscriptDetail-BbLfnG54.js_ContentType_application/javascript</CodeAppPackageUri>
     <CodeAppPackageUri>/CanvasApps/msftcsa_mcsconversationviewer_6ae15_CodeAppPackages/vite.svg_ContentType_image/svg+xml</CodeAppPackageUri>
   </CodeAppPackageUris>
 </CanvasApp>
