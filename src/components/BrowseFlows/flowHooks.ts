@@ -14,12 +14,16 @@ import type {
   UserDisplayResult,
   UserSearchResult,
 } from "../../context/LookupsContext";
-import type { AadUser, BotInfo } from "../../hooks/useLookups";
+import type { BotInfo } from "../../hooks/useLookups";
 import {
   fetchAgentsViaFlow,
   fetchTranscriptsPageViaFlow,
   FlowError,
 } from "./flowDataSource";
+import {
+  useUserDisplayNames as useDefaultEnvUserDisplayNames,
+  useAadUserSearch as useDefaultEnvAadUserSearch,
+} from "../../hooks/useLookups";
 import type { DataverseTranscriptRecord } from "../../utils/parseTranscript";
 
 function errMessage(e: unknown): string {
@@ -90,33 +94,23 @@ export function useFlowBotLookup(envUrl: string): BotLookupResult {
 
 // ── User display names ───────────────────────────────────────────────
 
-// TODO: Wire up a Get-AadUser flow when one is available. Making one flow call
-// per unique AAD object id would be too chatty. For v1, return the raw id so
-// the UI still renders without blank names.
+// The `aadusers` Dataverse table is tenant-wide — its rows are the same
+// regardless of which environment a transcript came from. So we delegate
+// to the default-env hook, which already queries that table via the
+// generated AadusersService. No flow needed.
 export function useFlowUserDisplayNames(
   _envUrl: string,
-  _aadObjectIds: string[],
+  aadObjectIds: string[],
 ): UserDisplayResult {
-  const getDisplayName = useCallback((id: string | undefined): string => {
-    if (!id) return "Anonymous";
-    return id;
-  }, []);
-  return { getDisplayName };
+  return useDefaultEnvUserDisplayNames(aadObjectIds);
 }
 
 // ── User search ──────────────────────────────────────────────────────
 
-// TODO: Wire up a Get-AadUsers flow when available. For v1, the "Find by User"
-// typeahead is a no-op in the Browse via Flows tab.
+// Same reasoning as useFlowUserDisplayNames: aadusers is tenant-scoped,
+// so the typeahead works against the default-env Dataverse connection.
 export function useFlowAadUserSearch(_envUrl: string): UserSearchResult {
-  const search = useCallback((_query: string) => {
-    // no-op — see TODO above
-  }, []);
-  return {
-    results: [] as AadUser[],
-    loading: false,
-    search,
-  };
+  return useDefaultEnvAadUserSearch();
 }
 
 // ── Transcripts ──────────────────────────────────────────────────────

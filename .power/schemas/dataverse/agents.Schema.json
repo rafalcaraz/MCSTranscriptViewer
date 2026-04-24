@@ -366,7 +366,8 @@
             "Spanish (United States)",
             "English (Australia)",
             "Hebrew",
-            "Portuguese (Portugal)"
+            "Portuguese (Portugal)",
+            "Spanish (Puerto Rico)"
           ],
           "x-ms-enum-values": [
             1033,
@@ -398,9 +399,11 @@
             21514,
             3081,
             1037,
-            2070
+            2070,
+            20490
           ],
           "Color": [
+            null,
             null,
             null,
             null,
@@ -816,7 +819,8 @@
             "Spanish (United States)",
             "English (Australia)",
             "Hebrew",
-            "Portuguese (Portugal)"
+            "Portuguese (Portugal)",
+            "Spanish (Puerto Rico)"
           ],
           "x-ms-enum-values": [
             1033,
@@ -848,9 +852,11 @@
             21514,
             3081,
             1037,
-            2070
+            2070,
+            20490
           ],
           "Color": [
+            null,
             null,
             null,
             null,
