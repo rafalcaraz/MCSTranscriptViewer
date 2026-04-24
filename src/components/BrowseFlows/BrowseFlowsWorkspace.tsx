@@ -32,7 +32,7 @@ const TranscriptDetail = lazy(() =>
   import("../TranscriptDetail/TranscriptDetail").then((m) => ({ default: m.TranscriptDetail })),
 );
 
-const DEFAULT_ENV_URL = "https://ralop-prov.crm.dynamics.com";
+const DEFAULT_ENV_URL = "https://ORGNAME.crm.dynamics.com";
 const DEFAULT_PAGE_SIZE = 50;
 
 type ValidateStatus =

@@ -6,7 +6,7 @@
  * the caller — including the `@odata.context` annotation that contains the
  * full instance URL, e.g.:
  *
- *   "@odata.context": "https://ralop-prov.crm.dynamics.com/api/data/v9.2/$metadata#conversationtranscripts/$entity"
+ *   "@odata.context": "https://ORGNAME.crm.dynamics.com/api/data/v9.2/$metadata#conversationtranscripts/$entity"
  *
  * We grab that the first time we see it and cache it in localStorage so the
  * link is available even before the next single-record fetch.
@@ -16,7 +16,7 @@ const STORAGE_KEY = "mcsViewer.dataverseOrgUrl";
 
 let cached: string | null = null;
 
-/** Returns the cached Dataverse org URL (e.g. "https://ralop-prov.crm.dynamics.com"), or null. */
+/** Returns the cached Dataverse org URL (e.g. "https://ORGNAME.crm.dynamics.com"), or null. */
 export function getDataverseOrgUrl(): string | null {
   if (cached) return cached;
   try {
