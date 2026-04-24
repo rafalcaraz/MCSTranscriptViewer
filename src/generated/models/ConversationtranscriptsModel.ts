@@ -18,7 +18,7 @@ export interface ConversationtranscriptsBase {
   content: string;
   conversationstarttime: string;
   conversationtranscriptid: string;
-  importsequencenumber?: string;
+  importsequencenumber?: number;
   metadata?: string;
   name?: string;
   overriddencreatedon?: string;
@@ -28,8 +28,8 @@ export interface ConversationtranscriptsBase {
   schemaversion?: string;
   statecode: Conversationtranscriptsstatecode;
   statuscode?: Conversationtranscriptsstatuscode;
-  timezoneruleversionnumber?: string;
-  utcconversiontimezonecode?: string;
+  timezoneruleversionnumber?: number;
+  utcconversiontimezonecode?: number;
 }
 
 export interface Conversationtranscripts extends ConversationtranscriptsBase {
@@ -49,7 +49,7 @@ export interface Conversationtranscripts extends ConversationtranscriptsBase {
   owningbusinessunitname: string;
   statecodename?: string;
   statuscodename?: string;
-  versionnumber?: string;
+  versionnumber?: number;
   bot_conversationtranscriptid?: object;
   _bot_conversationtranscriptid_value?: string;
   createdby?: object;

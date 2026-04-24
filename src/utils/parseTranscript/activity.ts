@@ -213,14 +213,23 @@ export function parseActivity(raw: RawActivity): ParsedActivity {
         stepId: string;
         planIdentifier: string;
         taskDialogId: string;
-        observation?: { content?: { text?: string }[] };
+        observation?: { content?: unknown };
         executionTime?: string;
         state?: string;
       };
-      const obsText = v.observation?.content
-        ?.filter((c) => c.text)
-        .map((c) => c.text)
-        .join("\n") ?? "";
+      // observation.content shape varies — typically Array<{text?: string}>,
+      // but some transcripts (e.g. failed steps, plain-text observations)
+      // emit it as a string or other shape. Be defensive.
+      const obsRaw = v.observation?.content;
+      let obsText = "";
+      if (Array.isArray(obsRaw)) {
+        obsText = obsRaw
+          .map((c) => (typeof c === "string" ? c : (c as { text?: string })?.text))
+          .filter((s): s is string => !!s)
+          .join("\n");
+      } else if (typeof obsRaw === "string") {
+        obsText = obsRaw;
+      }
       parsed.planStep = {
         planIdentifier: v.planIdentifier,
         stepId: v.stepId,

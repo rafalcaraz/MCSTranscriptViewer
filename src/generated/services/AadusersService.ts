@@ -27,7 +27,7 @@ export class AadusersService {
   public static async update(id: string, changedFields: Partial<Omit<Aadusers, 'aaduserid'>>): Promise<IOperationResult<Aadusers>> {
     const result = await AadusersService.client.updateRecordAsync<Partial<Omit<Aadusers, 'aaduserid'>>, Aadusers>(
       AadusersService.dataSourceName,
-      id.toString(),
+      id,
       changedFields
     );
     return result;
@@ -36,13 +36,13 @@ export class AadusersService {
   public static async delete(id: string): Promise<void> {
     await AadusersService.client.deleteRecordAsync(
       AadusersService.dataSourceName,
-      id.toString());
+      id);
   }
 
   public static async get(id: string, options?: IGetOptions): Promise<IOperationResult<Aadusers>> {
     const result = await AadusersService.client.retrieveRecordAsync<Aadusers>(
       AadusersService.dataSourceName,
-      id.toString(),
+      id,
       options
     );
     return result;
