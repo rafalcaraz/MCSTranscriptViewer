@@ -1,0 +1,105 @@
+name: E2E (Playwright)
+
+# Manual trigger only — the saved auth state expires (typically 24h to a
+# few weeks depending on tenant policy), so unattended runs would just go
+# red the moment cookies expire. Run on demand from the Actions tab.
+#
+# To enable nightly runs, uncomment the schedule block below. Pair with a
+# weekly calendar reminder to refresh the secrets via:
+#   1. npm run e2e:setup (and :setup:limited)
+#   2. npm run ci:encode-auth
+#   3. paste each into Settings → Secrets and variables → Actions
+
+on:
+  workflow_dispatch:
+    inputs:
+      project:
+        description: "Which Playwright project(s) to run"
+        type: choice
+        default: "all"
+        options:
+          - all
+          - smoke
+          - stress
+          - rbac
+  # schedule:
+  #   - cron: "0 7 * * *"   # 7am UTC = midnight PT, daily
+
+concurrency:
+  group: e2e-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  e2e:
+    name: Playwright e2e
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: "22"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Playwright browsers
+        run: npx playwright install --with-deps chromium
+
+      - name: Decode auth state from secrets
+        env:
+          PW_AUTH_ADMIN: ${{ secrets.PW_AUTH_ADMIN }}
+          PW_AUTH_LIMITED: ${{ secrets.PW_AUTH_LIMITED }}
+          PW_E2E_ENV: ${{ secrets.PW_E2E_ENV }}
+        run: |
+          mkdir -p e2e/.auth
+          if [ -n "$PW_AUTH_ADMIN" ]; then
+            echo "$PW_AUTH_ADMIN" | base64 -d > e2e/.auth/admin.json
+            echo "✅ Decoded admin.json"
+          else
+            echo "❌ PW_AUTH_ADMIN secret not set" >&2
+            exit 1
+          fi
+          if [ -n "$PW_AUTH_LIMITED" ]; then
+            echo "$PW_AUTH_LIMITED" | base64 -d > e2e/.auth/limited.json
+            echo "✅ Decoded limited.json"
+          else
+            echo "⚠️  PW_AUTH_LIMITED not set — limited-persona tests will fail"
+          fi
+          if [ -n "$PW_E2E_ENV" ]; then
+            echo "$PW_E2E_ENV" | base64 -d > e2e/.env
+            echo "✅ Decoded e2e/.env"
+          else
+            echo "⚠️  PW_E2E_ENV not set — TEST_ENV_URL-gated tests will skip"
+          fi
+
+      - name: Run Playwright (${{ inputs.project }})
+        run: |
+          case "${{ inputs.project }}" in
+            smoke)  npm run e2e:smoke ;;
+            stress) npm run e2e:stress ;;
+            rbac)   npm run e2e:rbac ;;
+            *)      npm run e2e:all ;;
+          esac
+
+      - name: Upload Playwright report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 14
+
+      - name: Upload failure traces
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-traces
+          path: |
+            test-results/
+            ${{ runner.temp }}/mcs-pw-test-results/
+          retention-days: 14

@@ -1,0 +1,7 @@
+# Playwright artifacts
+.auth/
+.env
+.rbac-results.json
+test-results/
+playwright-report/
+playwright/.cache/
