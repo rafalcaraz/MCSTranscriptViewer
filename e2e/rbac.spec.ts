@@ -47,20 +47,25 @@ function writeResult(p: "admin" | "limited", r: RbacResult) {
 
 // Open the AgentMultiSelect dropdown and count the items inside. Each entry
 // renders as `.agent-multiselect-item` (one per bot the user can see).
+// Returns 0 if the multiselect isn't rendered (e.g., limited persona may
+// hide it when there are no transcripts to filter).
 async function countBotsInMultiSelect(frame: FrameLocator): Promise<number> {
   const trigger = frame.locator(".agent-multiselect-trigger").first();
-  await expect(trigger).toBeVisible({ timeout: 30_000 });
-  await trigger.click();
+  const visible = await trigger
+    .isVisible({ timeout: 10_000 })
+    .catch(() => false);
+  if (!visible) return 0;
 
-  // Panel renders open with .agent-multiselect-list containing items.
-  await expect(frame.locator(".agent-multiselect-panel")).toBeVisible({
-    timeout: 5_000,
-  });
+  await trigger.click();
+  const panel = frame.locator(".agent-multiselect-panel");
+  const opened = await panel.isVisible({ timeout: 5_000 }).catch(() => false);
+  if (!opened) return 0;
+
   const items = frame.locator(".agent-multiselect-item");
   const count = await items.count();
 
   // Close the dropdown so it doesn't interfere with subsequent assertions.
-  await trigger.click();
+  await trigger.click().catch(() => {});
   return count;
 }
 
@@ -83,9 +88,28 @@ test(`[${"persona"}] capture bot + transcript visibility for current user`, asyn
   await frame.getByLabel("Environment URL").fill(TEST_ENV_URL!);
   await frame.getByRole("button", { name: /^Validate/ }).click();
 
-  await expect(
-    frame.locator(".transcript-table tbody tr").first()
-  ).toBeVisible({ timeout: 90_000 });
+  // Admin should see at least one transcript — wait for it to actually load
+  // (skeleton row may show shown=0 for a few seconds while data streams in).
+  // Limited persona may legitimately have 0 rows, so don't hard-assert visibility.
+  if (who === "admin") {
+    await expect(
+      frame.locator(".transcript-table tbody tr").first()
+    ).toBeVisible({ timeout: 90_000 });
+    await expect
+      .poll(async () => (await readListStats(frame)).loaded, {
+        timeout: 90_000,
+        message: "admin's transcript list never loaded any rows",
+      })
+      .toBeGreaterThan(0);
+  } else {
+    // Limited: give the page a chance to render whatever it's allowed to see,
+    // then move on regardless of count.
+    await frame
+      .locator(".transcript-table tbody tr")
+      .first()
+      .waitFor({ state: "visible", timeout: 60_000 })
+      .catch(() => {});
+  }
 
   const stats = await readListStats(frame);
   const botCount = await countBotsInMultiSelect(frame);

@@ -7,12 +7,11 @@ export interface ManualTriggerInput {
   // Please enter your input
   text: string;
   // Please enter your input
-  text_6?: string;
+  text_1: string;
 }
 
 export interface ResponseActionOutput {
   valuejson?: string;
-  nextlink?: string;
   count?: number;
   errordetails?: string;
 }

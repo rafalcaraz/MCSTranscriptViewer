@@ -2,30 +2,33 @@
   "properties": {
     "connectionReferences": {
       "shared_commondataserviceforapps": {
-        "api": {
-          "name": "shared_commondataserviceforapps"
-        },
+        "runtimeSource": "embedded",
         "connection": {
           "connectionReferenceLogicalName": "msftcsa_MCSConvoViewerDataverse"
         },
-        "runtimeSource": "embedded"
+        "api": {
+          "name": "shared_commondataserviceforapps"
+        }
       }
     },
     "definition": {
       "$schema": "https://schema.management.azure.com/providers/Microsoft.Logic/schemas/2016-06-01/workflowdefinition.json#",
       "contentVersion": "1.0.0.0",
       "parameters": {
-        "$authentication": {
-          "defaultValue": {},
-          "type": "SecureObject"
-        },
         "$connections": {
           "defaultValue": {},
           "type": "Object"
+        },
+        "$authentication": {
+          "defaultValue": {},
+          "type": "SecureObject"
         }
       },
       "triggers": {
         "manual": {
+          "metadata": {
+            "operationMetadataId": "9505766d-ff2c-4509-835b-c69781387733"
+          },
           "type": "Request",
           "kind": "PowerAppV2",
           "inputs": {
@@ -45,24 +48,45 @@
                   "x-ms-dynamically-added": true,
                   "description": "Please enter your input",
                   "x-ms-content-hint": "TEXT"
+                },
+                "text_1": {
+                  "description": "Please enter your input",
+                  "title": "userEmail",
+                  "type": "string",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
                 }
               },
               "required": [
                 "text",
-                "text_6"
+                "text_6",
+                "text_1"
               ]
             }
-          },
-          "metadata": {
-            "operationMetadataId": "9505766d-ff2c-4509-835b-c69781387733"
           }
         }
       },
       "actions": {
         "Respond_to_a_Power_App_or_flow": {
+          "runAfter": {
+            "Set_variable": [
+              "Succeeded",
+              "Skipped"
+            ]
+          },
+          "metadata": {
+            "operationMetadataId": "2fc300ea-6b58-4fc5-9d8f-c47fea802b96"
+          },
           "type": "Response",
           "kind": "PowerApp",
           "inputs": {
+            "statusCode": 200,
+            "body": {
+              "valuejson": "@{if(equals(variables('errorDetails'),''),string(outputs('List_rows')?['body']?['value']),'')}",
+              "nextlink": "@{if(equals(variables('errorDetails'),''),coalesce(outputs('List_rows')?['body']?['@odata.nextLink'], ''),'')}",
+              "count": "@if(equals(variables('errorDetails'),''),length(outputs('List_rows')?['body']?['value']),-1)",
+              "errordetails": "@{variables('errorDetails')}"
+            },
             "schema": {
               "type": "object",
               "properties": {
@@ -83,32 +107,18 @@
                 },
                 "errordetails": {
                   "title": "errorDetails",
-                  "type": "string",
-                  "x-ms-content-hint": "TEXT",
-                  "x-ms-dynamically-added": true
+                  "x-ms-dynamically-added": true,
+                  "type": "string"
                 }
-              },
-              "additionalProperties": {}
-            },
-            "statusCode": 200,
-            "body": {
-              "valuejson": "@{if(equals(variables('errorDetails'),''),string(outputs('List_rows')?['body']?['value']),'')}",
-              "nextlink": "@{if(equals(variables('errorDetails'),''),coalesce(outputs('List_rows')?['body']?['@odata.nextLink'], ''),'')}",
-              "count": "@if(equals(variables('errorDetails'),''),length(outputs('List_rows')?['body']?['value']),-1)",
-              "errordetails": "@{variables('errorDetails')}"
+              }
             }
-          },
-          "runAfter": {
-            "Set_variable": [
-              "Succeeded",
-              "Skipped"
-            ]
-          },
-          "metadata": {
-            "operationMetadataId": "2fc300ea-6b58-4fc5-9d8f-c47fea802b96"
           }
         },
         "Init_var_-_errorDetails": {
+          "runAfter": {},
+          "metadata": {
+            "operationMetadataId": "5b2cf80b-dd8e-492d-b1ae-6220258e75c6"
+          },
           "type": "InitializeVariable",
           "inputs": {
             "variables": [
@@ -117,53 +127,154 @@
                 "type": "string"
               }
             ]
-          },
-          "runAfter": {}
+          }
         },
         "Try": {
-          "type": "Scope",
           "actions": {
-            "List_Rows": {
+            "Get-User-Roles": {
+              "runAfter": {},
+              "metadata": {
+                "operationMetadataId": "59e60fcb-0fb5-489f-850b-e119c352ff9b"
+              },
               "type": "OpenApiConnection",
               "inputs": {
-                "parameters": {
-                  "organization": "@triggerBody()['text']",
-                  "entityName": "conversationtranscripts",
-                  "fetchXml": "@triggerBody()?['text_6']"
-                },
                 "host": {
-                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                  "connectionName": "shared_commondataserviceforapps",
                   "operationId": "ListRecordsWithOrganization",
-                  "connectionName": "shared_commondataserviceforapps"
-                }
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "organization": "@triggerBody()?['text']",
+                  "entityName": "systemusers",
+                  "fetchXml": "<fetch top=\"1\">\n  <entity name=\"systemuser\">\n    <attribute name=\"systemuserid\" />\n    <attribute name=\"domainname\" />\n    <filter type=\"and\">\n      <condition attribute=\"domainname\" operator=\"eq\" value=\"@{triggerBody()['text_1']}\" />\n      <condition attribute=\"isdisabled\" operator=\"eq\" value=\"0\" />\n    </filter>\n    <link-entity name=\"systemuserroles\" from=\"systemuserid\" to=\"systemuserid\" intersect=\"true\">\n      <link-entity name=\"role\" from=\"roleid\" to=\"roleid\">\n        <link-entity name=\"roleprivileges\" from=\"roleid\" to=\"roleid\" intersect=\"true\">\n          <link-entity name=\"privilege\" from=\"privilegeid\" to=\"privilegeid\">\n            <attribute name=\"name\" />\n            <filter>\n              <condition attribute=\"name\" operator=\"eq\" value=\"prvReadconversationtranscript\" />\n            </filter>\n          </link-entity>\n        </link-entity>\n      </link-entity>\n    </link-entity>\n  </entity>\n</fetch>"
+                },
+                "authentication": "@parameters('$authentication')"
+              }
+            },
+            "Get-Team-Roles": {
+              "runAfter": {
+                "Get-User-Roles": [
+                  "Succeeded"
+                ]
               },
               "metadata": {
-                "operationMetadataId": "2206face-7648-4c57-bfd0-a54e6bd354d3"
+                "operationMetadataId": "d716c3ab-d964-4dcc-af65-92d42093f212"
+              },
+              "type": "OpenApiConnection",
+              "inputs": {
+                "host": {
+                  "connectionName": "shared_commondataserviceforapps",
+                  "operationId": "ListRecordsWithOrganization",
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                },
+                "parameters": {
+                  "organization": "@triggerBody()?['text']",
+                  "entityName": "systemusers",
+                  "fetchXml": "<fetch top=\"1\" distinct=\"true\">\n  <entity name=\"systemuser\">\n    <filter>\n      <condition attribute=\"domainname\" operator=\"eq\" value=\"@{triggerBody()['text_1']}\" />\n      <condition attribute=\"isdisabled\" operator=\"eq\" value=\"0\" />\n    </filter>\n    <link-entity name=\"teammembership\" from=\"systemuserid\" to=\"systemuserid\" intersect=\"true\">\n      <link-entity name=\"team\" from=\"teamid\" to=\"teamid\">\n        <link-entity name=\"teamroles\" from=\"teamid\" to=\"teamid\" intersect=\"true\">\n          <link-entity name=\"role\" from=\"roleid\" to=\"roleid\">\n            <link-entity name=\"roleprivileges\" from=\"roleid\" to=\"roleid\" intersect=\"true\">\n              <link-entity name=\"privilege\" from=\"privilegeid\" to=\"privilegeid\">\n                <attribute name=\"name\" />\n                <filter>\n                  <condition attribute=\"name\" operator=\"eq\" value=\"prvReadconversationtranscript\" />\n                </filter>\n              </link-entity>\n            </link-entity>\n          </link-entity>\n        </link-entity>\n      </link-entity>\n    </link-entity>\n  </entity>\n</fetch>"
+                },
+                "authentication": "@parameters('$authentication')"
               }
+            },
+            "Has-Role": {
+              "runAfter": {
+                "Get-Team-Roles": [
+                  "Succeeded"
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "b0cc9752-5e80-4483-a33d-d50def5d05c6"
+              },
+              "type": "Compose",
+              "inputs": "@or(greater(length(outputs('Get-User-Roles')?['body/value']),0), greater(length(outputs('Get-Team-Roles')?['body/value']),0))"
+            },
+            "Condition": {
+              "actions": {
+                "List_Rows": {
+                  "runAfter": {},
+                  "metadata": {
+                    "operationMetadataId": "2206face-7648-4c57-bfd0-a54e6bd354d3"
+                  },
+                  "type": "OpenApiConnection",
+                  "inputs": {
+                    "host": {
+                      "connectionName": "shared_commondataserviceforapps",
+                      "operationId": "ListRecordsWithOrganization",
+                      "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps"
+                    },
+                    "parameters": {
+                      "organization": "@triggerBody()['text']",
+                      "entityName": "conversationtranscripts",
+                      "fetchXml": "@triggerBody()?['text_6']"
+                    },
+                    "authentication": "@parameters('$authentication')"
+                  }
+                }
+              },
+              "runAfter": {
+                "Has-Role": [
+                  "Succeeded"
+                ]
+              },
+              "else": {
+                "actions": {
+                  "Set-Error-Transcripts": {
+                    "runAfter": {},
+                    "metadata": {
+                      "operationMetadataId": "72154e93-3251-4d71-9e5b-c2cb37ff65a5"
+                    },
+                    "type": "SetVariable",
+                    "inputs": {
+                      "name": "errorDetails",
+                      "value": "User-Has-No-Transcript-Viewer-Role"
+                    }
+                  }
+                }
+              },
+              "expression": {
+                "and": [
+                  {
+                    "equals": [
+                      "@outputs('Has-Role')",
+                      "@true"
+                    ]
+                  }
+                ]
+              },
+              "metadata": {
+                "operationMetadataId": "389a0ab7-f823-4fda-bd49-b0879efd2e06"
+              },
+              "type": "If"
             }
           },
           "runAfter": {
             "Init_var_-_errorDetails": [
               "Succeeded"
             ]
-          }
+          },
+          "metadata": {
+            "operationMetadataId": "816e19ab-895d-44fb-b62b-06ce494e0e89"
+          },
+          "type": "Scope"
         },
         "Set_variable": {
-          "type": "SetVariable",
-          "inputs": {
-            "name": "errorDetails",
-            "value": "@string(outputs('List_Rows'))"
-          },
           "runAfter": {
             "Try": [
               "Failed",
               "TimedOut"
             ]
+          },
+          "metadata": {
+            "operationMetadataId": "8cfdf029-201f-460d-a340-4ba32ac9d06c"
+          },
+          "type": "SetVariable",
+          "inputs": {
+            "name": "errorDetails",
+            "value": "@string(outputs('List_Rows'))"
           }
         }
       }
     },
-    "templateName": null
+    "templateName": ""
   },
   "schemaVersion": "1.0.0.0"
 }

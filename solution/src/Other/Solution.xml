@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<ImportExportXml version="9.2.26033.174" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26033.174" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26033.00179">
+<ImportExportXml version="9.2.26034.189" SolutionPackageVersion="9.2" languagecode="1033" generatedBy="CrmLive" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" OrganizationVersion="9.2.26034.189" OrganizationSchemaType="Standard" CRMServerServiceabilityVersion="9.2.26034.00189">
   <SolutionManifest>
     <UniqueName>ConvTranscriptViewerCodeApps</UniqueName>
     <LocalizedNames>
@@ -90,26 +90,26 @@
         <Dependent type="300" schemaName="msftcsa_mcsconversationviewer_6ae15" displayName="MCS Conversation Viewer" />
       </MissingDependency>
       <MissingDependency>
-        <Required type="1" schemaName="bot" displayName="Agent" solution="PowerVirtualAgents (2026.2.4.19561674)">
-          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        <Required type="1" schemaName="bot" displayName="Agent" solution="PowerVirtualAgents (2026.3.2.19372844)">
+          <package appName="CCI Bots" version="2026.3.2.19372844">msdynce_CustomerCareIntelligenceBots_Anchor (2026.3.2.19372844)</package>
         </Required>
         <Dependent type="29" displayName="Get-Agents" id="{012424bf-bf3e-f111-88b5-000d3a34206e}" />
       </MissingDependency>
       <MissingDependency>
-        <Required type="1" schemaName="bot" displayName="Agent" solution="PowerVirtualAgents (2026.2.4.19561674)">
-          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        <Required type="1" schemaName="bot" displayName="Agent" solution="PowerVirtualAgents (2026.3.2.19372844)">
+          <package appName="CCI Bots" version="2026.3.2.19372844">msdynce_CustomerCareIntelligenceBots_Anchor (2026.3.2.19372844)</package>
         </Required>
         <Dependent type="300" schemaName="msftcsa_mcsconversationviewer_6ae15" displayName="MCS Conversation Viewer" />
       </MissingDependency>
       <MissingDependency>
-        <Required type="1" schemaName="conversationtranscript" displayName="ConversationTranscript" solution="PowerVirtualAgentsCommon (2026.2.4.19561674)">
-          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        <Required type="1" schemaName="conversationtranscript" displayName="ConversationTranscript" solution="PowerVirtualAgentsCommon (2026.3.2.19372844)">
+          <package appName="CCI Bots" version="2026.3.2.19372844">msdynce_CustomerCareIntelligenceBots_Anchor (2026.3.2.19372844)</package>
         </Required>
         <Dependent type="29" displayName="Get-Transcripts" id="{3584687a-c03e-f111-88b5-000d3a34206e}" />
       </MissingDependency>
       <MissingDependency>
-        <Required type="1" schemaName="conversationtranscript" displayName="ConversationTranscript" solution="PowerVirtualAgentsCommon (2026.2.4.19561674)">
-          <package appName="CCI Bots" version="2026.2.4.19561674">msdynce_CustomerCareIntelligenceBots_Anchor (2026.2.4.19561674)</package>
+        <Required type="1" schemaName="conversationtranscript" displayName="ConversationTranscript" solution="PowerVirtualAgentsCommon (2026.3.2.19372844)">
+          <package appName="CCI Bots" version="2026.3.2.19372844">msdynce_CustomerCareIntelligenceBots_Anchor (2026.3.2.19372844)</package>
         </Required>
         <Dependent type="300" schemaName="msftcsa_mcsconversationviewer_6ae15" displayName="MCS Conversation Viewer" />
       </MissingDependency>

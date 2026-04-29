@@ -10,6 +10,7 @@ export * as CommonModels from './models/CommonModels';
 export * as ConversationtranscriptsModel from './models/ConversationtranscriptsModel';
 export * as Get_AgentsModel from './models/Get_AgentsModel';
 export * as Get_TranscriptsModel from './models/Get_TranscriptsModel';
+export * as Office365UsersModel from './models/Office365UsersModel';
 
 // Services
 export * from './services/AadusersService';
@@ -17,3 +18,4 @@ export * from './services/BotsService';
 export * from './services/ConversationtranscriptsService';
 export * from './services/Get_AgentsService';
 export * from './services/Get_TranscriptsService';
+export * from './services/Office365UsersService';

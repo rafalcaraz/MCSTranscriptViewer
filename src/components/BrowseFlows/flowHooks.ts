@@ -101,8 +101,9 @@ export function useFlowBotLookup(envUrl: string): BotLookupResult {
 export function useFlowUserDisplayNames(
   _envUrl: string,
   aadObjectIds: string[],
+  options?: { eager?: boolean },
 ): UserDisplayResult {
-  return useDefaultEnvUserDisplayNames(aadObjectIds);
+  return useDefaultEnvUserDisplayNames(aadObjectIds, options);
 }
 
 // ── User search ──────────────────────────────────────────────────────
@@ -249,7 +250,7 @@ export function useFlowTranscripts(
 export function createFlowLookupsImpl(envUrl: string): LookupsImpl {
   return {
     useBotLookup: () => useFlowBotLookup(envUrl),
-    useUserDisplayNames: (ids) => useFlowUserDisplayNames(envUrl, ids),
+    useUserDisplayNames: (ids, options) => useFlowUserDisplayNames(envUrl, ids, options),
     useAadUserSearch: () => useFlowAadUserSearch(envUrl),
   };
 }

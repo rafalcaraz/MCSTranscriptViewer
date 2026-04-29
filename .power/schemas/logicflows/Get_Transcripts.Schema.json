@@ -87,11 +87,19 @@
               "x-ms-dynamically-added": true,
               "description": "Please enter your input",
               "x-ms-content-hint": "TEXT"
+            },
+            "text_1": {
+              "description": "Please enter your input",
+              "title": "userEmail",
+              "type": "string",
+              "x-ms-content-hint": "TEXT",
+              "x-ms-dynamically-added": true
             }
           },
           "required": [
             "text",
-            "text_6"
+            "text_6",
+            "text_1"
           ]
         },
         "ResponseActionOutput": {

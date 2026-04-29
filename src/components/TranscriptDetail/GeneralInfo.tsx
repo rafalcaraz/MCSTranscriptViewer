@@ -20,7 +20,7 @@ export function GeneralInfo({ transcript }: GeneralInfoProps) {
     () => transcript.userAadObjectId ? [transcript.userAadObjectId] : [],
     [transcript.userAadObjectId]
   );
-  const { getDisplayName: getUserName } = useUserDisplayNames(userIds);
+  const { getDisplayName: getUserName } = useUserDisplayNames(userIds, { eager: true });
 
   const stats = [
     { label: "Agent", value: getDisplayName(transcript.metadata.botName, transcript.metadata.botId) || "—" },

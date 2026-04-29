@@ -2,6 +2,8 @@ import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react
 import { useTranscripts, useTranscript, type TranscriptFilters } from "./hooks/useTranscripts";
 import { useFilteredTranscripts } from "./hooks/useFilteredTranscripts";
 import { useBotLookup } from "./hooks/useLookups";
+import { rbacLog } from "./utils/rbacDebug";
+import { AadusersService } from "./generated/services/AadusersService";
 import { TranscriptList } from "./components/TranscriptList/TranscriptList";
 import { INITIAL_FILTER_STATE, type ListFilterState } from "./state/listFilters";
 import "./App.css";
@@ -49,6 +51,42 @@ function App() {
     document.documentElement.setAttribute("data-theme", darkMode ? "dark" : "light");
     localStorage.setItem("theme", darkMode ? "dark" : "light");
   }, [darkMode]);
+
+  // ── RBAC diagnostic: log identity + sanity check on app load ─────────
+  useEffect(() => {
+    rbacLog("App boot", {
+      url: window.location.href,
+      userAgent: navigator.userAgent,
+      cookiesEnabled: navigator.cookieEnabled,
+      time: new Date().toISOString(),
+    });
+    // Probe Dataverse with a tiny systemusers query to confirm caller identity.
+    // We use AadusersService (already imported) for the bots count probe; for
+    // identity we issue a one-off WhoAmI via the same client by calling getAll
+    // with a top:1 — the response headers expose the calling user via OData.
+    (async () => {
+      try {
+        const t0 = performance.now();
+        const probe = await AadusersService.getAll({ select: ["aaduserid", "userprincipalname", "mail"], maxPageSize: 1 });
+        rbacLog("Dataverse identity probe (aadusers top:1)", {
+          elapsedMs: Math.round(performance.now() - t0),
+          rowCount: (probe.data ?? []).length,
+          firstRow: probe.data?.[0]
+            ? {
+                aaduserid: probe.data[0].aaduserid,
+                userprincipalname: probe.data[0].userprincipalname,
+                mail: probe.data[0].mail,
+              }
+            : null,
+          note: "Confirms the Dataverse client is reachable; not the calling user's UPN.",
+        });
+      } catch (e) {
+        rbacLog("Dataverse identity probe FAILED", {
+          message: e instanceof Error ? e.message : String(e),
+        });
+      }
+    })();
+  }, []);
 
   // Sync view with initial deep-link selectedId (set above) and react to back/forward navigation.
   useEffect(() => {

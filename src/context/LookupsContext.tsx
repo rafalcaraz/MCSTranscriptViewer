@@ -23,6 +23,7 @@ import {
   useUserDisplayNames as useDefaultUserDisplayNames,
   type AadUser,
   type BotInfo,
+  type UseUserDisplayNamesOptions,
 } from "../hooks/useLookups";
 
 export interface BotLookupResult {
@@ -44,7 +45,7 @@ export interface UserSearchResult {
 
 export interface LookupsImpl {
   useBotLookup: () => BotLookupResult;
-  useUserDisplayNames: (aadObjectIds: string[]) => UserDisplayResult;
+  useUserDisplayNames: (aadObjectIds: string[], options?: UseUserDisplayNamesOptions) => UserDisplayResult;
   useAadUserSearch: () => UserSearchResult;
 }
 
@@ -73,8 +74,11 @@ export function useBotLookup(): BotLookupResult {
   return useImpl().useBotLookup();
 }
 
-export function useUserDisplayNames(aadObjectIds: string[]): UserDisplayResult {
-  return useImpl().useUserDisplayNames(aadObjectIds);
+export function useUserDisplayNames(
+  aadObjectIds: string[],
+  options?: UseUserDisplayNamesOptions
+): UserDisplayResult {
+  return useImpl().useUserDisplayNames(aadObjectIds, options);
 }
 
 export function useAadUserSearch(): UserSearchResult {

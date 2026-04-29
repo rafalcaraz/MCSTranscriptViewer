@@ -39,16 +39,17 @@
                   "description": "Please enter your input",
                   "x-ms-content-hint": "TEXT"
                 },
-                "text_6": {
-                  "title": "fetchXml",
-                  "type": "string",
-                  "x-ms-dynamically-added": true,
+                "text_1": {
                   "description": "Please enter your input",
-                  "x-ms-content-hint": "TEXT"
+                  "title": "userEmail",
+                  "type": "string",
+                  "x-ms-content-hint": "TEXT",
+                  "x-ms-dynamically-added": true
                 }
               },
               "required": [
-                "text"
+                "text",
+                "text_1"
               ]
             }
           },
@@ -70,11 +71,6 @@
                   "x-ms-dynamically-added": true,
                   "type": "string"
                 },
-                "nextlink": {
-                  "title": "nextLink",
-                  "x-ms-dynamically-added": true,
-                  "type": "string"
-                },
                 "count": {
                   "title": "count",
                   "x-ms-dynamically-added": true,
@@ -91,9 +87,8 @@
             },
             "statusCode": 200,
             "body": {
-              "valuejson": "@{if(equals(variables('errorDetails'),''),string(outputs('List_rows')?['body']?['value']),'')}",
-              "nextlink": "@{if(equals(variables('errorDetails'),''),coalesce(outputs('List_rows')?['body']?['@odata.nextLink'], ''),'')}",
-              "count": "@if(equals(variables('errorDetails'),''), length(outputs('List_rows')?['body']?['value']),-1)",
+              "valuejson": "@{if(equals(variables('errorDetails'),''),string(outputs('Compose')),'')}",
+              "count": "@if(equals(variables('errorDetails'),''), length(outputs('Compose')),-1)",
               "errordetails": "@{variables('errorDetails')}"
             }
           },
@@ -122,13 +117,28 @@
         "Try": {
           "type": "Scope",
           "actions": {
-            "List_Rows": {
+            "Get-Agents-POA": {
               "type": "OpenApiConnection",
               "inputs": {
                 "parameters": {
-                  "organization": "@triggerBody()['text']",
+                  "organization": "@triggerBody()?['text']",
+                  "entityName": "principalobjectaccessset",
+                  "fetchXml": "<fetch>\n  <entity name=\"principalobjectaccess\">\n    <link-entity name=\"systemuser\" from=\"systemuserid\" to=\"principalid\">\n      <filter>\n        <condition attribute=\"internalemailaddress\" operator=\"eq\" value=\"@{triggerBody()?['text_1']}\" />\n      </filter>\n    </link-entity>\n    <link-entity name=\"bot\" from=\"botid\" to=\"objectid\" alias=\"botinfo\">\n      <attribute name=\"botid\" />\n      <attribute name=\"name\" />\n      <attribute name=\"schemaname\" />\n    </link-entity>\n  </entity>\n</fetch>"
+                },
+                "host": {
+                  "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
+                  "operationId": "ListRecordsWithOrganization",
+                  "connectionName": "shared_commondataserviceforapps"
+                }
+              }
+            },
+            "Get-Agents-Owner": {
+              "type": "OpenApiConnection",
+              "inputs": {
+                "parameters": {
+                  "organization": "@triggerBody()?['text']",
                   "entityName": "bots",
-                  "fetchXml": "@triggerBody()?['text_6']"
+                  "fetchXml": "<fetch>\n   <entity name=\"bot\">\n     <attribute name=\"botid\" />\n     <attribute name=\"name\" />\n     <attribute name=\"schemaname\" />\n     <link-entity name=\"systemuser\" from=\"systemuserid\" to=\"ownerid\" alias=\"o\">\n       <filter>\n         <condition attribute=\"internalemailaddress\" operator=\"eq\"\n           value=\"@{triggerBody()?['text_1']}\" />\n         <condition attribute=\"isdisabled\" operator=\"eq\" value=\"false\" />\n       </filter>\n     </link-entity>\n   </entity>\n </fetch>"
                 },
                 "host": {
                   "apiId": "/providers/Microsoft.PowerApps/apis/shared_commondataserviceforapps",
@@ -136,8 +146,51 @@
                   "connectionName": "shared_commondataserviceforapps"
                 }
               },
-              "metadata": {
-                "operationMetadataId": "2206face-7648-4c57-bfd0-a54e6bd354d3"
+              "runAfter": {
+                "Get-Agents-POA": [
+                  "SUCCEEDED"
+                ]
+              }
+            },
+            "Select-Agents-POA": {
+              "type": "Select",
+              "inputs": {
+                "from": "@outputs('Get-Agents-POA')?['body/value']",
+                "select": {
+                  "botid": "@item()?['botinfo.botid']",
+                  "name": "@item()?['botinfo.name']",
+                  "schemaname": "@item()?['botinfo.schemaname']"
+                }
+              },
+              "runAfter": {
+                "Get-Agents-Owner": [
+                  "SUCCEEDED"
+                ]
+              }
+            },
+            "Select-Agents-Owner": {
+              "type": "Select",
+              "inputs": {
+                "from": "@outputs('Get-Agents-Owner')?['body/value']",
+                "select": {
+                  "botid": "@item()?['botid']",
+                  "name": "@item()?['name']",
+                  "schemaname": "@item()?['schemaname']"
+                }
+              },
+              "runAfter": {
+                "Select-Agents-POA": [
+                  "SUCCEEDED"
+                ]
+              }
+            },
+            "Compose": {
+              "type": "Compose",
+              "inputs": "@union(body('Select-Agents-Owner'),body('Select-Agents-POA'))",
+              "runAfter": {
+                "Select-Agents-Owner": [
+                  "SUCCEEDED"
+                ]
               }
             }
           },
@@ -151,7 +204,7 @@
           "type": "SetVariable",
           "inputs": {
             "name": "errorDetails",
-            "value": "@string(outputs('List_Rows'))"
+            "value": "@string(outputs('Get-Agents-POA'))"
           },
           "runAfter": {
             "Try": [
