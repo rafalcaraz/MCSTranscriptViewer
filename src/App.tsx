@@ -1,7 +1,7 @@
 import { useState, useCallback, useEffect, useMemo, lazy, Suspense } from "react";
 import { useTranscripts, useTranscript, type TranscriptFilters } from "./hooks/useTranscripts";
 import { useFilteredTranscripts } from "./hooks/useFilteredTranscripts";
-import { useBotLookup } from "./hooks/useLookups";
+import { useBotLookup, setAdhocMode } from "./hooks/useLookups";
 import { rbacLog } from "./utils/rbacDebug";
 import { AadusersService } from "./generated/services/AadusersService";
 import { TranscriptList } from "./components/TranscriptList/TranscriptList";
@@ -68,9 +68,15 @@ function App() {
       try {
         const t0 = performance.now();
         const probe = await AadusersService.getAll({ select: ["aaduserid", "userprincipalname", "mail"], maxPageSize: 1 });
+        const rowCount = (probe.data ?? []).length;
+        // 0 rows on a no-filter top:1 query → caller lacks prvReadaaduser.
+        // Flip adhoc mode proactively so typeahead and display-name lookups
+        // skip aadusers and use the Office 365 Users (Graph) connector.
+        if (rowCount === 0) setAdhocMode(true);
         rbacLog("Dataverse identity probe (aadusers top:1)", {
           elapsedMs: Math.round(performance.now() - t0),
-          rowCount: (probe.data ?? []).length,
+          rowCount,
+          adhocMode: rowCount === 0,
           firstRow: probe.data?.[0]
             ? {
                 aaduserid: probe.data[0].aaduserid,
@@ -78,10 +84,13 @@ function App() {
                 mail: probe.data[0].mail,
               }
             : null,
-          note: "Confirms the Dataverse client is reachable; not the calling user's UPN.",
+          note: "Confirms the Dataverse client is reachable; rowCount=0 also signals no aadusers read access.",
         });
       } catch (e) {
-        rbacLog("Dataverse identity probe FAILED", {
+        // If the probe itself errors out (network, auth), assume adhoc as
+        // the safer default so the UI doesn't silently show GUIDs.
+        setAdhocMode(true);
+        rbacLog("Dataverse identity probe FAILED → assuming adhoc mode", {
           message: e instanceof Error ? e.message : String(e),
         });
       }

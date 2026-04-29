@@ -10,8 +10,12 @@ vi.mock("../generated/services/AadusersService", () => ({
 }));
 
 const userProfileV2 = vi.fn();
+const searchUserV2 = vi.fn();
 vi.mock("../generated/services/Office365UsersService", () => ({
-  Office365UsersService: { UserProfile_V2: (...args: unknown[]) => userProfileV2(...args) },
+  Office365UsersService: {
+    UserProfile_V2: (...args: unknown[]) => userProfileV2(...args),
+    SearchUserV2: (...args: unknown[]) => searchUserV2(...args),
+  },
 }));
 
 vi.mock("../generated/services/BotsService", () => ({
@@ -22,6 +26,8 @@ vi.mock("../utils/rbacDebug", () => ({ rbacLog: vi.fn() }));
 
 import {
   useUserDisplayNames,
+  useAadUserSearch,
+  setAdhocMode,
   __resetUserDisplayCacheForTests,
 } from "../hooks/useLookups";
 
@@ -33,6 +39,7 @@ describe("useUserDisplayNames — adhoc fallback", () => {
     __resetUserDisplayCacheForTests();
     aadGetAll.mockReset();
     userProfileV2.mockReset();
+    searchUserV2.mockReset();
     sessionStorage.clear();
   });
 
@@ -142,5 +149,90 @@ describe("useUserDisplayNames — adhoc fallback", () => {
     const list2 = renderHook(() => useUserDisplayNames([ID_A, ID_B]));
     expect(list2.result.current.getDisplayName(ID_A)).toBe("Bob");
     expect(list2.result.current.getDisplayName(ID_B)).toBe(ID_B);
+  });
+});
+
+describe("useAadUserSearch — adhoc fallback", () => {
+  beforeEach(() => {
+    __resetUserDisplayCacheForTests();
+    aadGetAll.mockReset();
+    userProfileV2.mockReset();
+    searchUserV2.mockReset();
+    sessionStorage.clear();
+  });
+
+  it("normal mode → queries aadusers, NOT Graph", async () => {
+    aadGetAll.mockResolvedValue({
+      data: [{ aaduserid: ID_A, id: ID_A, displayname: "Alice", mail: "a@x", userprincipalname: "a@x" }],
+    });
+
+    const { result } = renderHook(() => useAadUserSearch());
+    await act(async () => { result.current.search("ali"); });
+    await waitFor(() => expect(result.current.results.length).toBe(1));
+
+    expect(aadGetAll).toHaveBeenCalledTimes(1);
+    expect(searchUserV2).not.toHaveBeenCalled();
+    expect(result.current.results[0].displayname).toBe("Alice");
+  });
+
+  it("adhoc mode → calls SearchUserV2 and maps Graph User → AadUser", async () => {
+    setAdhocMode(true);
+    searchUserV2.mockResolvedValue({
+      data: {
+        value: [
+          { Id: ID_A, DisplayName: "Bob", Mail: "b@x", UserPrincipalName: "b@x", JobTitle: "Engineer" },
+          { Id: ID_B, DisplayName: "Carol", Mail: "c@x", UserPrincipalName: "c@x" },
+        ],
+      },
+    });
+
+    const { result } = renderHook(() => useAadUserSearch());
+    await act(async () => { result.current.search("b"); });  // 1 char → no call
+    expect(searchUserV2).not.toHaveBeenCalled();
+
+    await act(async () => { result.current.search("bo"); });
+    await waitFor(() => expect(result.current.results.length).toBe(2));
+
+    expect(searchUserV2).toHaveBeenCalledWith("bo", 10);
+    expect(aadGetAll).not.toHaveBeenCalled();
+    expect(result.current.results[0]).toMatchObject({
+      objectId: ID_A,
+      displayname: "Bob",
+      mail: "b@x",
+      jobtitle: "Engineer",
+    });
+  });
+
+  it("adhoc mode → stale Graph response is discarded by reqId guard", async () => {
+    setAdhocMode(true);
+
+    let resolveFirst!: (v: unknown) => void;
+    let resolveSecond!: (v: unknown) => void;
+    searchUserV2.mockImplementationOnce(() => new Promise((r) => { resolveFirst = r; }));
+    searchUserV2.mockImplementationOnce(() => new Promise((r) => { resolveSecond = r; }));
+
+    const { result } = renderHook(() => useAadUserSearch());
+    await act(async () => { result.current.search("al"); });
+    await act(async () => { result.current.search("ali"); });
+
+    // Resolve the SECOND request first (most recent), then the stale first.
+    await act(async () => {
+      resolveSecond({ data: { value: [{ Id: ID_B, DisplayName: "Latest" }] } });
+      await Promise.resolve();
+      resolveFirst({ data: { value: [{ Id: ID_A, DisplayName: "Stale" }] } });
+      await Promise.resolve();
+    });
+
+    await waitFor(() => expect(result.current.loading).toBe(false));
+    expect(result.current.results).toHaveLength(1);
+    expect(result.current.results[0].displayname).toBe("Latest");
+  });
+
+  it("under 2 chars → no service calls in either mode", async () => {
+    const { result } = renderHook(() => useAadUserSearch());
+    await act(async () => { result.current.search("a"); });
+    await act(async () => { result.current.search(""); });
+    expect(aadGetAll).not.toHaveBeenCalled();
+    expect(searchUserV2).not.toHaveBeenCalled();
   });
 });

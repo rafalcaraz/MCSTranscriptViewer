@@ -1,8 +1,9 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { AadusersService } from "../generated/services/AadusersService";
 import { BotsService } from "../generated/services/BotsService";
 import { Office365UsersService } from "../generated/services/Office365UsersService";
 import type { Aadusers } from "../generated/models/AadusersModel";
+import type { User as GraphSearchUser } from "../generated/models/Office365UsersModel";
 import { rbacLog } from "../utils/rbacDebug";
 
 // ── AAD User Lookup ──────────────────────────────────────────────────
@@ -31,13 +32,35 @@ function toAadUser(raw: Aadusers): AadUser {
   };
 }
 
+function fromGraphSearchUser(raw: GraphSearchUser): AadUser {
+  return {
+    aaduserid: raw.Id ?? "",
+    objectId: raw.Id ?? "",
+    displayname: raw.DisplayName ?? "",
+    mail: raw.Mail ?? "",
+    userprincipalname: raw.UserPrincipalName ?? "",
+    givenname: raw.GivenName ?? "",
+    surname: raw.Surname ?? "",
+    jobtitle: raw.JobTitle ?? "",
+  };
+}
+
 /**
  * Search AAD users by name or email.
  * Returns matching users for typeahead suggestions.
+ *
+ * In normal mode (caller has prvReadaaduser) → queries the aadusers virtual
+ * table with a contains() filter. In adhoc mode → falls back to the Office
+ * 365 Users (Graph) connector via SearchUserV2.
+ *
+ * Cancellation: an internal request id discards stale responses so a slow
+ * Graph reply that arrives after the user typed more characters does NOT
+ * overwrite the more-recent results.
  */
 export function useAadUserSearch() {
   const [results, setResults] = useState<AadUser[]>([]);
   const [loading, setLoading] = useState(false);
+  const reqIdRef = useRef(0);
 
   const search = useCallback(async (query: string) => {
     if (!query || query.length < 2) {
@@ -45,27 +68,45 @@ export function useAadUserSearch() {
       return;
     }
 
+    const reqId = ++reqIdRef.current;
     setLoading(true);
     try {
-      const filter = [
-        `contains(displayname,'${escapeOData(query)}')`,
-        `contains(mail,'${escapeOData(query)}')`,
-        `contains(userprincipalname,'${escapeOData(query)}')`,
-      ].join(" or ");
+      let users: AadUser[];
 
-      const result = await AadusersService.getAll({
-        select: ["aaduserid", "id", "displayname", "mail", "userprincipalname", "givenname", "surname", "jobtitle"],
-        filter,
-        maxPageSize: 10,
-      });
+      if (_adhocMode) {
+        const t0 = performance.now();
+        rbacLog("Office365UsersService.SearchUserV2 → REQUEST", { query, top: 10 });
+        const result = await Office365UsersService.SearchUserV2(query, 10);
+        if (reqId !== reqIdRef.current) return; // stale response — drop
+        const value = result.data?.value ?? [];
+        users = value.map(fromGraphSearchUser);
+        rbacLog("Office365UsersService.SearchUserV2 → RESPONSE", {
+          elapsedMs: Math.round(performance.now() - t0),
+          rowCount: users.length,
+        });
+      } else {
+        const filter = [
+          `contains(displayname,'${escapeOData(query)}')`,
+          `contains(mail,'${escapeOData(query)}')`,
+          `contains(userprincipalname,'${escapeOData(query)}')`,
+        ].join(" or ");
 
-      const users = (result.data ?? []).map(toAadUser);
+        const result = await AadusersService.getAll({
+          select: ["aaduserid", "id", "displayname", "mail", "userprincipalname", "givenname", "surname", "jobtitle"],
+          filter,
+          maxPageSize: 10,
+        });
+        if (reqId !== reqIdRef.current) return;
+        users = (result.data ?? []).map(toAadUser);
+      }
+
       setResults(users);
     } catch (err) {
+      if (reqId !== reqIdRef.current) return;
       console.error("[AadUserSearch] Error:", err instanceof Error ? err.message : "Unknown error");
       setResults([]);
     } finally {
-      setLoading(false);
+      if (reqId === reqIdRef.current) setLoading(false);
     }
   }, []);
 
@@ -135,6 +176,27 @@ function persistAdhocFlag(): void {
   } catch {
     // sessionStorage unavailable → flag still kept in module memory
   }
+}
+
+/**
+ * Public setter for adhoc mode. Called by App.tsx boot probe when the
+ * aadusers `top:1` probe returns 0 rows (caller lacks `prvReadaaduser`),
+ * so the typeahead and display-name lookups can switch to the Graph
+ * fallback proactively rather than waiting for a list-render to flip
+ * the flag mid-resolve.
+ */
+export function setAdhocMode(value: boolean): void {
+  _adhocMode = value;
+  try {
+    if (value) sessionStorage.setItem(SS_ADHOC_FLAG, "1");
+    else sessionStorage.removeItem(SS_ADHOC_FLAG);
+  } catch {
+    // sessionStorage unavailable → flag still kept in module memory
+  }
+}
+
+export function getAdhocMode(): boolean {
+  return _adhocMode;
 }
 
 /** TEST-ONLY: reset module state between vi tests. Not exported via index. */
