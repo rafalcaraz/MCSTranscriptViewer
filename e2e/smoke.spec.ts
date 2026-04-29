@@ -120,7 +120,7 @@ test.beforeEach(async ({ page }, testInfo) => {
   await killPlayerOverlaysNow(page);
 });
 
-test.afterEach(async ({}, testInfo) => {
+test.afterEach(async ({ page: _page }, testInfo) => {
   const errs = (testInfo as { _consoleErrors?: string[] })._consoleErrors ?? [];
   if (errs.length > 0) {
     throw new Error(
