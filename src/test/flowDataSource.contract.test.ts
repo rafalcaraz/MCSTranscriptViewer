@@ -32,6 +32,18 @@ vi.mock("../generated/services/Get_AgentsService", () => ({
 vi.mock("../generated/services/Get_TranscriptsService", () => ({
   Get_TranscriptsService: { Run: transcriptsRunMock },
 }));
+vi.mock("@microsoft/power-apps/app", () => ({
+  getContext: vi.fn(async () => ({
+    user: {
+      userPrincipalName: "test.user@contoso.com",
+      objectId: "00000000-0000-0000-0000-000000000001",
+      fullName: "Test User",
+      tenantId: "tenant-1",
+    },
+    app: { appId: "app", appSettings: {}, environmentId: "env", queryParams: {} },
+    host: { sessionId: "session" },
+  })),
+}));
 
 // Now safe to import (services are stubbed).
 import {
@@ -80,16 +92,16 @@ beforeEach(() => {
 });
 
 describe("fetchAgentsViaFlow — success path", () => {
-  it("passes envUrl as `text` and FetchXML as `text_6` (flow trigger contract)", async () => {
+  it("passes envUrl as `text` and invoker UPN as `text_1` (flow trigger contract)", async () => {
     agentsRunMock.mockResolvedValueOnce(ok([{ botid: "b1", name: "Bot 1", schemaname: "bot1" }]));
     await fetchAgentsViaFlow(ENV, { top: 25 });
 
     expect(agentsRunMock).toHaveBeenCalledTimes(1);
     const arg = agentsRunMock.mock.calls[0][0];
     expect(arg.text).toBe(ENV);
-    expect(typeof arg.text_6).toBe("string");
-    expect(arg.text_6).toContain('top="25"');
-    expect(arg.text_6).toContain("<entity name=\"bot\">");
+    expect(arg.text_1).toBe("test.user@contoso.com");
+    // Flow now builds FetchXml server-side — no fetchxml param from client.
+    expect(arg).not.toHaveProperty("text_6");
   });
 
   it("parses valuejson (a STRING, not object) into RawAgent[]", async () => {
@@ -185,6 +197,11 @@ describe("fetchTranscriptsPageViaFlow — value envelope variants", () => {
     expect(page.rows[0].conversationtranscriptid).toBe("t1");
     expect(page.pagingCookie).toBe("");
     expect(page.hasMore).toBe(false);
+    // RBAC contract: flow now requires the invoker UPN to gate by role.
+    const arg = transcriptsRunMock.mock.calls[0][0];
+    expect(arg.text).toBe(ENV);
+    expect(arg.text_1).toBe("test.user@contoso.com");
+    expect(typeof arg.text_6).toBe("string");
   });
 
   it("handles valuejson as a stringified ODATA ENVELOPE (alternate flow output config)", async () => {
@@ -267,10 +284,13 @@ describe("validateEnvViaFlow", () => {
     if (r.ok) expect(r.agentCount).toBe(1);
   });
 
-  it("requests top:1 (cheap probe) — verified by FetchXML in trigger args", async () => {
+  it("requests user-scoped agents (no fetchxml passed; flow controls paging)", async () => {
     agentsRunMock.mockResolvedValueOnce(ok([], { count: 0 }));
     await validateEnvViaFlow(ENV);
-    expect(agentsRunMock.mock.calls[0][0].text_6).toContain('top="1"');
+    const arg = agentsRunMock.mock.calls[0][0];
+    expect(arg.text).toBe(ENV);
+    expect(arg.text_1).toBe("test.user@contoso.com");
+    expect(arg).not.toHaveProperty("text_6");
   });
 
   it("returns ok=false with category + message on permission_denied", async () => {

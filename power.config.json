@@ -10,7 +10,7 @@
   "localAppUrl": "http://localhost:3000",
   "logoPath": "Default",
   "connectionReferences": {
-    "a81fc66b-2715-43a9-81f7-8a7d0a8e4bb5": {
+    "829af65b-5e0a-4325-8038-e77b7acf1bd8": {
       "id": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
       "displayName": "Logic flows",
       "dataSources": [
@@ -22,7 +22,7 @@
         "workflowName": "bda2df2b-763c-7573-aff3-c0cf855029dc"
       }
     },
-    "69413a0c-5a05-426e-96bc-92f23f8b02e9": {
+    "89275279-3701-436c-a344-20dbb0387349": {
       "id": "/providers/Microsoft.PowerApps/apis/shared_logicflows",
       "displayName": "Logic flows",
       "dataSources": [
@@ -33,6 +33,15 @@
         "workflowDisplayName": "Get-Transcripts",
         "workflowName": "2944b2e1-51b6-1603-b8c2-d6f2d5ab9b49"
       }
+    },
+    "0b437314-d949-487b-b30b-d475b9cd25eb": {
+      "id": "/providers/Microsoft.PowerApps/apis/shared_office365users",
+      "displayName": "Office 365 Users",
+      "dataSources": [
+        "office365users"
+      ],
+      "dataSets": {},
+      "xrmConnectionReferenceLogicalName": "msftcsa_MCSConvoViewerO365Users"
     }
   },
   "databaseReferences": {

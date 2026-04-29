@@ -8,6 +8,8 @@ export interface ManualTriggerInput {
   text: string;
   // Please enter your input
   text_6: string;
+  // Please enter your input
+  text_1: string;
 }
 
 export interface ResponseActionOutput {

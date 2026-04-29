@@ -21,11 +21,17 @@
 //
 //   Get_Agents      — generated/models/Get_AgentsModel.ts → ManualTriggerInput
 //     text   : Dataverse environment URL  (e.g. https://orgname.crm.dynamics.com)
-//     text_6 : FetchXML query string      (built by buildAgentsFetchXml)
+//     text_1 : Invoker user principal name / email — flow filters bots by this
+//              user's POA shares + ownership server-side. NO fetchxml needed:
+//              flow builds the queries internally so it can apply RBAC.
 //
 //   Get_Transcripts — generated/models/Get_TranscriptsModel.ts → ManualTriggerInput
 //     text   : Dataverse environment URL
 //     text_6 : FetchXML query string      (built by buildTranscriptsFetchXml)
+//     text_1 : Invoker user principal name / email — flow gates access by
+//              checking the invoker has the "Bot Transcript Viewer" managed
+//              role (direct or team-inherited) before running the query.
+//              Returns errordetails="User-Has-No-Viewer-Role" if not authorized.
 //
 // To get cleaner names auto-generated, rename the trigger field IDs (not just
 // labels) in the flow JSON, then re-run `npx power-apps refresh-data-source`.
@@ -34,9 +40,10 @@
 import { Get_AgentsService } from "../../generated/services/Get_AgentsService";
 import { Get_TranscriptsService } from "../../generated/services/Get_TranscriptsService";
 import type { DataverseTranscriptRecord } from "../../utils/parseTranscript";
+import { rbacLog } from "../../utils/rbacDebug";
+import { getContext } from "@microsoft/power-apps/app";
 import {
   FlowError,
-  buildAgentsFetchXml,
   buildTranscriptsFetchXml,
   downstreamFlowError,
   extractFlowErrorDetails,
@@ -70,12 +77,60 @@ export type {
 
 // ── Public API ───────────────────────────────────────────────────────
 
+/**
+ * Resolve the current user's UPN/email via the Power Apps SDK.
+ * The flow uses this to apply RBAC server-side (POA + ownership filter on bot).
+ * Cached for the page lifetime.
+ */
+let _currentUpnPromise: Promise<string> | null = null;
+async function getCurrentInvokerEmail(): Promise<string> {
+  _currentUpnPromise ??= (async () => {
+    try {
+      const ctx = await getContext();
+      const upn = ctx.user?.userPrincipalName ?? "";
+      rbacLog("getContext().user", {
+        userPrincipalName: upn,
+        objectId: ctx.user?.objectId,
+        fullName: ctx.user?.fullName,
+        tenantId: ctx.user?.tenantId,
+      });
+      return upn;
+    } catch (e) {
+      rbacLog("getContext() FAILED", { message: e instanceof Error ? e.message : String(e) });
+      return "";
+    }
+  })();
+  return _currentUpnPromise;
+}
+
 export async function fetchAgentsViaFlow(
   envUrl: string,
-  opts: { top?: number } = {},
+  // `top` is no longer honored: the flow controls paging server-side. Kept for
+  // call-site compatibility; ignored at runtime.
+  _opts: { top?: number } = {},
 ): Promise<RawAgent[]> {
-  const fetchXml = buildAgentsFetchXml(opts.top ?? 200);
-  const result = await Get_AgentsService.Run({ text: envUrl, text_6: fetchXml });
+  const invokerEmail = await getCurrentInvokerEmail();
+  const t0 = performance.now();
+  rbacLog("Get_AgentsService.Run → REQUEST", {
+    source: "Power Automate flow (Get_Agents) via Code App connection ref",
+    envUrl,
+    invokerEmail,
+    expectation:
+      "Flow now filters bots by POA + ownership for the supplied invoker email server-side. " +
+      "Should return ONLY bots the invoker can read in the target env.",
+  });
+  const result = await Get_AgentsService.Run({ text: envUrl, text_1: invokerEmail });
+
+  rbacLog("Get_AgentsService.Run → RAW_RESULT", {
+    elapsedMs: Math.round(performance.now() - t0),
+    success: result.success,
+    error: result.error,
+    dataKeys: result.data ? Object.keys(result.data as unknown as Record<string, unknown>) : null,
+    valuejsonPreview:
+      typeof (result.data as { valuejson?: string } | undefined)?.valuejson === "string"
+        ? (result.data as { valuejson: string }).valuejson.slice(0, 400)
+        : null,
+  });
 
   if (!result.success) {
     const msg = result.error?.message ?? "Get-Agents flow returned an error";
@@ -108,11 +163,16 @@ export async function fetchAgentsViaFlow(
   }
 
   const rows = Array.isArray(parsed) ? parsed : [];
-  return (rows as Record<string, unknown>[]).map((r) => ({
+  const mapped = (rows as Record<string, unknown>[]).map((r) => ({
     botid: (r["botid"] as string) ?? "",
     name: (r["name"] as string | null) ?? null,
     schemaname: (r["schemaname"] as string | null) ?? null,
   }));
+  rbacLog("Get_AgentsService.Run → PARSED", {
+    rowCount: mapped.length,
+    sampleFirst5: mapped.slice(0, 5),
+  });
+  return mapped;
 }
 
 export async function fetchTranscriptsPageViaFlow(
@@ -120,7 +180,28 @@ export async function fetchTranscriptsPageViaFlow(
   opts: TranscriptFetchOpts,
 ): Promise<TranscriptPageResult> {
   const fetchXml = buildTranscriptsFetchXml(opts);
-  const result = await Get_TranscriptsService.Run({ text: envUrl, text_6: fetchXml });
+  const invokerEmail = await getCurrentInvokerEmail();
+  const t0 = performance.now();
+  rbacLog("Get_TranscriptsService.Run → REQUEST", {
+    source: "Power Automate flow (Get_Transcripts) via Code App connection ref",
+    envUrl,
+    invokerEmail,
+    expectation:
+      "Flow gates by 'Bot Transcript Viewer' managed role (direct + team). " +
+      "Without the role, returns errordetails='User-Has-No-Viewer-Role' and an empty array.",
+  });
+  const result = await Get_TranscriptsService.Run({ text: envUrl, text_6: fetchXml, text_1: invokerEmail });
+
+  rbacLog("Get_TranscriptsService.Run → RAW_RESULT", {
+    elapsedMs: Math.round(performance.now() - t0),
+    success: result.success,
+    error: result.error,
+    dataKeys: result.data ? Object.keys(result.data as unknown as Record<string, unknown>) : null,
+    errordetailsPreview:
+      typeof (result.data as { errordetails?: string } | undefined)?.errordetails === "string"
+        ? (result.data as { errordetails: string }).errordetails.slice(0, 200)
+        : null,
+  });
 
   if (!result.success) {
     const msg = result.error?.message ?? "Get-Transcripts flow returned an error";

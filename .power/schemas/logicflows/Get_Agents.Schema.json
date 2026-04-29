@@ -81,16 +81,17 @@
               "description": "Please enter your input",
               "x-ms-content-hint": "TEXT"
             },
-            "text_6": {
-              "title": "fetchXml",
-              "type": "string",
-              "x-ms-dynamically-added": true,
+            "text_1": {
               "description": "Please enter your input",
-              "x-ms-content-hint": "TEXT"
+              "title": "userEmail",
+              "type": "string",
+              "x-ms-content-hint": "TEXT",
+              "x-ms-dynamically-added": true
             }
           },
           "required": [
-            "text"
+            "text",
+            "text_1"
           ]
         },
         "ResponseActionOutput": {
@@ -98,11 +99,6 @@
           "properties": {
             "valuejson": {
               "title": "valueJson",
-              "x-ms-dynamically-added": true,
-              "type": "string"
-            },
-            "nextlink": {
-              "title": "nextLink",
               "x-ms-dynamically-added": true,
               "type": "string"
             },

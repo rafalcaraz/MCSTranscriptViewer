@@ -5,6 +5,12 @@
 
 ---
 
+## 🛠 Followups (RBAC / user resolution)
+
+- **Find-by-User typeahead in adhoc mode.** When the caller lacks `prvReadaaduser` on the `aadusers` virtual table (anyone outside System Administrator / System Customizer / Service Reader / Service Writer), the existing `useAadUserSearch` typeahead silently returns 0 results because `contains(displayname,...)` filters away unreadable rows. The Office 365 Users Graph connector method we use for individual id resolution (`UserProfile_V2`) does **not** support partial-string search. Plan: detect adhoc mode in `useAadUserSearch` and switch to an "exact UPN/email" UX — user types the full address, we validate via `UserProfile_V2(email)` and surface a single match. Real typeahead only works when `aadusers` is reachable.
+
+---
+
 ## 🔬 Transcript Analysis Findings
 
 ### Transcript Type Classification (4 types discovered)
@@ -143,8 +149,31 @@ Needs better UX design. Initial double-click approach was removed. Consider: vis
 #### 9. `content-indexing` — Content Indexing for Instant Search
 Pre-parse transcript content on load, build client-side search index for instant full-text search across messages, thinking, tool names, errors.
 
-#### 10. `e2e-tests` — End-to-End Browser Tests
-Playwright or Cypress: full app flow — load list, filter, open transcript, verify panels, search, navigate back. Requires mock Dataverse API or test environment. Best done on local drive (not NAS).
+#### 10. `e2e-tests` — End-to-End Browser Tests (in progress)
+
+Playwright suite established under `e2e/`. Run with `npx playwright test --project=<smoke|stress|rbac-admin|rbac-limited> --headed`.
+
+**Done:**
+- One-time auth capture per persona → `e2e/.auth/<user>.json`
+- Multi-persona setup (`AUTH_USER` env var, gitignored states)
+- `.env`-driven config (`TEST_ENV_URL`, `e2e/.env.example` committed as template)
+- **smoke** (12 tests): app shell, tabs, theme toggle, Browse-via-Flows controls, **invalid env URL → ErrorCard**, **date filter inputs**, **console error scrape (fails on real errors)**
+- **stress** (4 tests): Transcripts pagination scroll-to-end, Browse-via-Flows pagination scroll-to-end, content-search narrowing, detail navigation
+- **rbac** (2 tests): per-persona bot/transcript visibility capture + admin ≥ limited cross-check
+
+**Backlog (next iterations):**
+- **Date filter applies (assert row count narrows)** — currently only smoke-tests the inputs render
+- **Bot multi-select filter** — central RBAC concern, picks change rendered set
+- **Detail view depth** — message timeline renders, debug panel opens, search-within-transcript, attachment links work
+- **Multi-transcript navigation** — open A → back → open B, assert state preserved
+- **Theme persistence across reload**
+- **Empty state copy** — assert "No transcripts found" vs "No transcripts match your filters"
+- **Network failure injection** (`page.route()`) — fail flow mid-scroll, assert error banner + recovery
+- **Race conditions** — change filter mid-load, assert no stale results
+- **Visual regression** — Playwright `toHaveScreenshot()` on badges, skeletons, error cards
+- **Vitest coverage report** — measure actual % exercised in flowDataSource.ts
+- **CI** — Vitest on GH Actions; Playwright self-hosted runner if/when needed
+
 
 ---
 

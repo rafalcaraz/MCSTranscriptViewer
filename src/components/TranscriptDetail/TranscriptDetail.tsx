@@ -50,7 +50,10 @@ export function TranscriptDetail({ transcript, onBack, onOpenTranscript, allLoad
     () => transcript.userAadObjectId ? [transcript.userAadObjectId] : [],
     [transcript.userAadObjectId]
   );
-  const { getDisplayName: getUserName } = useUserDisplayNames(userIds);
+  // eager:true → in adhoc mode (caller lacks prvReadaaduser), fall back to
+  // the Office 365 Users (Graph) connector when this transcript opens so the
+  // participant id resolves to a real display name.
+  const { getDisplayName: getUserName } = useUserDisplayNames(userIds, { eager: true });
 
   const agentDisplayName = getBotName(transcript.metadata.botName, transcript.metadata.botId) || undefined;
   const userDisplayName = getUserName(transcript.userAadObjectId) || undefined;

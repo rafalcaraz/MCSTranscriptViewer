@@ -12,6 +12,15 @@ dist
 dist-ssr
 *.local
 
+coverage
+
+# Playwright
+test-results/
+playwright-report/
+e2e/.auth/
+e2e/.env
+e2e/.rbac-results.json
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
