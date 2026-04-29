@@ -7,7 +7,7 @@
 
 ## 🛠 Followups (RBAC / user resolution)
 
-- **Find-by-User typeahead in adhoc mode.** When the caller lacks `prvReadaaduser` on the `aadusers` virtual table (anyone outside System Administrator / System Customizer / Service Reader / Service Writer), the existing `useAadUserSearch` typeahead silently returns 0 results because `contains(displayname,...)` filters away unreadable rows. The Office 365 Users Graph connector method we use for individual id resolution (`UserProfile_V2`) does **not** support partial-string search. Plan: detect adhoc mode in `useAadUserSearch` and switch to an "exact UPN/email" UX — user types the full address, we validate via `UserProfile_V2(email)` and surface a single match. Real typeahead only works when `aadusers` is reachable.
+- ~~**Find-by-User typeahead in adhoc mode.**~~ ✅ Implemented — `useAadUserSearch` now branches on `_adhocMode` and falls back to `Office365UsersService.SearchUserV2` when the caller lacks `prvReadaaduser`. Inherits the existing 300ms debounce + 2-char min from `UserSearch.tsx`. Boot probe in `App.tsx` flips the adhoc flag proactively (rowCount===0 on aadusers top:1 query → adhoc).
 
 ---
 
