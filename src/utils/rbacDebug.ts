@@ -27,14 +27,11 @@ export function rbacLog(tag: string, payload: unknown): void {
   // Keep the in-memory ring small (last 200 events)
   if (window.__RBAC_LOG.length > 200) window.__RBAC_LOG.splice(0, window.__RBAC_LOG.length - 200);
   // Use console.info so it shows up in default DevTools filter
-  // eslint-disable-next-line no-console
   console.info(`%c[RBAC]%c ${tag}`, "color:#fff;background:#b00;padding:1px 4px;border-radius:3px;font-weight:bold;", "color:inherit", payload);
 }
 
 export function dumpRbacLog(): void {
-  // eslint-disable-next-line no-console
   console.table((window.__RBAC_LOG ?? []).map(e => ({ ts: e.ts, tag: e.tag })));
-  // eslint-disable-next-line no-console
   console.log("Full entries:", window.__RBAC_LOG);
 }
 
